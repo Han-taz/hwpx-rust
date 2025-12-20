@@ -71,20 +71,20 @@ pub(crate) fn format_image_markdown(
                         .and_then(|n| n.to_str())
                         .unwrap_or(&file_path);
                     // images/ 디렉토리 경로 포함 / Include images/ directory path
-                    format!("![이미지](images/{})", file_name)
+                    format!("![이미지](images/{file_name})")
                 }
                 Err(e) => {
-                    eprintln!("Failed to save image: {}", e);
+                    eprintln!("Failed to save image: {e}");
                     // 실패 시 base64로 폴백 / Fallback to base64 on failure
                     let mime_type = get_mime_type_from_bindata_id(document, bindata_id);
-                    format!("![이미지](data:{};base64,{})", mime_type, base64_data)
+                    format!("![이미지](data:{mime_type};base64,{base64_data})")
                 }
             }
         }
         None => {
             // base64 데이터 URI로 임베드 / Embed as base64 data URI
             let mime_type = get_mime_type_from_bindata_id(document, bindata_id);
-            format!("![이미지](data:{};base64,{})", mime_type, base64_data)
+            format!("![이미지](data:{mime_type};base64,{base64_data})")
         }
     }
 }
@@ -101,17 +101,17 @@ fn save_image_to_file(
     let image_data = STANDARD
         .decode(base64_data)
         .map_err(|e| HwpError::InternalError {
-            message: format!("Failed to decode base64: {}", e),
+            message: format!("Failed to decode base64: {e}"),
         })?;
 
     // 파일명 생성 / Generate filename
     let extension = get_extension_from_bindata_id(document, bindata_id);
-    let file_name = format!("BIN{:04X}.{}", bindata_id, extension);
+    let file_name = format!("BIN{bindata_id:04X}.{extension}");
     let file_path = Path::new(dir_path).join(&file_name);
 
     // 디렉토리 생성 / Create directory
     fs::create_dir_all(dir_path)
-        .map_err(|e| HwpError::Io(format!("Failed to create directory '{}': {}", dir_path, e)))?;
+        .map_err(|e| HwpError::Io(format!("Failed to create directory '{dir_path}': {e}")))?;
 
     // 파일 저장 / Save file
     fs::write(&file_path, &image_data).map_err(|e| {

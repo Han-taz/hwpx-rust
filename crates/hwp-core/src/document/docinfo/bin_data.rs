@@ -204,7 +204,7 @@ impl BinDataRecord {
                 // 연결 파일의 절대 경로 / Absolute path
                 if data.len() < offset + (len1 * 2) {
                     return Err(HwpError::InsufficientData {
-                        field: format!("BinDataRecord LINK absolute path at offset {}", offset),
+                        field: format!("BinDataRecord LINK absolute path at offset {offset}"),
                         expected: offset + (len1 * 2),
                         actual: data.len(),
                     });
@@ -212,7 +212,7 @@ impl BinDataRecord {
                 let absolute_path_bytes = &data[offset..offset + (len1 * 2)];
                 let absolute_path =
                     decode_utf16le(absolute_path_bytes).map_err(|e| HwpError::EncodingError {
-                        reason: format!("Failed to decode absolute path: {}", e),
+                        reason: format!("Failed to decode absolute path: {e}"),
                     })?;
                 offset += len1 * 2;
 
@@ -230,7 +230,7 @@ impl BinDataRecord {
                 // 연결 파일의 상대 경로 / Relative path
                 if data.len() < offset + (len2 * 2) {
                     return Err(HwpError::InsufficientData {
-                        field: format!("BinDataRecord LINK relative path at offset {}", offset),
+                        field: format!("BinDataRecord LINK relative path at offset {offset}"),
                         expected: offset + (len2 * 2),
                         actual: data.len(),
                     });
@@ -238,7 +238,7 @@ impl BinDataRecord {
                 let relative_path_bytes = &data[offset..offset + (len2 * 2)];
                 let relative_path =
                     decode_utf16le(relative_path_bytes).map_err(|e| HwpError::EncodingError {
-                        reason: format!("Failed to decode relative path: {}", e),
+                        reason: format!("Failed to decode relative path: {e}"),
                     })?;
 
                 Ok(BinDataRecord::Link {
@@ -276,7 +276,7 @@ impl BinDataRecord {
                 // 바이너리 데이터의 형식 이름 (extension) / Format name (extension)
                 if data.len() < offset + (len3 * 2) {
                     return Err(HwpError::InsufficientData {
-                        field: format!("BinDataRecord EMBEDDING extension at offset {}", offset),
+                        field: format!("BinDataRecord EMBEDDING extension at offset {offset}"),
                         expected: offset + (len3 * 2),
                         actual: data.len(),
                     });
@@ -284,7 +284,7 @@ impl BinDataRecord {
                 let extension_bytes = &data[offset..offset + (len3 * 2)];
                 let extension =
                     decode_utf16le(extension_bytes).map_err(|e| HwpError::EncodingError {
-                        reason: format!("Failed to decode extension: {}", e),
+                        reason: format!("Failed to decode extension: {e}"),
                     })?;
 
                 Ok(BinDataRecord::Embedding {

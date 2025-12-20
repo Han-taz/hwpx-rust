@@ -18,7 +18,7 @@ fn format_version(version: DWORD) -> String {
     let minor = (version >> 16) & 0xFF;
     let patch = (version >> 8) & 0xFF;
     let revision = version & 0xFF;
-    format!("{}.{}.{}.{}", major, minor, patch, revision)
+    format!("{major}.{minor}.{patch}.{revision}")
 }
 
 /// Serialize document_flags DWORD as array of flag constants

@@ -165,7 +165,7 @@ impl ParameterSet {
                     // Continue on parse error with warning
                     // Unknown types should be handled in ParameterItem::parse, so this shouldn't be reached
                     #[cfg(debug_assertions)]
-                    eprintln!("Failed to parse parameter item: {}", e);
+                    eprintln!("Failed to parse parameter item: {e}");
                     // 에러가 발생한 경우 최소한 id와 item_type(4바이트)는 건너뛰고 계속 진행
                     // On error, skip at least id and item_type (4 bytes) and continue
                     if current_offset + 4 <= data.len() {
@@ -238,8 +238,7 @@ impl ParameterItem {
                 // Special handling: For unknown types, only save id and item_type, skip data
                 #[cfg(debug_assertions)]
                 eprintln!(
-                    "Warning: Unknown parameter item type: {} (0x{:04x}) - not in spec Table 52, skipping data",
-                    item_type_value, item_type_value
+                    "Warning: Unknown parameter item type: {item_type_value} (0x{item_type_value:04x}) - not in spec Table 52, skipping data"
                 );
                 // 알 수 없는 타입의 경우 데이터 크기를 알 수 없으므로, id와 item_type만 반환
                 // For unknown types, we can't determine data size, so return only id and item_type
@@ -256,7 +255,7 @@ impl ParameterItem {
 
         // 파라미터 아이템 데이터 파싱 / Parse parameter item data
         let (data_value, data_size) =
-            parse_parameter_item_data(&data[offset..], item_type).map_err(|e| HwpError::from(e))?;
+            parse_parameter_item_data(&data[offset..], item_type)?;
         offset += data_size;
 
         Ok((
@@ -300,13 +299,13 @@ fn parse_parameter_item_data(
             }
             let string_bytes = &data[2..total_size];
             let string = decode_utf16le(string_bytes).map_err(|e| HwpError::EncodingError {
-                reason: format!("Failed to decode BSTR: {}", e),
+                reason: format!("Failed to decode BSTR: {e}"),
             })?;
             Ok((ParameterItemData::Bstr(string), total_size))
         }
         ParameterItemType::I1 => {
             // PIT_I1: INT8 / PIT_I1: INT8
-            if data.len() < 1 {
+            if data.is_empty() {
                 return Err(HwpError::insufficient_data("I1", 1, data.len()));
             }
             Ok((ParameterItemData::I1(INT8::from_le_bytes([data[0]])), 1))
@@ -333,14 +332,14 @@ fn parse_parameter_item_data(
         }
         ParameterItemType::I => {
             // PIT_I: INT8 / PIT_I: INT8
-            if data.len() < 1 {
+            if data.is_empty() {
                 return Err(HwpError::insufficient_data("I", 1, data.len()));
             }
             Ok((ParameterItemData::I(INT8::from_le_bytes([data[0]])), 1))
         }
         ParameterItemType::Ui1 => {
             // PIT_UI1: UINT8 / PIT_UI1: UINT8
-            if data.len() < 1 {
+            if data.is_empty() {
                 return Err(HwpError::insufficient_data("UI1", 1, data.len()));
             }
             Ok((ParameterItemData::Ui1(UINT8::from_le_bytes([data[0]])), 1))
@@ -367,7 +366,7 @@ fn parse_parameter_item_data(
         }
         ParameterItemType::Ui => {
             // PIT_UI: UINT8 / PIT_UI: UINT8
-            if data.len() < 1 {
+            if data.is_empty() {
                 return Err(HwpError::insufficient_data("UI", 1, data.len()));
             }
             Ok((ParameterItemData::Ui(UINT8::from_le_bytes([data[0]])), 1))
@@ -375,7 +374,7 @@ fn parse_parameter_item_data(
         ParameterItemType::Set => {
             // PIT_SET: Parameter Set / PIT_SET: Parameter Set
             // 재귀적으로 파싱 / Parse recursively
-            let parameter_set = ParameterSet::parse(data).map_err(|e| HwpError::from(e))?;
+            let parameter_set = ParameterSet::parse(data)?;
             // 사용된 바이트 수 계산 (대략적으로) / Calculate bytes consumed (approximately)
             let size = 4 + parameter_set.items.iter().map(|_| 4).sum::<usize>(); // 최소 크기 / Minimum size
             Ok((ParameterItemData::Set(parameter_set), size))
@@ -403,7 +402,7 @@ fn parse_parameter_item_data(
                     }
                     Err(e) => {
                         #[cfg(debug_assertions)]
-                        eprintln!("Failed to parse parameter set in array: {}", e);
+                        eprintln!("Failed to parse parameter set in array: {e}");
                         break;
                     }
                 }

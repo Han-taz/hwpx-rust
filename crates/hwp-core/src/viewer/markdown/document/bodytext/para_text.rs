@@ -105,7 +105,7 @@ fn convert_text_with_char_shapes<'a>(
     let mut break_positions: Vec<usize> = control_positions
         .iter()
         .filter(|pos| pos.code == ControlChar::PARA_BREAK || pos.code == ControlChar::LINE_BREAK)
-        .map(|pos| usize::from(pos.position))
+        .map(|pos| pos.position)
         .collect();
     break_positions.sort();
 
@@ -200,17 +200,17 @@ fn apply_markdown_styles(text: &str, bold: bool, italic: bool, strikethrough: bo
 
     // 기울임 적용 (가장 안쪽) / Apply italic (innermost)
     if italic {
-        result = format!("*{}*", result);
+        result = format!("*{result}*");
     }
 
     // 진하게 적용 / Apply bold
     if bold {
-        result = format!("**{}**", result);
+        result = format!("**{result}**");
     }
 
     // 가운뎃줄 적용 (가장 바깥쪽) / Apply strikethrough (outermost)
     if strikethrough {
-        result = format!("~~{}~~", result);
+        result = format!("~~{result}~~");
     }
 
     result

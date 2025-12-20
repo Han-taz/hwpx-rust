@@ -81,7 +81,7 @@ impl ShapeComponentPolygon {
         let required_bytes = 2 + 8 * point_count_usize;
         if data.len() < required_bytes {
             return Err(HwpError::InsufficientData {
-                field: format!("ShapeComponentPolygon (point_count={})", point_count_usize),
+                field: format!("ShapeComponentPolygon (point_count={point_count_usize})"),
                 expected: required_bytes,
                 actual: data.len(),
             });

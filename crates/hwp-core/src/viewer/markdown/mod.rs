@@ -104,16 +104,14 @@ pub fn to_markdown(document: &HwpDocument, options: &MarkdownOptions) -> String 
             let bottom_margin_mm = page_def.bottom_margin.to_mm();
 
             lines.push(format!(
-                "**용지 크기**: {:.2}mm x {:.2}mm",
-                paper_width_mm, paper_height_mm
+                "**용지 크기**: {paper_width_mm:.2}mm x {paper_height_mm:.2}mm"
             ));
             lines.push(format!(
                 "**용지 방향**: {:?}",
                 page_def.attributes.paper_direction
             ));
             lines.push(format!(
-                "**여백**: 좌 {:.2}mm / 우 {:.2}mm / 상 {:.2}mm / 하 {:.2}mm",
-                left_margin_mm, right_margin_mm, top_margin_mm, bottom_margin_mm
+                "**여백**: 좌 {left_margin_mm:.2}mm / 우 {right_margin_mm:.2}mm / 상 {top_margin_mm:.2}mm / 하 {bottom_margin_mm:.2}mm"
             ));
             lines.push(String::new());
         }

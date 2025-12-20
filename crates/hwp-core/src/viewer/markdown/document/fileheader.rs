@@ -11,5 +11,5 @@ pub fn format_version(document: &HwpDocument) -> String {
     let patch = (version >> 8) & 0xFF;
     let build = version & 0xFF;
 
-    format!("{}.{:02}.{:02}.{:02}", major, minor, patch, build)
+    format!("{major}.{minor:02}.{patch:02}.{build:02}")
 }

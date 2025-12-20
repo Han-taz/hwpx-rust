@@ -34,8 +34,7 @@ impl<'a> HwpxContainer<'a> {
                 } else {
                     Err(HwpError::InvalidHwpxStructure {
                         reason: format!(
-                            "Invalid mimetype: expected 'application/hwp+zip' or similar, got '{}'",
-                            trimmed
+                            "Invalid mimetype: expected 'application/hwp+zip' or similar, got '{trimmed}'"
                         ),
                     })
                 }
@@ -116,7 +115,7 @@ impl<'a> HwpxContainer<'a> {
 
 /// Extract section number from filename (e.g., "Contents/section0.xml" -> 0)
 fn extract_section_number(path: &str) -> Option<usize> {
-    let filename = path.split('/').last()?;
+    let filename = path.split('/').next_back()?;
     let num_str = filename.strip_prefix("section")?.strip_suffix(".xml")?;
     num_str.parse().ok()
 }

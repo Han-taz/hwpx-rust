@@ -60,14 +60,14 @@ impl RecordTreeNode {
             // 레코드 헤더 파싱 / Parse record header
             let remaining_data = &data[offset..];
             let (header, header_size) =
-                RecordHeader::parse(remaining_data).map_err(|e| HwpError::from(e))?;
+                RecordHeader::parse(remaining_data)?;
             offset += header_size;
 
             // 데이터 영역 읽기 / Read data area
             let data_size = header.size as usize;
             if offset + data_size > data.len() {
                 return Err(HwpError::InsufficientData {
-                    field: format!("Record at offset {}", offset),
+                    field: format!("Record at offset {offset}"),
                     expected: offset + data_size,
                     actual: data.len(),
                 });

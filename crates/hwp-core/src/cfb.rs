@@ -169,8 +169,7 @@ impl CfbParser {
 
         #[cfg(debug_assertions)]
         eprintln!(
-            "Debug: dir_sector: {}, sector_size: {}, dir_start: {}",
-            dir_sector, sector_size, dir_start
+            "Debug: dir_sector: {dir_sector}, sector_size: {sector_size}, dir_start: {dir_start}"
         );
 
         if dir_start >= data.len() {
@@ -185,8 +184,7 @@ impl CfbParser {
 
         #[cfg(debug_assertions)]
         eprintln!(
-            "Debug: Searching directory entries, dir_start: {}, sector_size: {}",
-            dir_start, sector_size
+            "Debug: Searching directory entries, dir_start: {dir_start}, sector_size: {sector_size}"
         );
 
         // Search through directory entries (max 128 entries per sector)
@@ -261,16 +259,14 @@ impl CfbParser {
             if name_matches {
                 #[cfg(debug_assertions)]
                 eprintln!(
-                    "Debug: Found matching entry at index {} (type: {})",
-                    i, entry_type
+                    "Debug: Found matching entry at index {i} (type: {entry_type})"
                 );
                 // Found matching entry, check if it's a stream (type = 2)
                 // 일치하는 엔트리를 찾았으므로 스트림인지 확인 (타입 = 2)
                 if entry_type != 2 {
                     #[cfg(debug_assertions)]
                     eprintln!(
-                        "Debug: Entry is not a stream (type: {}), continuing...",
-                        entry_type
+                        "Debug: Entry is not a stream (type: {entry_type}), continuing..."
                     );
                     // Not a stream
                     continue;
@@ -341,7 +337,7 @@ impl CfbParser {
         // If open_storage is not available, fall back to path-based approach
         // 먼저 스토리지를 열고 그 안에서 스트림을 열려고 시도합니다.
         // open_storage를 사용할 수 없는 경우 경로 기반 접근 방식으로 폴백합니다.
-        let path = format!("{}/{}", storage_name, stream_name);
+        let path = format!("{storage_name}/{stream_name}");
 
         // Try path-based approach first (most CFB libraries support this)
         // 먼저 경로 기반 접근 방식을 시도합니다 (대부분의 CFB 라이브러리가 이를 지원합니다).
@@ -356,7 +352,7 @@ impl CfbParser {
             Err(_) => {
                 // Fallback: try with "Root Entry/" prefix (hwp.js style)
                 // 폴백: "Root Entry/" 접두사를 사용하여 시도합니다 (hwp.js 스타일).
-                let root_path = format!("Root Entry/{}/{}", storage_name, stream_name);
+                let root_path = format!("Root Entry/{storage_name}/{stream_name}");
                 match cfb.open_stream(&root_path) {
                     Ok(mut stream) => {
                         let mut buffer = Vec::new();
@@ -366,8 +362,8 @@ impl CfbParser {
                         Ok(buffer)
                     }
                     Err(e) => Err(HwpError::stream_not_found(
-                        format!("{}/{}", storage_name, stream_name),
-                        format!("Tried '{}' and '{}', last error: {}", path, root_path, e),
+                        format!("{storage_name}/{stream_name}"),
+                        format!("Tried '{path}' and '{root_path}', last error: {e}"),
                     )),
                 }
             }

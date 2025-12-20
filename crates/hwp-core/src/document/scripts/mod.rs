@@ -54,7 +54,7 @@ impl Scripts {
                 }
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse JScriptVersion stream: {}", e);
+                    eprintln!("Warning: Failed to parse JScriptVersion stream: {e}");
                 }
             }
         }
@@ -70,7 +70,7 @@ impl Scripts {
                 }
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse DefaultJScript stream: {}", e);
+                    eprintln!("Warning: Failed to parse DefaultJScript stream: {e}");
                 }
             }
         }

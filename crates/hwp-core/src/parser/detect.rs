@@ -1,7 +1,7 @@
-/// File format detection for HWP/HWPX files
-///
-/// HWP 5.0 uses CFB (Compound File Binary) format with magic bytes: D0 CF 11 E0 A1 B1 1A E1
-/// HWPX uses ZIP format with magic bytes: 50 4B 03 04 (PK..)
+//! File format detection for HWP/HWPX files
+//!
+//! HWP 5.0 uses CFB (Compound File Binary) format with magic bytes: D0 CF 11 E0 A1 B1 1A E1
+//! HWPX uses ZIP format with magic bytes: 50 4B 03 04 (PK..)
 
 /// Supported file formats
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

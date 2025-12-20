@@ -128,8 +128,7 @@ pub fn render_line_segment(
     };
 
     let mut style = format!(
-        "line-height:{:.2}mm;white-space:nowrap;left:{:.2}mm;top:{:.2}mm;height:{:.2}mm;width:{:.2}mm;",
-        line_height_value, left_mm, top_mm, height_mm, width_mm
+        "line-height:{line_height_value:.2}mm;white-space:nowrap;left:{left_mm:.2}mm;top:{top_mm:.2}mm;height:{height_mm:.2}mm;width:{width_mm:.2}mm;"
     );
 
     // padding-left 처리 (들여쓰기) / Handle padding-left (indentation)
@@ -143,16 +142,15 @@ pub fn render_line_segment(
         // 우선순위: ParaShape.outdent → (fallback) 전달받은 para_shape_indent
         if let Some(ps) = para_shape {
             let outdent_mm = round_to_2dp(int32_to_mm(ps.outdent));
-            style.push_str(&format!("padding-left:{:.2}mm;", outdent_mm));
+            style.push_str(&format!("padding-left:{outdent_mm:.2}mm;"));
         } else if let Some(indent) = para_shape_indent {
             let indent_mm = round_to_2dp(int32_to_mm(indent));
-            style.push_str(&format!("padding-left:{:.2}mm;", indent_mm));
+            style.push_str(&format!("padding-left:{indent_mm:.2}mm;"));
         }
     }
 
     format!(
-        r#"<div class="hls {}" style="{}">{}</div>"#,
-        para_shape_class, style, content
+        r#"<div class="hls {para_shape_class}" style="{style}">{content}</div>"#
     )
 }
 

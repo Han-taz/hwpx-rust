@@ -303,8 +303,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
             Ok(Event::Eof) => break,
             Err(e) => {
                 return Err(HwpError::XmlParseError(format!(
-                    "Error parsing section XML: {}",
-                    e
+                    "Error parsing section XML: {e}"
                 )))
             }
             _ => {}

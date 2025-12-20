@@ -71,8 +71,7 @@ impl ShapeComponentContainer {
         if data.len() < required_bytes {
             return Err(HwpError::InsufficientData {
                 field: format!(
-                    "ShapeComponentContainer (object_count={})",
-                    object_count_usize
+                    "ShapeComponentContainer (object_count={object_count_usize})"
                 ),
                 expected: required_bytes,
                 actual: data.len(),

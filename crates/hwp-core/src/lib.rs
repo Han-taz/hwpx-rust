@@ -107,7 +107,7 @@ impl HwpParser {
         cfb: &mut CompoundFile<Cursor<&[u8]>>,
     ) -> Result<FileHeader, HwpError> {
         let fileheader_data = CfbParser::read_stream(cfb, "FileHeader")?;
-        FileHeader::parse(&fileheader_data).map_err(|e| error::HwpError::from(e))
+        FileHeader::parse(&fileheader_data)
     }
 
     /// Parse DocInfo stream
@@ -117,7 +117,7 @@ impl HwpParser {
         fileheader: &FileHeader,
     ) -> Result<DocInfo, HwpError> {
         let docinfo_data = CfbParser::read_stream(cfb, "DocInfo")?;
-        DocInfo::parse(&docinfo_data, fileheader).map_err(|e| error::HwpError::from(e))
+        DocInfo::parse(&docinfo_data, fileheader)
     }
 
     /// Parse BodyText storage
@@ -133,7 +133,7 @@ impl HwpParser {
             .as_ref()
             .map(|props| props.area_count)
             .unwrap_or(1); // 기본값은 1 / Default is 1
-        BodyText::parse(cfb, fileheader, section_count).map_err(|e| error::HwpError::from(e))
+        BodyText::parse(cfb, fileheader, section_count)
     }
 
     /// Parse BinData storage
@@ -146,7 +146,6 @@ impl HwpParser {
     ) -> Result<BinData, HwpError> {
         use crate::document::BinaryDataFormat;
         BinData::parse(cfb, BinaryDataFormat::Base64, &doc_info.bin_data)
-            .map_err(|e| error::HwpError::from(e))
     }
 
     // ===== Optional parsing methods =====
@@ -182,7 +181,7 @@ impl HwpParser {
                 }
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse PrvText stream: {}", e);
+                    eprintln!("Warning: Failed to parse PrvText stream: {e}");
                 }
             }
         }
@@ -204,7 +203,7 @@ impl HwpParser {
                 }
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse PrvImage stream: {}", e);
+                    eprintln!("Warning: Failed to parse PrvImage stream: {e}");
                 }
             }
         }
@@ -221,7 +220,7 @@ impl HwpParser {
             }
             Err(e) => {
                 #[cfg(debug_assertions)]
-                eprintln!("Warning: Failed to parse Scripts storage: {}", e);
+                eprintln!("Warning: Failed to parse Scripts storage: {e}");
             }
         }
     }
@@ -251,7 +250,7 @@ impl HwpParser {
                 }
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse XMLTemplate storage: {}", e);
+                    eprintln!("Warning: Failed to parse XMLTemplate storage: {e}");
                 }
             }
         }
@@ -293,7 +292,7 @@ impl HwpParser {
                     Err(e) => {
                         #[cfg(debug_assertions)]
                         {
-                            eprintln!("Warning: Failed to parse SummaryInformation stream: {}", e);
+                            eprintln!("Warning: Failed to parse SummaryInformation stream: {e}");
                             eprintln!("  Stream size: {} bytes", summary_bytes.len());
                             if summary_bytes.len() >= 40 {
                                 eprintln!("  First 40 bytes: {:?}", &summary_bytes[..40]);
@@ -314,7 +313,7 @@ impl HwpParser {
             Err(e) => {
                 #[cfg(debug_assertions)]
                 {
-                    eprintln!("Warning: Failed to read SummaryInformation stream: {}", e);
+                    eprintln!("Warning: Failed to read SummaryInformation stream: {e}");
                     eprintln!("  Tried: \\u{{0005}}HwpSummaryInformation, \\x05HwpSummaryInformation, HwpSummaryInformation");
                 }
                 // 스트림이 없으면 None으로 유지 (정상) / Keep None if stream doesn't exist (normal)
@@ -342,7 +341,7 @@ impl HwpParser {
                 Ok(stream_data) => return Ok(stream_data),
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Debug: Failed to read with {}: {}", name, e);
+                    eprintln!("Debug: Failed to read with {name}: {e}");
                 }
             }
         }
@@ -369,10 +368,10 @@ impl HwpParser {
         // Read and parse FileHeader
         let fileheader_data = CfbParser::read_stream(&mut cfb, "FileHeader")?;
         let fileheader =
-            FileHeader::parse(&fileheader_data).map_err(|e| error::HwpError::from(e))?;
+            FileHeader::parse(&fileheader_data)?;
 
         // Convert to JSON
-        fileheader.to_json().map_err(|e| error::HwpError::from(e))
+        fileheader.to_json()
     }
 
     /// Parse HWP file and return SummaryInformation as JSON
@@ -390,8 +389,7 @@ impl HwpParser {
         match Self::read_summary_information_stream(&mut cfb, data) {
             Ok(summary_bytes) => {
                 let summary_information =
-                    crate::document::SummaryInformation::parse(&summary_bytes)
-                        .map_err(|e| error::HwpError::from(e))?;
+                    crate::document::SummaryInformation::parse(&summary_bytes)?;
                 // Convert to JSON
                 serde_json::to_string_pretty(&summary_information).map_err(error::HwpError::from)
             }

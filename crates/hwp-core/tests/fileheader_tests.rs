@@ -143,7 +143,7 @@ fn test_fileheader_parse_from_actual_file() {
                     assert_eq!(total_size, 256, "Total FileHeader size should be 256 bytes");
                 }
                 Err(e) => {
-                    panic!("Should be able to read FileHeader stream: {}", e);
+                    panic!("Should be able to read FileHeader stream: {e}");
                 }
             }
         }

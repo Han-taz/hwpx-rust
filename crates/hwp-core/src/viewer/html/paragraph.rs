@@ -65,7 +65,7 @@ pub fn render_paragraph(
     let para_shape_id = paragraph.para_header.para_shape_id;
     // HWP 파일의 para_shape_id는 0-based indexing을 사용합니다 / HWP file uses 0-based indexing for para_shape_id
     let para_shape_class = if (para_shape_id as usize) < document.doc_info.para_shapes.len() {
-        format!("ps{}", para_shape_id)
+        format!("ps{para_shape_id}")
     } else {
         String::new()
     };
@@ -190,7 +190,7 @@ pub fn render_paragraph(
             }
             ParagraphRecord::Table { table } => {
                 tables.push(TableInfo {
-                    table: &table,
+                    table,
                     ctrl_header: None,
                     anchor_char_pos: None,
                     caption: None,
@@ -204,9 +204,9 @@ pub fn render_paragraph(
             } => {
                 // CtrlHeader 처리 / Process CtrlHeader
                 let ctrl_result = ctrl_header::process_ctrl_header(
-                    &header,
-                    &children,
-                    &paragraphs,
+                    header,
+                    children,
+                    paragraphs,
                     document,
                     options,
                 );
@@ -492,8 +492,7 @@ pub fn render_paragraph(
         let rendered_text =
             text::render_text(&text, &char_shapes, document, &options.css_class_prefix);
         result.push_str(&format!(
-            r#"<div class="hls {}">{}</div>"#,
-            para_shape_class, rendered_text
+            r#"<div class="hls {para_shape_class}">{rendered_text}</div>"#
         ));
     }
 

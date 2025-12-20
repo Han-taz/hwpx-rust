@@ -78,14 +78,14 @@ pub fn generate_css_styles(document: &HwpDocument) -> String {
     // 문서에 정의된 모든 char_shape를 미리 정의하여 누락 방지 / Pre-define all char_shapes in document to prevent missing styles
     for (shape_id, char_shape) in document.doc_info.char_shapes.iter().enumerate() {
         // Use 0-based shape_id for class name to match XSL/XML format (cs0, cs1, cs2, ...)
-        let class_name = format!("cs{}", shape_id);
+        let class_name = format!("cs{shape_id}");
 
-        css.push_str(&format!(".{} {{\n", class_name));
+        css.push_str(&format!(".{class_name} {{\n"));
 
         // 폰트 크기 / Font size
         let size_pt = char_shape.base_size as f64 / 100.0;
 
-        css.push_str(&format!("  font-size:{}pt;", size_pt));
+        css.push_str(&format!("  font-size:{size_pt}pt;"));
 
         // 텍스트 색상 / Text color
         let color = &char_shape.text_color;
@@ -107,7 +107,7 @@ pub fn generate_css_styles(document: &HwpDocument) -> String {
             "함초롬바탕" // 기본값 / Default
         };
 
-        css.push_str(&format!("font-family:\"{}\";", font_name));
+        css.push_str(&format!("font-family:\"{font_name}\";"));
 
         // 속성 / Attributes
         if char_shape.attributes.bold {
@@ -149,7 +149,7 @@ pub fn generate_css_styles(document: &HwpDocument) -> String {
             // 예: -5 → -2.5 → -0.025em (반올림하면 -0.03em), 2 → 1 → 0.01em
             // Example: -5 → -2.5 → -0.025em (rounded to -0.03em), 2 → 1 → 0.01em
             let letter_spacing_em = (letter_spacing as f64 / 2.0) / 100.0;
-            css.push_str(&format!("letter-spacing:{:.2}em;", letter_spacing_em));
+            css.push_str(&format!("letter-spacing:{letter_spacing_em:.2}em;"));
         }
 
         css.push_str("\n}\n");
@@ -158,8 +158,8 @@ pub fn generate_css_styles(document: &HwpDocument) -> String {
     // 모든 ParaShape 스타일 생성 (ps0, ps1, ...) / Generate all ParaShape styles (ps0, ps1, ...)
     // 문서에 정의된 모든 para_shape를 미리 정의하여 누락 방지 / Pre-define all para_shapes in document to prevent missing styles
     for (idx, para_shape) in document.doc_info.para_shapes.iter().enumerate() {
-        let class_name = format!("ps{}", idx);
-        css.push_str(&format!(".{} {{\n", class_name));
+        let class_name = format!("ps{idx}");
+        css.push_str(&format!(".{class_name} {{\n"));
 
         // 정렬 / Alignment
         match para_shape.attributes1.align {

@@ -18,12 +18,12 @@ pub fn convert_table_to_markdown(
     let col_count = table.attributes.col_count as usize;
 
     if row_count == 0 || col_count == 0 {
-        return format!("\n\n[Table: {}x{}]\n\n", row_count, col_count);
+        return format!("\n\n[Table: {row_count}x{col_count}]\n\n");
     }
 
     // 셀이 비어있어도 표 형식으로 출력 / Output table format even if cells are empty
     if table.cells.is_empty() {
-        return format!("\n\n[Empty Table: {}x{}]\n\n", row_count, col_count);
+        return format!("\n\n[Empty Table: {row_count}x{col_count}]\n\n");
     }
 
     // 복잡한 테이블인지 확인 (colspan > 1 또는 rowspan > 1인 셀이 있는지)
@@ -147,10 +147,10 @@ fn convert_table_to_html(
             // Generate td tag
             let mut td_attrs = Vec::new();
             if col_span > 1 {
-                td_attrs.push(format!("colspan=\"{}\"", col_span));
+                td_attrs.push(format!("colspan=\"{col_span}\""));
             }
             if row_span > 1 {
-                td_attrs.push(format!("rowspan=\"{}\"", row_span));
+                td_attrs.push(format!("rowspan=\"{row_span}\""));
             }
 
             let attrs_str = if td_attrs.is_empty() {
@@ -163,7 +163,7 @@ fn convert_table_to_html(
             // Convert newlines to <br> in cell content
             let cell_html = cell_content.replace('\n', "<br>");
 
-            html.push_str(&format!("    <td{}>{}</td>\n", attrs_str, cell_html));
+            html.push_str(&format!("    <td{attrs_str}>{cell_html}</td>\n"));
         }
 
         html.push_str("  </tr>\n");
@@ -256,9 +256,7 @@ fn convert_table_to_markdown_simple(
     for row_idx in 0..row_count {
         let row_data: Vec<String> = (0..col_count)
             .map(|col| {
-                grid[row_idx][col]
-                    .as_ref()
-                    .map(|s| s.clone())
+                grid[row_idx][col].clone()
                     .unwrap_or_else(|| " ".to_string())
             })
             .collect();

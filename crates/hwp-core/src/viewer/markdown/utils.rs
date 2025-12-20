@@ -61,7 +61,7 @@ pub(crate) fn format_version(document: &HwpDocument) -> String {
     let patch = (version >> 8) & 0xFF;
     let build = version & 0xFF;
 
-    format!("{}.{:02}.{:02}.{:02}", major, minor, patch, build)
+    format!("{major}.{minor:02}.{patch:02}.{build:02}")
 }
 
 /// 문서에서 첫 번째 PageDef 정보 추출 / Extract first PageDef information from document
@@ -118,14 +118,14 @@ pub(crate) fn should_process_control_header(header: &crate::document::CtrlHeader
 /// 레벨에 따라 다른 번호 형식 사용 / Use different number format based on level
 fn format_outline_number(level: u8, number: u32) -> String {
     match level {
-        1 => format!("{}.", number),                    // 1.
+        1 => format!("{number}."),                    // 1.
         2 => format!("{}.", number_to_hangul(number)),  // 가.
-        3 => format!("{})", number),                    // 1)
+        3 => format!("{number})"),                    // 1)
         4 => format!("{})", number_to_hangul(number)),  // 가)
-        5 => format!("({})", number),                   // (1)
+        5 => format!("({number})"),                   // (1)
         6 => format!("({})", number_to_hangul(number)), // (가)
-        7 => format!("{}", number_to_circled(number)),  // ①
-        _ => format!("{}.", number),                    // 기본값 / default
+        7 => number_to_circled(number).to_string(),  // ①
+        _ => format!("{number}."),                    // 기본값 / default
     }
 }
 
@@ -150,7 +150,7 @@ fn number_to_hangul(number: u32) -> String {
 /// 1 -> ①, 2 -> ②, 3 -> ③, ... / 1 -> ①, 2 -> ②, 3 -> ③, ...
 fn number_to_circled(number: u32) -> String {
     if number == 0 || number > 20 {
-        return format!("{}", number);
+        return format!("{number}");
     }
     // 원 숫자 유니코드 범위: 0x2460-0x2473 (①-⑳)
     // Circled number Unicode range: 0x2460-0x2473 (①-⑳)
@@ -188,7 +188,7 @@ fn is_format_string_empty_or_null(format_string: &str) -> bool {
     if format_string.len() == 1 {
         // 문자로 확인
         // Check as character
-        if format_string.chars().next() == Some('\u{0000}') {
+        if format_string.starts_with('\u{0000}') {
             return true;
         }
         // UTF-8 바이트로 확인
@@ -226,7 +226,7 @@ pub(crate) fn convert_to_outline_with_number(
                 // para_style_id를 사용하여 스타일 이름에서 레벨 추출
                 // Use para_style_id to extract level from style name
                 if let Some(line_spacing) = para_shape.line_spacing {
-                    if line_spacing >= 7 && line_spacing <= 10 {
+                    if (7..=10).contains(&line_spacing) {
                         // para_style_id로 스타일 찾기 / Find style by para_style_id
                         if let Some(style) = document
                             .doc_info
@@ -238,7 +238,7 @@ pub(crate) fn convert_to_outline_with_number(
                             if style.local_name.starts_with("개요 ") {
                                 if let Ok(style_level) = style.local_name[3..].trim().parse::<u8>()
                                 {
-                                    if style_level >= 8 && style_level <= 10 {
+                                    if (8..=10).contains(&style_level) {
                                         style_level
                                     } else {
                                         // 스타일 레벨이 범위를 벗어나면 line_spacing 기반 계산
@@ -323,7 +323,7 @@ pub(crate) fn convert_to_outline_with_number(
             // format_string이 있으면 번호 생성 / Generate number if format_string exists
             let number = tracker.get_and_increment(level);
             let outline_number = format_outline_number(level, number);
-            return format!("{} {}", outline_number, text);
+            return format!("{outline_number} {text}");
         }
     }
     text.to_string()

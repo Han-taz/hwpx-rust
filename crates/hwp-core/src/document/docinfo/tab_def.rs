@@ -103,7 +103,7 @@ impl TabDef {
         for _ in 0..count {
             if offset + 8 > data.len() {
                 return Err(HwpError::InsufficientData {
-                    field: format!("TabDef tab item at offset {}", offset),
+                    field: format!("TabDef tab item at offset {offset}"),
                     expected: offset + 8,
                     actual: data.len(),
                 });

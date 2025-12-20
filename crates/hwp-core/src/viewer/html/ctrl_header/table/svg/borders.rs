@@ -35,12 +35,12 @@ fn colorref_to_hex(c: u32) -> String {
     let r = (c & 0xFF) as u8;
     let g = ((c >> 8) & 0xFF) as u8;
     let b = ((c >> 16) & 0xFF) as u8;
-    format!("#{:02X}{:02X}{:02X}", r, g, b)
+    format!("#{r:02X}{g:02X}{b:02X}")
 }
 
 fn borderline_stroke_color(line: &BorderLine) -> String {
-    let stroke = colorref_to_hex(line.color.0);
-    stroke
+    
+    colorref_to_hex(line.color.0)
 }
 
 fn borderline_base_width_mm(line: &BorderLine) -> f64 {
@@ -83,7 +83,7 @@ fn render_border_paths(
     )
 }
 
-fn get_border_fill<'a>(document: &'a HwpDocument, id: u16) -> Option<&'a BorderFill> {
+fn get_border_fill(document: &HwpDocument, id: u16) -> Option<&BorderFill> {
     if id == 0 {
         return None;
     }
@@ -211,15 +211,15 @@ fn vertical_segment_borderline(
         }
     }
 
-    let chosen = if is_left_edge {
+    
+
+    if is_left_edge {
         from_right_cell_left.or(from_left_cell_right)
     } else if is_right_edge {
         from_left_cell_right.or(from_right_cell_left)
     } else {
         from_left_cell_right.or(from_right_cell_left)
-    };
-
-    chosen
+    }
 }
 
 fn horizontal_segment_borderline(
@@ -303,15 +303,15 @@ fn horizontal_segment_borderline(
         }
     }
 
-    let chosen = if is_top_edge {
+    
+
+    if is_top_edge {
         from_lower_cell_top.or(from_upper_cell_bottom)
     } else if is_bottom_edge {
         from_upper_cell_bottom.or(from_lower_cell_top)
     } else {
         from_upper_cell_bottom.or(from_lower_cell_top)
-    };
-
-    chosen
+    }
 }
 
 /// 수직 경계선 렌더링 / Render vertical borders
@@ -326,7 +326,7 @@ pub(crate) fn render_vertical_borders(
     let epsilon = 0.01; // 부동소수점 비교를 위한 작은 오차 / Small epsilon for floating point comparison
     let is_suspect_image_or_caption_table =
         table.attributes.row_count as usize >= 6 && table.cells.len() >= 12;
-    let mut h11_logged_count = 0usize;
+    let h11_logged_count = 0usize;
 
     for &col_x in column_positions {
         let is_left_edge = (col_x - 0.0).abs() < epsilon;

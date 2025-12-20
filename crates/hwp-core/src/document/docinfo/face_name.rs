@@ -105,14 +105,14 @@ impl FaceName {
         // WCHAR array 글꼴 이름 / WCHAR array font name
         if offset + (name_length * 2) > data.len() {
             return Err(HwpError::InsufficientData {
-                field: format!("FaceName font name at offset {}", offset),
+                field: format!("FaceName font name at offset {offset}"),
                 expected: offset + (name_length * 2),
                 actual: data.len(),
             });
         }
         let name_bytes = &data[offset..offset + (name_length * 2)];
         let name = decode_utf16le(name_bytes).map_err(|e| HwpError::EncodingError {
-            reason: format!("Failed to decode font name: {}", e),
+            reason: format!("Failed to decode font name: {e}"),
         })?;
         offset += name_length * 2;
 
@@ -145,14 +145,14 @@ impl FaceName {
             // WCHAR array 대체 글꼴 이름 / WCHAR array alternative font name
             if offset + (alt_name_length * 2) > data.len() {
                 return Err(HwpError::InsufficientData {
-                    field: format!("FaceName alternative font name at offset {}", offset),
+                    field: format!("FaceName alternative font name at offset {offset}"),
                     expected: offset + (alt_name_length * 2),
                     actual: data.len(),
                 });
             }
             let alt_name_bytes = &data[offset..offset + (alt_name_length * 2)];
             let alt_name = decode_utf16le(alt_name_bytes).map_err(|e| HwpError::EncodingError {
-                reason: format!("Failed to decode alternative font name: {}", e),
+                reason: format!("Failed to decode alternative font name: {e}"),
             })?;
             offset += alt_name_length * 2;
 
@@ -207,7 +207,7 @@ impl FaceName {
 
             if offset + (default_name_length * 2) > data.len() {
                 return Err(HwpError::InsufficientData {
-                    field: format!("FaceName default font name at offset {}", offset),
+                    field: format!("FaceName default font name at offset {offset}"),
                     expected: offset + (default_name_length * 2),
                     actual: data.len(),
                 });
@@ -215,7 +215,7 @@ impl FaceName {
             let default_name_bytes = &data[offset..offset + (default_name_length * 2)];
             let default_name =
                 decode_utf16le(default_name_bytes).map_err(|e| HwpError::EncodingError {
-                    reason: format!("Failed to decode default font name: {}", e),
+                    reason: format!("Failed to decode default font name: {e}"),
                 })?;
             Some(default_name)
         } else {

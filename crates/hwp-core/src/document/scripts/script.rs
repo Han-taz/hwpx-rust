@@ -181,8 +181,7 @@ impl Script {
             if end_flag != 0xFFFFFFFF {
                 #[cfg(debug_assertions)]
                 eprintln!(
-                    "Warning: Script end flag is not -1 (0xFFFFFFFF), got 0x{:08X}",
-                    end_flag
+                    "Warning: Script end flag is not -1 (0xFFFFFFFF), got 0x{end_flag:08X}"
                 );
             }
         }

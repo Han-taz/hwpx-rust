@@ -87,7 +87,7 @@ impl EqEdit {
         let required_bytes = 16 + 6 * script_length_usize;
         if data.len() < required_bytes {
             return Err(HwpError::InsufficientData {
-                field: format!("EqEdit (script_length={})", script_length_usize),
+                field: format!("EqEdit (script_length={script_length_usize})"),
                 expected: required_bytes,
                 actual: data.len(),
             });
@@ -96,7 +96,7 @@ impl EqEdit {
         // 표 105: 한글 수식 스크립트 (WCHAR array[len], 2×len 바이트) / Table 105: HWP equation script (WCHAR array[len], 2×len bytes)
         let script_bytes = &data[offset..offset + 2 * script_length_usize];
         let script = decode_utf16le(script_bytes).map_err(|e| HwpError::EncodingError {
-            reason: format!("Failed to decode EqEdit script: {}", e),
+            reason: format!("Failed to decode EqEdit script: {e}"),
         })?;
         offset += 2 * script_length_usize;
 
@@ -127,14 +127,14 @@ impl EqEdit {
         // 표 105: 수식 버전 정보 (WCHAR array[len], 2×len 바이트) / Table 105: Equation version information (WCHAR array[len], 2×len bytes)
         let version_bytes = &data[offset..offset + 2 * script_length_usize];
         let version_info = decode_utf16le(version_bytes).map_err(|e| HwpError::EncodingError {
-            reason: format!("Failed to decode EqEdit version_info: {}", e),
+            reason: format!("Failed to decode EqEdit version_info: {e}"),
         })?;
         offset += 2 * script_length_usize;
 
         // 표 105: 수식 폰트 이름 (WCHAR array[len], 2×len 바이트) / Table 105: Equation font name (WCHAR array[len], 2×len bytes)
         let font_bytes = &data[offset..offset + 2 * script_length_usize];
         let font_name = decode_utf16le(font_bytes).map_err(|e| HwpError::EncodingError {
-            reason: format!("Failed to decode EqEdit font_name: {}", e),
+            reason: format!("Failed to decode EqEdit font_name: {e}"),
         })?;
         offset += 2 * script_length_usize;
 

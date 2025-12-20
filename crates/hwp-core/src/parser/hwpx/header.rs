@@ -57,8 +57,7 @@ fn parse_version_xml(container: &mut HwpxContainer) -> Result<DWORD, HwpError> {
             Ok(Event::Eof) => break,
             Err(e) => {
                 return Err(HwpError::XmlParseError(format!(
-                    "Error parsing version.xml: {}",
-                    e
+                    "Error parsing version.xml: {e}"
                 )))
             }
             _ => {}
@@ -136,8 +135,7 @@ fn parse_header_xml_content(
             Ok(Event::Eof) => break,
             Err(e) => {
                 return Err(HwpError::XmlParseError(format!(
-                    "Error parsing header.xml: {}",
-                    e
+                    "Error parsing header.xml: {e}"
                 )))
             }
             _ => {}

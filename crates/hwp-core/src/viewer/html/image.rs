@@ -16,8 +16,7 @@ pub fn render_image(
     let height_mm = round_to_2dp(int32_to_mm(height));
 
     format!(
-        r#"<div class="hsR" style="top:{}mm;left:{}mm;width:{}mm;height:{}mm;background-repeat:no-repeat;background-size:contain;background-image:url('{}');"></div>"#,
-        top_mm, left_mm, width_mm, height_mm, image_url
+        r#"<div class="hsR" style="top:{top_mm}mm;left:{left_mm}mm;width:{width_mm}mm;height:{height_mm}mm;background-repeat:no-repeat;background-size:contain;background-image:url('{image_url}');"></div>"#
     )
 }
 
@@ -39,7 +38,6 @@ pub fn render_image_with_style(
     let margin_right_mm = round_to_2dp(int32_to_mm(margin_right));
 
     format!(
-        r#"<div class="hsR" style="top:{}mm;left:{}mm;margin-bottom:{}mm;margin-right:{}mm;width:{}mm;height:{}mm;display:inline-block;position:relative;vertical-align:middle;background-repeat:no-repeat;background-size:contain;background-image:url('{}');"></div>"#,
-        top_mm, left_mm, margin_bottom_mm, margin_right_mm, width_mm, height_mm, image_url
+        r#"<div class="hsR" style="top:{top_mm}mm;left:{left_mm}mm;margin-bottom:{margin_bottom_mm}mm;margin-right:{margin_right_mm}mm;width:{width_mm}mm;height:{height_mm}mm;display:inline-block;position:relative;vertical-align:middle;background-repeat:no-repeat;background-size:contain;background-image:url('{image_url}');"></div>"#
     )
 }

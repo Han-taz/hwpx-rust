@@ -80,7 +80,7 @@ impl InlineControlParam {
             // Check if can be read as ASCII (all bytes in range 0x20-0x7E or 0x00)
             if chid_bytes
                 .iter()
-                .all(|&b| b == 0 || (b >= 0x20 && b <= 0x7E))
+                .all(|&b| b == 0 || (0x20..=0x7E).contains(&b))
             {
                 let chid_str = String::from_utf8_lossy(chid_bytes)
                     .trim_end_matches('\0')
@@ -203,11 +203,11 @@ impl ControlChar {
         match code {
             Self::NULL => "NULL".to_string(),
             Self::RESERVED_1_3_START..=Self::RESERVED_1_3_END => {
-                format!("RESERVED_{}", code)
+                format!("RESERVED_{code}")
             }
             Self::FIELD_END => "FIELD_END".to_string(),
             Self::RESERVED_5_7_START..=Self::RESERVED_5_7_END => {
-                format!("RESERVED_{}", code)
+                format!("RESERVED_{code}")
             }
             Self::TITLE_MARK => "TITLE_MARK".to_string(),
             Self::TAB => "TAB".to_string(),
@@ -221,18 +221,18 @@ impl ControlChar {
             Self::FOOTNOTE => "FOOTNOTE".to_string(),
             Self::AUTO_NUMBER => "AUTO_NUMBER".to_string(),
             Self::RESERVED_19_20_START..=Self::RESERVED_19_20_END => {
-                format!("RESERVED_{}", code)
+                format!("RESERVED_{code}")
             }
             Self::PAGE_CONTROL => "PAGE_CONTROL".to_string(),
             Self::BOOKMARK => "BOOKMARK".to_string(),
             Self::COMMENT_OVERLAP => "COMMENT_OVERLAP".to_string(),
             Self::HYPHEN => "HYPHEN".to_string(),
             Self::RESERVED_25_29_START..=Self::RESERVED_25_29_END => {
-                format!("RESERVED_{}", code)
+                format!("RESERVED_{code}")
             }
             Self::BOUND_SPACE => "BOUND_SPACE".to_string(),
             Self::FIXED_SPACE => "FIXED_SPACE".to_string(),
-            _ => format!("UNKNOWN_{}", code),
+            _ => format!("UNKNOWN_{code}"),
         }
     }
 

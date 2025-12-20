@@ -79,7 +79,7 @@ impl BinData {
                 }
             };
 
-            let base_stream_name = format!("BIN{:04X}", binary_data_id);
+            let base_stream_name = format!("BIN{binary_data_id:04X}");
 
             // Try different path formats
             // 다양한 경로 형식 시도
@@ -92,8 +92,8 @@ impl BinData {
             // 표 17의 extension 정보가 있으면 확장자 포함 경로도 시도
             // If extension info from Table 17 exists, also try paths with extension
             if let Some(ext) = &extension_opt {
-                paths.push(format!("BinData/{}.{}", base_stream_name, ext));
-                paths.push(format!("Root Entry/BinData/{}.{}", base_stream_name, ext));
+                paths.push(format!("BinData/{base_stream_name}.{ext}"));
+                paths.push(format!("Root Entry/BinData/{base_stream_name}.{ext}"));
             }
 
             let mut found = false;
@@ -116,8 +116,7 @@ impl BinData {
                                         Err(e) => {
                                             #[cfg(debug_assertions)]
                                             eprintln!(
-                                                "Warning: Failed to decompress BinData stream '{}' (id={}): {}. Using raw data.",
-                                                path, binary_data_id, e
+                                                "Warning: Failed to decompress BinData stream '{path}' (id={binary_data_id}): {e}. Using raw data."
                                             );
                                             buffer.clone() // 압축 해제 실패 시 원본 데이터 사용
                                         }
@@ -129,13 +128,12 @@ impl BinData {
                                         }
                                         BinaryDataFormat::File(dir_path) => {
                                             let ext = extension_opt.as_deref().unwrap_or("bin");
-                                            let file_name = format!("{}.{}", base_stream_name, ext);
+                                            let file_name = format!("{base_stream_name}.{ext}");
                                             let file_path = Path::new(dir_path).join(&file_name);
 
                                             std::fs::create_dir_all(dir_path).map_err(|e| {
                                                 format!(
-                                                    "Failed to create directory '{}': {}",
-                                                    dir_path, e
+                                                    "Failed to create directory '{dir_path}': {e}"
                                                 )
                                             })?;
 

@@ -128,7 +128,7 @@ impl VideoData {
                 let web_tag_bytes = &data[offset..offset + web_tag_length];
                 let web_tag =
                     decode_utf16le(web_tag_bytes).map_err(|e| HwpError::EncodingError {
-                        reason: format!("Failed to decode web tag: {}", e),
+                        reason: format!("Failed to decode web tag: {e}"),
                     })?;
                 offset += web_tag_length;
                 let thumbnail_bindata_id = UINT16::from_le_bytes([data[offset], data[offset + 1]]);

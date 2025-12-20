@@ -356,7 +356,7 @@ fn process_footnote<R: Renderer>(
 {
     // 각주 번호 형식 (TODO: FootnoteShape에서 가져오기)
     // Footnote number format (TODO: Get from FootnoteShape)
-    let footnote_number = format!("{}", footnote_id);
+    let footnote_number = format!("{footnote_id}");
 
     // 본문에 각주 참조 링크 삽입 / Insert footnote reference link in body
     if !parts.body_lines.is_empty() {
@@ -378,9 +378,9 @@ fn process_footnote<R: Renderer>(
     for para in ctrl_paragraphs {
         let para_content = render_paragraph_with_viewer(para, document, renderer, options, tracker);
         if !para_content.is_empty() {
-            let footnote_ref_id = format!("footnote-{}-ref", footnote_id);
+            let footnote_ref_id = format!("footnote-{footnote_id}-ref");
             let footnote_back = renderer.render_footnote_back(&footnote_ref_id, options);
-            let footnote_id_str = format!("footnote-{}", footnote_id);
+            let footnote_id_str = format!("footnote-{footnote_id}");
 
             // 렌더러별 각주 컨테이너 형식 (HTML: <div>, Markdown: 일반 텍스트)
             // Footnote container format by renderer (HTML: <div>, Markdown: plain text)
@@ -413,7 +413,7 @@ fn process_endnote<R: Renderer>(
 {
     // 미주 번호 형식 (TODO: FootnoteShape에서 가져오기)
     // Endnote number format (TODO: Get from FootnoteShape)
-    let endnote_number = format!("{}", endnote_id);
+    let endnote_number = format!("{endnote_id}");
 
     // 본문에 미주 참조 링크 삽입 / Insert endnote reference link in body
     if !parts.body_lines.is_empty() {
@@ -433,9 +433,9 @@ fn process_endnote<R: Renderer>(
     for para in ctrl_paragraphs {
         let para_content = render_paragraph_with_viewer(para, document, renderer, options, tracker);
         if !para_content.is_empty() {
-            let endnote_ref_id = format!("endnote-{}-ref", endnote_id);
+            let endnote_ref_id = format!("endnote-{endnote_id}-ref");
             let endnote_back = renderer.render_endnote_back(&endnote_ref_id, options);
-            let endnote_id_str = format!("endnote-{}", endnote_id);
+            let endnote_id_str = format!("endnote-{endnote_id}");
 
             parts.endnotes.push(format_endnote_container(
                 &endnote_id_str,
@@ -454,9 +454,9 @@ fn append_to_last_paragraph<R: Renderer>(last_line: &str, content: &str, _render
     // HTML: </p> 태그 앞에 추가
     // Markdown: 문단 끝에 추가
     if last_line.contains("</p>") {
-        last_line.replace("</p>", &format!(" {}</p>", content))
+        last_line.replace("</p>", &format!(" {content}</p>"))
     } else {
-        format!("{} {}", last_line, content)
+        format!("{last_line} {content}")
     }
 }
 
@@ -480,7 +480,7 @@ where
             return format!(
                 r#"      <div id="{}" class="{}footnote">"#,
                 id, html_options.css_class_prefix
-            ) + &format!(r#"        {}"#, back_link)
+            ) + &format!(r#"        {back_link}"#)
                 + content
                 + "      </div>";
         }
@@ -490,11 +490,11 @@ where
     if std::any::TypeId::of::<R::Options>() == std::any::TypeId::of::<MarkdownOptions>() {
         // 마크다운에서는 각주를 [^1]: 형식으로 표시
         // In markdown, footnotes are shown as [^1]:
-        return format!("{}{}", back_link, content);
+        return format!("{back_link}{content}");
     }
 
     // 기본: 일반 텍스트 / Default: plain text
-    format!("{} {}", back_link, content)
+    format!("{back_link} {content}")
 }
 
 /// Format endnote container (renderer-specific)
@@ -517,7 +517,7 @@ where
             return format!(
                 r#"      <div id="{}" class="{}endnote">"#,
                 id, html_options.css_class_prefix
-            ) + &format!(r#"        {}"#, back_link)
+            ) + &format!(r#"        {back_link}"#)
                 + content
                 + "      </div>";
         }
@@ -527,9 +527,9 @@ where
     if std::any::TypeId::of::<R::Options>() == std::any::TypeId::of::<MarkdownOptions>() {
         // 마크다운에서는 미주를 [^1]: 형식으로 표시
         // In markdown, endnotes are shown as [^1]:
-        return format!("{}{}", back_link, content);
+        return format!("{back_link}{content}");
     }
 
     // 기본: 일반 텍스트 / Default: plain text
-    format!("{} {}", back_link, content)
+    format!("{back_link} {content}")
 }

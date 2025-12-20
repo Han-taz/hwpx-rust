@@ -2,7 +2,6 @@ use crate::document::bodytext::ctrl_header::{CtrlHeaderData, PageNumberPosition}
 use crate::document::HwpDocument;
 use crate::types::RoundTo2dp;
 use crate::{document::bodytext::PageDef, INT32};
-/// 페이지 렌더링 모듈 / Page rendering module
 
 /// 페이지를 HTML로 렌더링 / Render page to HTML
 pub fn render_page(
@@ -39,14 +38,12 @@ pub fn render_page(
 
     // 일반 내용은 hcD > hcI 안에 배치 / Place regular content in hcD > hcI
     let mut html = format!(
-        r#"<div class="hpa" style="width:{}mm;height:{}mm;">"#,
-        width_mm, height_mm
+        r#"<div class="hpa" style="width:{width_mm}mm;height:{height_mm}mm;">"#
     );
 
     if !content.is_empty() {
         html.push_str(&format!(
-            r#"<div class="hcD" style="left:{}mm;top:{}mm;"><div class="hcI">{}</div></div>"#,
-            left_mm, top_mm, content
+            r#"<div class="hcD" style="left:{left_mm}mm;top:{top_mm}mm;"><div class="hcI">{content}</div></div>"#
         ));
     }
 
@@ -71,7 +68,7 @@ pub fn render_page(
             let suffix_clean: String = suffix.chars().filter(|c| *c != '\0').collect();
 
             let page_number_text =
-                format!("{}{}{}", prefix_clean, actual_page_number, suffix_clean);
+                format!("{prefix_clean}{actual_page_number}{suffix_clean}");
 
             // 페이지 크기 계산 / Calculate page size
             let page_width_mm = page_def
@@ -189,8 +186,7 @@ pub fn render_page(
             };
 
             html.push_str(&format!(
-                r#"<div class="hpN" style="left:{}mm;top:{}mm;width:{}mm;height:{}mm;"><span class="hrt cs1">{}</span></div>"#,
-                left_mm, top_mm, width_mm, height_mm, page_number_text
+                r#"<div class="hpN" style="left:{left_mm}mm;top:{top_mm}mm;width:{width_mm}mm;height:{height_mm}mm;"><span class="hrt cs1">{page_number_text}</span></div>"#
             ));
         }
     }

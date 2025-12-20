@@ -46,15 +46,15 @@ fn test_parse_new_hwpx_file() {
             };
             let md = hwp_core::viewer::markdown::to_markdown(&doc, &options);
             println!("\n=== Full Markdown Output ===");
-            println!("{}", md);
+            println!("{md}");
 
             // Also save to file for comparison
             let output_path = "../../tests/parsed_output_hwpx.md";
             std::fs::write(output_path, &md).expect("Failed to write output");
-            println!("\n=== Saved to {} ===", output_path);
+            println!("\n=== Saved to {output_path} ===");
         }
         Err(e) => {
-            panic!("Parse error: {:?}", e);
+            panic!("Parse error: {e:?}");
         }
     }
 }

@@ -16,33 +16,33 @@ impl Renderer for MarkdownRenderer {
     }
 
     fn render_bold(&self, text: &str) -> String {
-        format!("**{}**", text)
+        format!("**{text}**")
     }
 
     fn render_italic(&self, text: &str) -> String {
-        format!("*{}*", text)
+        format!("*{text}*")
     }
 
     fn render_underline(&self, text: &str) -> String {
         // 마크다운에서는 밑줄을 직접 지원하지 않으므로 HTML 태그 사용
         // Markdown doesn't directly support underline, so use HTML tag
-        format!("<u>{}</u>", text)
+        format!("<u>{text}</u>")
     }
 
     fn render_strikethrough(&self, text: &str) -> String {
-        format!("~~{}~~", text)
+        format!("~~{text}~~")
     }
 
     fn render_superscript(&self, text: &str) -> String {
         // 마크다운에서는 위첨자를 직접 지원하지 않으므로 HTML 태그 사용
         // Markdown doesn't directly support superscript, so use HTML tag
-        format!("<sup>{}</sup>", text)
+        format!("<sup>{text}</sup>")
     }
 
     fn render_subscript(&self, text: &str) -> String {
         // 마크다운에서는 아래첨자를 직접 지원하지 않으므로 HTML 태그 사용
         // Markdown doesn't directly support subscript, so use HTML tag
-        format!("<sub>{}</sub>", text)
+        format!("<sub>{text}</sub>")
     }
 
     // ===== Structure Elements =====
@@ -114,12 +114,12 @@ impl Renderer for MarkdownRenderer {
     fn render_document_header(&self, document: &HwpDocument, options: &Self::Options) -> String {
         let mut md = String::new();
         md.push_str("# HWP 문서\n");
-        md.push_str("\n");
+        md.push('\n');
 
         if options.include_version != Some(false) {
             use crate::viewer::markdown::document::fileheader::format_version;
             md.push_str(&format!("**버전**: {}\n", format_version(document)));
-            md.push_str("\n");
+            md.push('\n');
         }
 
         md
@@ -130,19 +130,19 @@ impl Renderer for MarkdownRenderer {
 
         if !parts.footnotes.is_empty() {
             md.push_str("## 각주\n");
-            md.push_str("\n");
+            md.push('\n');
             for footnote in &parts.footnotes {
                 md.push_str(footnote);
-                md.push_str("\n");
+                md.push('\n');
             }
         }
 
         if !parts.endnotes.is_empty() {
             md.push_str("## 미주\n");
-            md.push_str("\n");
+            md.push('\n');
             for endnote in &parts.endnotes {
                 md.push_str(endnote);
-                md.push_str("\n");
+                md.push('\n');
             }
         }
 
@@ -153,13 +153,13 @@ impl Renderer for MarkdownRenderer {
     fn render_footnote_ref(&self, id: u32, number: &str, _options: &Self::Options) -> String {
         // 마크다운에서는 각주 참조를 [^1] 형식으로 표시
         // In markdown, footnote references are shown as [^1]
-        format!("[^{}]", number)
+        format!("[^{number}]")
     }
 
     fn render_endnote_ref(&self, id: u32, number: &str, _options: &Self::Options) -> String {
         // 마크다운에서는 미주 참조를 [^1] 형식으로 표시
         // In markdown, endnote references are shown as [^1]
-        format!("[^{}]", number)
+        format!("[^{number}]")
     }
 
     fn render_footnote_back(&self, _ref_id: &str, _options: &Self::Options) -> String {

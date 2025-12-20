@@ -422,7 +422,7 @@ pub fn render_table(
 
             // 캡션 문단의 첫 번째 char_shape_id 사용 / Use first char_shape_id from caption paragraph
             let caption_char_shape_id_value = caption_char_shape_id.unwrap_or(0); // 기본값: 0 / Default: 0
-            let cs_class = format!("cs{}", caption_char_shape_id_value);
+            let cs_class = format!("cs{caption_char_shape_id_value}");
 
             // 캡션 문단의 para_shape_id 사용 / Use para_shape_id from caption paragraph
             // document.doc_info.para_shapes에서 실제 ParaShape를 확인하여 ID로 추출
@@ -430,7 +430,7 @@ pub fn render_table(
             let ps_class = if let Some(para_shape_id) = caption_para_shape_id {
                 // HWP 파일의 para_shape_id는 0-based indexing을 사용합니다 / HWP file uses 0-based indexing for para_shape_id
                 if para_shape_id < document.doc_info.para_shapes.len() {
-                    format!("ps{}", para_shape_id)
+                    format!("ps{para_shape_id}")
                 } else {
                     String::new()
                 }
@@ -453,7 +453,7 @@ pub fn render_table(
 
             // 원본 텍스트 사용 (없으면 fallback) / Use original text (fallback if not available)
             // fallback 텍스트를 먼저 생성하여 수명 문제 해결 / Create fallback text first to resolve lifetime issue
-            let fallback_text = format!("{} {} {}", caption_label, table_num_text, caption_body);
+            let fallback_text = format!("{caption_label} {table_num_text} {caption_body}");
             let full_caption_text = caption_original_text
                 .map(|s| s.as_str())
                 .unwrap_or_else(|| fallback_text.as_str());
@@ -492,7 +492,7 @@ pub fn render_table(
                     let original_text_len = full_caption_text.chars().count()
                         + control_char_positions
                             .iter()
-                            .map(|cc| ControlChar::get_size_by_code(cc.code) as usize)
+                            .map(|cc| ControlChar::get_size_by_code(cc.code))
                             .sum::<usize>();
 
                     // line_segment.rs의 함수와 동일한 로직 사용 / Use same logic as line_segment.rs
@@ -570,7 +570,7 @@ pub fn render_table(
                         // 원본 텍스트 인덱스를 cleaned 텍스트 인덱스로 변환 / Convert original text index to cleaned text index
                         let segment_text = slice_cleaned_by_original_range(
                             full_caption_text,
-                            &control_char_positions,
+                            control_char_positions,
                             start_pos,
                             end_pos,
                         );
@@ -598,43 +598,24 @@ pub fn render_table(
                                 } else {
                                     // AUTO_NUMBER 위치가 텍스트 범위를 벗어남 / AUTO_NUMBER position out of range
                                     format!(
-                                        r#"<span class="hrt {cs_class}">{caption_label}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{table_num_text}</span></div><span class="hrt {cs_class}">&nbsp;{caption_body}</span>"#,
-                                        cs_class = cs_class,
-                                        caption_label = caption_label,
-                                        caption_height_mm = caption_height_mm,
-                                        table_num_text = table_num_text,
-                                        caption_body = caption_body
+                                        r#"<span class="hrt {cs_class}">{caption_label}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{table_num_text}</span></div><span class="hrt {cs_class}">&nbsp;{caption_body}</span>"#
                                     )
                                 }
                             } else {
                                 // AUTO_NUMBER 위치가 없으면 fallback / Fallback if no AUTO_NUMBER position
                                 format!(
-                                    r#"<span class="hrt {cs_class}">{caption_label}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{table_num_text}</span></div><span class="hrt {cs_class}">&nbsp;{caption_body}</span>"#,
-                                    cs_class = cs_class,
-                                    caption_label = caption_label,
-                                    caption_height_mm = caption_height_mm,
-                                    table_num_text = table_num_text,
-                                    caption_body = caption_body
+                                    r#"<span class="hrt {cs_class}">{caption_label}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{table_num_text}</span></div><span class="hrt {cs_class}">&nbsp;{caption_body}</span>"#
                                 )
                             }
                         } else {
                             // 나머지 segment: body의 나머지 부분만 / Remaining segments: only remaining part of body
                             format!(
-                                r#"<span class="hrt {cs_class}">{segment_text}</span>"#,
-                                cs_class = cs_class,
-                                segment_text = segment_text
+                                r#"<span class="hrt {cs_class}">{segment_text}</span>"#
                             )
                         };
 
                         hls_htmls.push(format!(
-                            r#"<div class="hls {ps_class}" style="line-height:{lh}mm;white-space:nowrap;left:{left_mm}mm;top:{segment_top_mm}mm;height:{caption_height_mm}mm;width:{width_mm}mm;">{hls_content}</div>"#,
-                            ps_class = ps_class,
-                            lh = lh,
-                            left_mm = left_mm,
-                            segment_top_mm = segment_top_mm,
-                            caption_height_mm = caption_height_mm,
-                            width_mm = width_mm,
-                            hls_content = hls_content
+                            r#"<div class="hls {ps_class}" style="line-height:{lh}mm;white-space:nowrap;left:{left_mm}mm;top:{segment_top_mm}mm;height:{caption_height_mm}mm;width:{width_mm}mm;">{hls_content}</div>"#
                         ));
                     }
                     hls_htmls
@@ -662,13 +643,7 @@ pub fn render_table(
             let hls_html = hls_divs.join("");
 
             format!(
-                r#"<div class="hcD" style="left:{caption_left_mm}mm;top:{caption_top_mm}mm;width:{caption_width_mm}mm;height:{caption_height_mm}mm;overflow:hidden;"><div class="hcI" {hci_style}>{hls_html}</div></div>"#,
-                caption_left_mm = caption_left_mm,
-                caption_top_mm = caption_top_mm,
-                caption_width_mm = caption_width_mm,
-                caption_height_mm = caption_height_mm,
-                hci_style = hci_style,
-                hls_html = hls_html
+                r#"<div class="hcD" style="left:{caption_left_mm}mm;top:{caption_top_mm}mm;width:{caption_width_mm}mm;height:{caption_height_mm}mm;overflow:hidden;"><div class="hcI" {hci_style}>{hls_html}</div></div>"#
             )
         }
     } else {
@@ -720,13 +695,6 @@ pub fn render_table(
     };
     let htb_html = format!(
         r#"<div class="htb" style="left:{htb_left_mm}mm;width:{htb_width_mm}mm;top:{htb_top_mm}mm;height:{content_height_mm}mm;{htb_extra_style}">{svg}{cells_html}</div>"#,
-        htb_left_mm = htb_left_mm,
-        htb_width_mm = htb_width_mm,
-        htb_top_mm = htb_top_mm,
-        content_height_mm = content_height_mm,
-        htb_extra_style = htb_extra_style,
-        svg = svg,
-        cells_html = cells_html,
     );
 
     // table-caption.html fixture 기준으로, 수직 캡션(Left/Right)이 있는 표의 htG top은
@@ -842,25 +810,11 @@ pub fn render_table(
             // 위 캡션: 캡션 먼저, 그 다음 테이블 / Caption above: caption first, then table
             format!(
                 r#"<div class="htG" style="left:{left_mm}mm;width:{htg_width}mm;top:{top_mm}mm;height:{htg_height}mm;{inline_htg_style}">{caption_html}{htb_html}</div>"#,
-                left_mm = left_mm,
-                htg_width = htg_width,
-                top_mm = top_mm,
-                htg_height = htg_height,
-                caption_html = caption_html,
-                htb_html = htb_html,
-                inline_htg_style = inline_htg_style,
             )
         } else {
             // 아래 캡션 또는 캡션 없음: 테이블 먼저, 그 다음 캡션 / Caption below or no caption: table first, then caption
             format!(
                 r#"<div class="htG" style="left:{left_mm}mm;width:{htg_width}mm;top:{top_mm}mm;height:{htg_height}mm;{inline_htg_style}">{htb_html}{caption_html}</div>"#,
-                left_mm = left_mm,
-                htg_width = htg_width,
-                top_mm = top_mm,
-                htg_height = htg_height,
-                htb_html = htb_html,
-                caption_html = caption_html,
-                inline_htg_style = inline_htg_style,
             )
         };
 

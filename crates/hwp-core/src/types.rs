@@ -363,6 +363,6 @@ pub fn decode_utf16le(bytes: &[u8]) -> Result<String, HwpError> {
         .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
         .collect();
     String::from_utf16(&u16_chars).map_err(|e| HwpError::EncodingError {
-        reason: format!("Failed to decode UTF-16LE string: {}", e),
+        reason: format!("Failed to decode UTF-16LE string: {e}"),
     })
 }

@@ -68,14 +68,14 @@ impl Style {
         // WCHAR array[len1] 로컬/한글 스타일 이름 / WCHAR array[len1] local/Korean style name
         if offset + (len1 * 2) > data.len() {
             return Err(HwpError::InsufficientData {
-                field: format!("Style local name at offset {}", offset),
+                field: format!("Style local name at offset {offset}"),
                 expected: offset + (len1 * 2),
                 actual: data.len(),
             });
         }
         let local_name_bytes = &data[offset..offset + (len1 * 2)];
         let local_name = decode_utf16le(local_name_bytes).map_err(|e| HwpError::EncodingError {
-            reason: format!("Failed to decode local name: {}", e),
+            reason: format!("Failed to decode local name: {e}"),
         })?;
         offset += len1 * 2;
 
@@ -93,7 +93,7 @@ impl Style {
         // WCHAR array[len2] 영문 스타일 이름 / WCHAR array[len2] English style name
         if offset + (len2 * 2) > data.len() {
             return Err(HwpError::InsufficientData {
-                field: format!("Style English name at offset {}", offset),
+                field: format!("Style English name at offset {offset}"),
                 expected: offset + (len2 * 2),
                 actual: data.len(),
             });
@@ -101,7 +101,7 @@ impl Style {
         let english_name_bytes = &data[offset..offset + (len2 * 2)];
         let english_name =
             decode_utf16le(english_name_bytes).map_err(|e| HwpError::EncodingError {
-                reason: format!("Failed to decode English name: {}", e),
+                reason: format!("Failed to decode English name: {e}"),
             })?;
         offset += len2 * 2;
 

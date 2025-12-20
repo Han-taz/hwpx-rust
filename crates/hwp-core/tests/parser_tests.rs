@@ -18,7 +18,7 @@ fn test_hwp_parser_parse_with_actual_file() {
             let parser = HwpParser::new();
             let result = parser.parse(&data);
             if let Err(e) = &result {
-                eprintln!("Parse error: {}", e);
+                eprintln!("Parse error: {e}");
             }
             assert!(result.is_ok(), "Should parse actual HWP file");
             let document = result.unwrap();

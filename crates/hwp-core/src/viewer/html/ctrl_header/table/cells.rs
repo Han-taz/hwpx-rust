@@ -226,7 +226,7 @@ pub(crate) fn render_cells(
             let para_shape_id = para.para_header.para_shape_id;
             let para_shape_class = if (para_shape_id as usize) < document.doc_info.para_shapes.len()
             {
-                format!("ps{}", para_shape_id)
+                format!("ps{para_shape_id}")
             } else {
                 String::new()
             };
@@ -260,52 +260,47 @@ pub(crate) fn render_cells(
             if !has_ctrl_header {
                 // CtrlHeader가 없을 때만 직접 처리 / Only process directly if no CtrlHeader
                 for record in &para.records {
-                    match record {
-                        ParagraphRecord::ShapeComponentPicture {
+                    if let ParagraphRecord::ShapeComponentPicture {
                             shape_component_picture,
-                        } => {
-                            let bindata_id = shape_component_picture.picture_info.bindata_id;
-                            let image_url = common::get_image_url(
-                                document,
-                                bindata_id,
-                                options.image_output_dir.as_deref(),
-                                options.html_output_dir.as_deref(),
-                            );
-                            if !image_url.is_empty() {
-                                // ShapeComponentPicture가 직접 올 때는 border_rectangle 사용 (부모 ShapeComponent가 없음)
-                                // When ShapeComponentPicture comes directly, use border_rectangle (no parent ShapeComponent)
-                                let width_hwpunit =
-                                    shape_component_picture.border_rectangle_x.right
-                                        - shape_component_picture.border_rectangle_x.left;
-                                let mut height_hwpunit =
-                                    (shape_component_picture.border_rectangle_y.bottom
-                                        - shape_component_picture.border_rectangle_y.top)
-                                        as i32;
+                        } = record {
+                        let bindata_id = shape_component_picture.picture_info.bindata_id;
+                        let image_url = common::get_image_url(
+                            document,
+                            bindata_id,
+                            options.image_output_dir.as_deref(),
+                            options.html_output_dir.as_deref(),
+                        );
+                        if !image_url.is_empty() {
+                            // ShapeComponentPicture가 직접 올 때는 border_rectangle 사용 (부모 ShapeComponent가 없음)
+                            // When ShapeComponentPicture comes directly, use border_rectangle (no parent ShapeComponent)
+                            let width_hwpunit =
+                                shape_component_picture.border_rectangle_x.right
+                                    - shape_component_picture.border_rectangle_x.left;
+                            let mut height_hwpunit =
+                                shape_component_picture.border_rectangle_y.bottom
+                                    - shape_component_picture.border_rectangle_y.top;
 
-                                // border_rectangle_y의 top과 bottom이 같으면 crop_rectangle 사용
-                                // If border_rectangle_y's top and bottom are the same, use crop_rectangle
-                                if height_hwpunit == 0 {
-                                    height_hwpunit = (shape_component_picture.crop_rectangle.bottom
-                                        - shape_component_picture.crop_rectangle.top)
-                                        as i32;
-                                }
+                            // border_rectangle_y의 top과 bottom이 같으면 crop_rectangle 사용
+                            // If border_rectangle_y's top and bottom are the same, use crop_rectangle
+                            if height_hwpunit == 0 {
+                                height_hwpunit = shape_component_picture.crop_rectangle.bottom
+                                    - shape_component_picture.crop_rectangle.top;
+                            }
 
-                                let width = width_hwpunit.max(0) as u32;
-                                let height = height_hwpunit.max(0) as u32;
+                            let width = width_hwpunit.max(0) as u32;
+                            let height = height_hwpunit.max(0) as u32;
 
-                                if width > 0 && height > 0 {
-                                    images.push(ImageInfo {
-                                        width,
-                                        height,
-                                        url: image_url,
-                                        like_letters: false, // 셀 내부 이미지는 ctrl_header 정보 없음 / Images inside cells have no ctrl_header info
-                                        affect_line_spacing: false,
-                                        vert_rel_to: None,
-                                    });
-                                }
+                            if width > 0 && height > 0 {
+                                images.push(ImageInfo {
+                                    width,
+                                    height,
+                                    url: image_url,
+                                    like_letters: false, // 셀 내부 이미지는 ctrl_header 정보 없음 / Images inside cells have no ctrl_header info
+                                    affect_line_spacing: false,
+                                    vert_rel_to: None,
+                                });
                             }
                         }
-                        _ => {}
                     }
                 }
             }
@@ -480,8 +475,7 @@ pub(crate) fn render_cells(
 
                     // 1) hcI 안에는 빈 hls만
                     cell_content.push_str(&format!(
-                        r#"<div class="hls {}" style="line-height:{:.2}mm;white-space:nowrap;left:0mm;top:-0.18mm;height:3.53mm;width:0mm;"></div>"#,
-                        para_shape_class, img_h_mm
+                        r#"<div class="hls {para_shape_class}" style="line-height:{img_h_mm:.2}mm;white-space:nowrap;left:0mm;top:-0.18mm;height:3.53mm;width:0mm;"></div>"#
                     ));
 
                     // 2) 실제 이미지는 cell_outside_html로 (hce 바로 아래)
@@ -546,8 +540,7 @@ pub(crate) fn render_cells(
                 let rendered_text =
                     text::render_text(&text, &char_shapes, document, &options.css_class_prefix);
                 cell_content.push_str(&format!(
-                    r#"<div class="hls {}">{}</div>"#,
-                    para_shape_class, rendered_text
+                    r#"<div class="hls {para_shape_class}">{rendered_text}</div>"#
                 ));
                 cell_has_text = true;
             } else if !images.is_empty() {

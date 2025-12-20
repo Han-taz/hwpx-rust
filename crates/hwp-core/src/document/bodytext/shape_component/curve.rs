@@ -84,7 +84,7 @@ impl ShapeComponentCurve {
         let required_bytes = 2 + 8 * point_count_usize + point_count_usize - 1;
         if data.len() < required_bytes {
             return Err(HwpError::InsufficientData {
-                field: format!("ShapeComponentCurve (point_count={})", point_count_usize),
+                field: format!("ShapeComponentCurve (point_count={point_count_usize})"),
                 expected: required_bytes,
                 actual: data.len(),
             });

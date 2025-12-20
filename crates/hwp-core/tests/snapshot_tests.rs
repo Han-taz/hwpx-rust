@@ -35,13 +35,13 @@ fn test_full_document_json_snapshot() {
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
     let snapshot_name = file_name.replace(['-', '.'], "_");
-    let snapshot_name_json = format!("{}_json", snapshot_name);
+    let snapshot_name_json = format!("{snapshot_name}_json");
 
     if let Ok(data) = std::fs::read(&file_path) {
         let parser = HwpParser::new();
         let result = parser.parse(&data);
         if let Err(e) = &result {
-            eprintln!("Parse error: {:?}", e);
+            eprintln!("Parse error: {e:?}");
         }
         assert!(result.is_ok(), "Should parse HWP document");
         let document = result.unwrap();
@@ -74,9 +74,9 @@ fn test_full_document_json_snapshot() {
             .join("tests")
             .join("snapshots");
         std::fs::create_dir_all(&snapshots_dir).unwrap_or(());
-        let json_file = snapshots_dir.join(format!("{}.json", file_name));
+        let json_file = snapshots_dir.join(format!("{file_name}.json"));
         std::fs::write(&json_file, &json).unwrap_or_else(|e| {
-            eprintln!("Failed to write JSON file: {}", e);
+            eprintln!("Failed to write JSON file: {e}");
         });
     }
 }
@@ -104,7 +104,7 @@ fn test_all_fixtures_json_snapshots() {
 
         // 파일명을 스냅샷 이름으로 사용 (특수 문자 제거) / Use filename as snapshot name (remove special chars)
         let snapshot_name = file_name.replace(['-', '.'], "_");
-        let snapshot_name_json = format!("{}_json", snapshot_name);
+        let snapshot_name_json = format!("{snapshot_name}_json");
 
         match std::fs::read(file_path) {
             Ok(data) => {
@@ -118,19 +118,19 @@ fn test_all_fixtures_json_snapshots() {
                         assert_snapshot_with_path!(snapshot_name_json.as_str(), json);
 
                         // 실제 JSON 파일로도 저장 / Also save as actual JSON file
-                        let json_file = snapshots_dir.join(format!("{}.json", file_name));
+                        let json_file = snapshots_dir.join(format!("{file_name}.json"));
                         std::fs::create_dir_all(&snapshots_dir).unwrap_or(());
                         std::fs::write(&json_file, &json).unwrap_or_else(|e| {
                             eprintln!("Failed to write JSON file {}: {}", json_file.display(), e);
                         });
                     }
                     Err(e) => {
-                        eprintln!("Skipping {} due to parse error: {}", file_name, e);
+                        eprintln!("Skipping {file_name} due to parse error: {e}");
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Failed to read {}: {}", file_name, e);
+                eprintln!("Failed to read {file_name}: {e}");
             }
         }
     }
@@ -176,15 +176,13 @@ fn test_debug_record_levels() {
                     if tag_id == 0x43 {
                         table_records.push((record_count, level, offset));
                         println!(
-                            "Record {}: TABLE (0x43) at offset {}, level {}",
-                            record_count, offset, level
+                            "Record {record_count}: TABLE (0x43) at offset {offset}, level {level}"
                         );
                     }
                     if tag_id == 0x44 {
                         list_header_records.push((record_count, level, offset));
                         println!(
-                            "Record {}: LIST_HEADER (0x44) at offset {}, level {}",
-                            record_count, offset, level
+                            "Record {record_count}: LIST_HEADER (0x44) at offset {offset}, level {level}"
                         );
                     }
 
@@ -195,20 +193,18 @@ fn test_debug_record_levels() {
         }
 
         println!("\n=== Summary ===");
-        println!("Total records: {}", record_count);
+        println!("Total records: {record_count}");
         println!("TABLE records: {}", table_records.len());
         println!("LIST_HEADER records: {}", list_header_records.len());
 
         for (table_idx, table_level, table_offset) in &table_records {
             println!(
-                "\nTABLE at record {} (offset {}, level {}):",
-                table_idx, table_offset, table_level
+                "\nTABLE at record {table_idx} (offset {table_offset}, level {table_level}):"
             );
             for (list_idx, list_level, list_offset) in &list_header_records {
                 if *list_offset > *table_offset && *list_offset < *table_offset + 1000 {
                     println!(
-                        "  -> LIST_HEADER at record {} (offset {}, level {})",
-                        list_idx, list_offset, list_level
+                        "  -> LIST_HEADER at record {list_idx} (offset {list_offset}, level {list_level})"
                     );
                 }
             }
@@ -227,7 +223,7 @@ fn test_debug_list_header_children() {
         let parser = HwpParser::new();
         let result = parser.parse(&data);
         if let Err(e) = &result {
-            eprintln!("Parse error: {:?}", e);
+            eprintln!("Parse error: {e:?}");
         }
         assert!(result.is_ok(), "Should parse HWP document");
         let _document = result.unwrap();
@@ -301,13 +297,13 @@ fn test_document_markdown_snapshot() {
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
     let snapshot_name = file_name.replace(['-', '.'], "_");
-    let snapshot_name_md = format!("{}_markdown", snapshot_name);
+    let snapshot_name_md = format!("{snapshot_name}_markdown");
 
     if let Ok(data) = std::fs::read(&file_path) {
         let parser = HwpParser::new();
         let result = parser.parse(&data);
         if let Err(e) = &result {
-            eprintln!("Parse error: {:?}", e);
+            eprintln!("Parse error: {e:?}");
         }
         assert!(result.is_ok(), "Should parse HWP document");
         let document = result.unwrap();
@@ -330,9 +326,9 @@ fn test_document_markdown_snapshot() {
         assert_snapshot_with_path!(snapshot_name_md.as_str(), markdown);
 
         // 실제 Markdown 파일로도 저장 / Also save as actual Markdown file
-        let md_file = snapshots_dir.join(format!("{}.md", file_name));
+        let md_file = snapshots_dir.join(format!("{file_name}.md"));
         std::fs::write(&md_file, &markdown).unwrap_or_else(|e| {
-            eprintln!("Failed to write Markdown file: {}", e);
+            eprintln!("Failed to write Markdown file: {e}");
         });
     }
 }
@@ -359,7 +355,7 @@ fn test_headerfooter_markdown() {
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
     let snapshot_name = file_name.replace(['-', '.'], "_");
-    let snapshot_name_md = format!("{}_markdown", snapshot_name);
+    let snapshot_name_md = format!("{snapshot_name}_markdown");
 
     match std::fs::read(&file_path) {
         Ok(data) => {
@@ -383,19 +379,19 @@ fn test_headerfooter_markdown() {
                     assert_snapshot_with_path!(snapshot_name_md.as_str(), markdown);
 
                     // 실제 Markdown 파일로도 저장 / Also save as actual Markdown file
-                    let md_file = snapshots_dir.join(format!("{}.md", file_name));
+                    let md_file = snapshots_dir.join(format!("{file_name}.md"));
                     std::fs::create_dir_all(&snapshots_dir).unwrap_or(());
                     std::fs::write(&md_file, &markdown).unwrap_or_else(|e| {
                         eprintln!("Failed to write Markdown file {}: {}", md_file.display(), e);
                     });
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse {}: {:?}", file_path, e);
+                    eprintln!("Failed to parse {file_path}: {e:?}");
                 }
             }
         }
         Err(e) => {
-            eprintln!("Failed to read {}: {}", file_path, e);
+            eprintln!("Failed to read {file_path}: {e}");
         }
     }
 }
@@ -423,7 +419,7 @@ fn test_all_fixtures_markdown_snapshots() {
 
         // 파일명을 스냅샷 이름으로 사용 (특수 문자 제거) / Use filename as snapshot name (remove special chars)
         let snapshot_name = file_name.replace(['-', '.'], "_");
-        let snapshot_name_md = format!("{}_markdown", snapshot_name);
+        let snapshot_name_md = format!("{snapshot_name}_markdown");
 
         match std::fs::read(file_path) {
             Ok(data) => {
@@ -446,19 +442,19 @@ fn test_all_fixtures_markdown_snapshots() {
                         assert_snapshot_with_path!(snapshot_name_md.as_str(), markdown);
 
                         // 실제 Markdown 파일로도 저장 / Also save as actual Markdown file
-                        let md_file = snapshots_dir.join(format!("{}.md", file_name));
+                        let md_file = snapshots_dir.join(format!("{file_name}.md"));
                         std::fs::create_dir_all(&snapshots_dir).unwrap_or(());
                         std::fs::write(&md_file, &markdown).unwrap_or_else(|e| {
                             eprintln!("Failed to write Markdown file {}: {}", md_file.display(), e);
                         });
                     }
                     Err(e) => {
-                        eprintln!("Skipping {} due to parse error: {}", file_name, e);
+                        eprintln!("Skipping {file_name} due to parse error: {e}");
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Failed to read {}: {}", file_name, e);
+                eprintln!("Failed to read {file_name}: {e}");
             }
         }
     }
@@ -477,13 +473,13 @@ fn test_document_html_snapshot() {
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
     let snapshot_name = file_name.replace(['-', '.'], "_");
-    let snapshot_name_html = format!("{}_html", snapshot_name);
+    let snapshot_name_html = format!("{snapshot_name}_html");
 
     if let Ok(data) = std::fs::read(&file_path) {
         let parser = HwpParser::new();
         let result = parser.parse(&data);
         if let Err(e) = &result {
-            eprintln!("Parse error: {:?}", e);
+            eprintln!("Parse error: {e:?}");
         }
         assert!(result.is_ok(), "Should parse HWP document");
         let document = result.unwrap();
@@ -507,9 +503,9 @@ fn test_document_html_snapshot() {
         assert_snapshot_with_path!(snapshot_name_html.as_str(), html);
 
         // 실제 HTML 파일로도 저장 / Also save as actual HTML file
-        let html_file = snapshots_dir.join(format!("{}.html", file_name));
+        let html_file = snapshots_dir.join(format!("{file_name}.html"));
         std::fs::write(&html_file, &html).unwrap_or_else(|e| {
-            eprintln!("Failed to write HTML file: {}", e);
+            eprintln!("Failed to write HTML file: {e}");
         });
     }
 }
@@ -536,7 +532,7 @@ fn test_headerfooter_html() {
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
     let snapshot_name = file_name.replace(['-', '.'], "_");
-    let snapshot_name_html = format!("{}_html", snapshot_name);
+    let snapshot_name_html = format!("{snapshot_name}_html");
 
     match std::fs::read(&file_path) {
         Ok(data) => {
@@ -561,19 +557,19 @@ fn test_headerfooter_html() {
                     assert_snapshot_with_path!(snapshot_name_html.as_str(), html);
 
                     // 실제 HTML 파일로도 저장 / Also save as actual HTML file
-                    let html_file = snapshots_dir.join(format!("{}.html", file_name));
+                    let html_file = snapshots_dir.join(format!("{file_name}.html"));
                     std::fs::create_dir_all(&snapshots_dir).unwrap_or(());
                     std::fs::write(&html_file, &html).unwrap_or_else(|e| {
                         eprintln!("Failed to write HTML file {}: {}", html_file.display(), e);
                     });
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse {}: {:?}", file_path, e);
+                    eprintln!("Failed to parse {file_path}: {e:?}");
                 }
             }
         }
         Err(e) => {
-            eprintln!("Failed to read {}: {}", file_path, e);
+            eprintln!("Failed to read {file_path}: {e}");
         }
     }
 }
@@ -601,7 +597,7 @@ fn test_all_fixtures_html_snapshots() {
 
         // 파일명을 스냅샷 이름으로 사용 (특수 문자 제거) / Use filename as snapshot name (remove special chars)
         let snapshot_name = file_name.replace(['-', '.'], "_");
-        let snapshot_name_html = format!("{}_html", snapshot_name);
+        let snapshot_name_html = format!("{snapshot_name}_html");
 
         match std::fs::read(file_path) {
             Ok(data) => {
@@ -628,19 +624,19 @@ fn test_all_fixtures_html_snapshots() {
                         assert_snapshot_with_path!(snapshot_name_html.as_str(), html);
 
                         // 실제 HTML 파일로도 저장 / Also save as actual HTML file
-                        let html_file = snapshots_dir.join(format!("{}.html", file_name));
+                        let html_file = snapshots_dir.join(format!("{file_name}.html"));
                         std::fs::create_dir_all(&snapshots_dir).unwrap_or(());
                         std::fs::write(&html_file, &html).unwrap_or_else(|e| {
                             eprintln!("Failed to write HTML file {}: {}", html_file.display(), e);
                         });
                     }
                     Err(e) => {
-                        eprintln!("Skipping {} due to parse error: {}", file_name, e);
+                        eprintln!("Skipping {file_name} due to parse error: {e}");
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Failed to read {}: {}", file_name, e);
+                eprintln!("Failed to read {file_name}: {e}");
             }
         }
     }
@@ -691,21 +687,21 @@ fn test_table2_html_snapshot() {
                     assert_snapshot_with_path!(snapshot_name_html, html);
 
                     // 실제 HTML 파일로도 저장 / Also save as actual HTML file
-                    let html_file = snapshots_dir.join(format!("{}.html", file_name));
+                    let html_file = snapshots_dir.join(format!("{file_name}.html"));
                     std::fs::create_dir_all(&snapshots_dir).unwrap_or(());
                     std::fs::write(&html_file, &html).unwrap_or_else(|e| {
                         eprintln!("Failed to write HTML file {}: {}", html_file.display(), e);
                     });
                 }
                 Err(e) => {
-                    eprintln!("Parse error for table2.hwp: {}", e);
-                    panic!("Failed to parse table2.hwp: {}", e);
+                    eprintln!("Parse error for table2.hwp: {e}");
+                    panic!("Failed to parse table2.hwp: {e}");
                 }
             }
         }
         Err(e) => {
-            eprintln!("Failed to read table2.hwp: {}", e);
-            panic!("Failed to read table2.hwp: {}", e);
+            eprintln!("Failed to read table2.hwp: {e}");
+            panic!("Failed to read table2.hwp: {e}");
         }
     }
 }
@@ -738,7 +734,7 @@ fn test_parse_all_fixtures() {
                                 let minor = (fh.version >> 16) & 0xFF;
                                 let patch = (fh.version >> 8) & 0xFF;
                                 let revision = fh.version & 0xFF;
-                                format!("{}.{}.{}.{}", major, minor, patch, revision)
+                                format!("{major}.{minor}.{patch}.{revision}")
                             }
                             Err(_) => "unknown".to_string(),
                         },
@@ -758,21 +754,20 @@ fn test_parse_all_fixtures() {
                             .and_then(|n| n.to_str())
                             .unwrap_or(file_path);
                         error_files.push((file_name.to_string(), version_str, e.to_string()));
-                        eprintln!("Failed to parse {}: {}", file_path, e);
+                        eprintln!("Failed to parse {file_path}: {e}");
                     }
                 }
             }
             Err(e) => {
                 error_count += 1;
-                eprintln!("Failed to read {}: {}", file_path, e);
+                eprintln!("Failed to read {file_path}: {e}");
             }
         }
     }
 
     println!("\n=== Summary ===",);
     println!(
-        "Parsed {} files successfully, {} errors",
-        success_count, error_count
+        "Parsed {success_count} files successfully, {error_count} errors"
     );
 
     // 에러 유형별 통계 / Statistics by error type
@@ -793,14 +788,14 @@ fn test_parse_all_fixtures() {
             object_common_errors.len()
         );
         for (file, version, error) in &object_common_errors {
-            println!("  {} (version: {}): {}", file, version, error);
+            println!("  {file} (version: {version}): {error}");
         }
     }
 
     if !other_errors.is_empty() {
         println!("\n=== Other errors ({} files) ===", other_errors.len());
         for (file, version, error) in &other_errors {
-            println!("  {} (version: {}): {}", file, version, error);
+            println!("  {file} (version: {version}): {error}");
         }
     }
 
@@ -840,7 +835,7 @@ fn test_analyze_object_common_properties_size() {
     for file_name in &error_files {
         let file_path = fixtures_dir.join(file_name);
         if !file_path.exists() {
-            println!("File not found: {}", file_name);
+            println!("File not found: {file_name}");
             continue;
         }
 
@@ -849,7 +844,7 @@ fn test_analyze_object_common_properties_size() {
                 let mut cfb = match CfbParser::parse(&data) {
                     Ok(c) => c,
                     Err(e) => {
-                        println!("{}: Failed to parse CFB: {}", file_name, e);
+                        println!("{file_name}: Failed to parse CFB: {e}");
                         continue;
                     }
                 };
@@ -863,18 +858,17 @@ fn test_analyze_object_common_properties_size() {
                             let patch = (fh.version >> 8) & 0xFF;
                             let revision = fh.version & 0xFF;
                             println!(
-                                "{}: Version {}.{}.{}.{}",
-                                file_name, major, minor, patch, revision
+                                "{file_name}: Version {major}.{minor}.{patch}.{revision}"
                             );
                             fh
                         }
                         Err(e) => {
-                            println!("{}: Failed to parse FileHeader: {}", file_name, e);
+                            println!("{file_name}: Failed to parse FileHeader: {e}");
                             continue;
                         }
                     },
                     Err(e) => {
-                        println!("{}: Failed to read FileHeader: {}", file_name, e);
+                        println!("{file_name}: Failed to read FileHeader: {e}");
                         continue;
                     }
                 };
@@ -884,7 +878,7 @@ fn test_analyze_object_common_properties_size() {
                     match CfbParser::read_nested_stream(&mut cfb, "BodyText", "Section0") {
                         Ok(s) => s,
                         Err(e) => {
-                            println!("{}: Failed to read Section0: {}", file_name, e);
+                            println!("{file_name}: Failed to read Section0: {e}");
                             continue;
                         }
                     };
@@ -894,7 +888,7 @@ fn test_analyze_object_common_properties_size() {
                     match decompress_deflate(&section_data) {
                         Ok(d) => d,
                         Err(e) => {
-                            println!("{}: Failed to decompress: {}", file_name, e);
+                            println!("{file_name}: Failed to decompress: {e}");
                             continue;
                         }
                     }
@@ -906,7 +900,7 @@ fn test_analyze_object_common_properties_size() {
                 let tree = match RecordTreeNode::parse_tree(&decompressed) {
                     Ok(t) => t,
                     Err(e) => {
-                        println!("{}: Failed to parse tree: {}", file_name, e);
+                        println!("{file_name}: Failed to parse tree: {e}");
                         continue;
                     }
                 };
@@ -954,16 +948,14 @@ fn test_analyze_object_common_properties_size() {
                                         if child.data.len() > 4 {
                                             let remaining_size = child.data.len() - 4;
                                             println!(
-                                                "{}  Remaining data size (after control ID): {} bytes",
-                                                indent, remaining_size
+                                                "{indent}  Remaining data size (after control ID): {remaining_size} bytes"
                                             );
 
                                             // 표 69 구조 계산 / Calculate Table 69 structure
                                             // attribute(4) + offset_y(4) + offset_x(4) + width(4) + height(4) + z_order(4) + margin(8) + instance_id(4) + page_divide(4) = 40
                                             // description_len(2) + description(2×len) = 추가
                                             println!(
-                                                "{}  Expected: 40 bytes (without description) or 42+ bytes (with description)",
-                                                indent
+                                                "{indent}  Expected: 40 bytes (without description) or 42+ bytes (with description)"
                                             );
                                         }
                                     }
@@ -974,12 +966,12 @@ fn test_analyze_object_common_properties_size() {
                     }
                 }
 
-                println!("{}: Analyzing CTRL_HEADER records...", file_name);
+                println!("{file_name}: Analyzing CTRL_HEADER records...");
                 find_ctrl_headers(&tree, 0);
                 println!();
             }
             Err(e) => {
-                println!("{}: Failed to read file: {}", file_name, e);
+                println!("{file_name}: Failed to read file: {e}");
             }
         }
     }
@@ -996,7 +988,7 @@ fn test_document_markdown_with_image_files() {
         let parser = HwpParser::new();
         let result = parser.parse(&data);
         if let Err(e) = &result {
-            eprintln!("Parse error: {:?}", e);
+            eprintln!("Parse error: {e:?}");
         }
         assert!(result.is_ok(), "Should parse HWP document");
         let document = result.unwrap();
@@ -1064,14 +1056,13 @@ fn test_document_markdown_with_image_files() {
             let file_name = path.file_name().unwrap().to_string_lossy();
 
             // Check file exists
-            assert!(path.exists(), "Image file should exist: {}", file_name);
+            assert!(path.exists(), "Image file should exist: {file_name}");
 
             // Check file size is not zero
             let metadata = std::fs::metadata(&path).unwrap();
             assert!(
                 metadata.len() > 0,
-                "Image file should not be empty: {}",
-                file_name
+                "Image file should not be empty: {file_name}"
             );
 
             // Check file content (verify it's a valid image by checking file signatures)
@@ -1116,8 +1107,7 @@ fn test_document_markdown_with_image_files() {
                 _ => {
                     // For unknown extensions, just check file is not empty
                     println!(
-                        "Warning: Unknown image extension '{}' for file {}, skipping signature check",
-                        extension, file_name
+                        "Warning: Unknown image extension '{extension}' for file {file_name}, skipping signature check"
                     );
                     true // Accept unknown extensions
                 }
@@ -1128,24 +1118,22 @@ fn test_document_markdown_with_image_files() {
                 let preview: String = file_data
                     .iter()
                     .take(16)
-                    .map(|b| format!("{:02X} ", b))
+                    .map(|b| format!("{b:02X} "))
                     .collect();
                 println!(
-                    "Warning: File {} may not be a valid {} file. First 16 bytes: {}",
-                    file_name, extension, preview
+                    "Warning: File {file_name} may not be a valid {extension} file. First 16 bytes: {preview}"
                 );
                 // Don't fail the test, just warn - the file was created successfully
                 // The issue might be with the extension or file format detection
             } else {
-                println!("✓ File {} has valid {} signature", file_name, extension);
+                println!("✓ File {file_name} has valid {extension} signature");
             }
 
             // Verify that markdown references this file
             let file_name_str = path.file_name().unwrap().to_string_lossy();
             assert!(
                 markdown.contains(file_name_str.as_ref()),
-                "Markdown should reference image file: {}",
-                file_name_str
+                "Markdown should reference image file: {file_name_str}"
             );
         }
 
@@ -1222,7 +1210,7 @@ fn test_footnote_endnote_debug() {
                 if node.data().len() >= 4 {
                     let ctrl_id_bytes = &node.data()[0..4];
                     let ctrl_id = String::from_utf8_lossy(ctrl_id_bytes);
-                    eprintln!("{}[ORIGINAL] CTRL_HEADER: ctrl_id={:?}", indent, ctrl_id);
+                    eprintln!("{indent}[ORIGINAL] CTRL_HEADER: ctrl_id={ctrl_id:?}");
 
                     if ctrl_id.trim() == "fn  " || ctrl_id.trim() == "en  " {
                         // 각주/미주 내부의 텍스트 찾기
@@ -1237,7 +1225,7 @@ fn test_footnote_endnote_debug() {
                 }
             } else if node.tag_id() == HwpTag::LIST_HEADER {
                 if let Some(ctrl_id) = parent_ctrl_id {
-                    eprintln!("{}[ORIGINAL] LIST_HEADER inside {:?}", indent, ctrl_id);
+                    eprintln!("{indent}[ORIGINAL] LIST_HEADER inside {ctrl_id:?}");
                     for child in node.children() {
                         find_footnote_endnote_text(child, depth + 1, parent_ctrl_id);
                     }
@@ -1252,8 +1240,7 @@ fn test_footnote_endnote_debug() {
                     let data = node.data();
                     if let Ok(text) = hwp_core::types::decode_utf16le(data) {
                         eprintln!(
-                            "{}[ORIGINAL] PARA_TEXT inside {:?}: {}",
-                            indent, ctrl_id, text
+                            "{indent}[ORIGINAL] PARA_TEXT inside {ctrl_id:?}: {text}"
                         );
                     } else {
                         eprintln!(
@@ -1280,7 +1267,7 @@ fn test_footnote_endnote_debug() {
         let parser = HwpParser::new();
         let result = parser.parse(&data);
         if let Err(e) = &result {
-            eprintln!("Parse error: {:?}", e);
+            eprintln!("Parse error: {e:?}");
         }
         assert!(result.is_ok(), "Should parse HWP document");
         let document = result.unwrap();
@@ -1333,8 +1320,7 @@ fn test_footnote_endnote_debug() {
                                                 para_record
                                             {
                                                 eprintln!(
-                                                    "[TEST] FOOTNOTE ListHeader Para[{}] ParaText: {}",
-                                                    para_idx, text
+                                                    "[TEST] FOOTNOTE ListHeader Para[{para_idx}] ParaText: {text}"
                                                 );
                                             }
                                         }
@@ -1372,8 +1358,7 @@ fn test_footnote_endnote_debug() {
                                                 para_record
                                             {
                                                 eprintln!(
-                                                    "[TEST] ENDNOTE ListHeader Para[{}] ParaText: {}",
-                                                    para_idx, text
+                                                    "[TEST] ENDNOTE ListHeader Para[{para_idx}] ParaText: {text}"
                                                 );
                                             }
                                         }
@@ -1404,7 +1389,7 @@ fn test_debug_charshape_strikethrough() {
         let parser = HwpParser::new();
         let result = parser.parse(&data);
         if let Err(e) = &result {
-            eprintln!("Parse error: {:?}", e);
+            eprintln!("Parse error: {e:?}");
         }
         assert!(result.is_ok(), "Should parse HWP document");
         let document = result.unwrap();
@@ -1417,7 +1402,7 @@ fn test_debug_charshape_strikethrough() {
                     if let ParagraphRecord::ParaText { text, .. } = record {
                         if text.contains("가운데줄") {
                             eprintln!("\n=== DEBUG: Found paragraph with '가운데줄' ===");
-                            eprintln!("Text: {}", text);
+                            eprintln!("Text: {text}");
 
                             // ParaCharShape 찾기
                             // Find ParaCharShape

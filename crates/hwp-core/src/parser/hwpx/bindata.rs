@@ -43,7 +43,7 @@ pub fn parse_bindata(container: &mut HwpxContainer) -> Result<BinData, HwpError>
             Err(e) => {
                 // Log warning but continue parsing
                 #[cfg(debug_assertions)]
-                eprintln!("Warning: Failed to read BinData file {}: {}", file_path, e);
+                eprintln!("Warning: Failed to read BinData file {file_path}: {e}");
             }
         }
     }

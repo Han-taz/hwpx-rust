@@ -11,7 +11,7 @@ fn format_version(version: u32) -> String {
     let minor = (version >> 16) & 0xFF;
     let patch = (version >> 8) & 0xFF;
     let revision = version & 0xFF;
-    format!("{}.{}.{}.{}", major, minor, patch, revision)
+    format!("{major}.{minor}.{patch}.{revision}")
 }
 
 /// HWP/HWPX Document wrapper for Python
@@ -84,7 +84,7 @@ impl Document {
     ///     JSON string representation of the document
     fn to_json(&self) -> PyResult<String> {
         serde_json::to_string_pretty(&self.inner)
-            .map_err(|e| PyValueError::new_err(format!("JSON serialization error: {}", e)))
+            .map_err(|e| PyValueError::new_err(format!("JSON serialization error: {e}")))
     }
 
     /// Get plain text content from the document
@@ -125,7 +125,7 @@ fn parse(data: &[u8]) -> PyResult<Document> {
     let parser = HwpParser::new();
     match parser.parse(data) {
         Ok(doc) => Ok(Document { inner: doc }),
-        Err(e) => Err(PyValueError::new_err(format!("Parse error: {}", e))),
+        Err(e) => Err(PyValueError::new_err(format!("Parse error: {e}"))),
     }
 }
 
@@ -142,7 +142,7 @@ fn parse(data: &[u8]) -> PyResult<Document> {
 #[pyfunction]
 fn parse_file(path: &str) -> PyResult<Document> {
     let data = std::fs::read(path)
-        .map_err(|e| PyValueError::new_err(format!("Failed to read file: {}", e)))?;
+        .map_err(|e| PyValueError::new_err(format!("Failed to read file: {e}")))?;
     parse(&data)
 }
 

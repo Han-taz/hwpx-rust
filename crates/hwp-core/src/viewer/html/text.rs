@@ -96,7 +96,7 @@ pub fn render_text(
 
             // 폰트 크기 / Font size
             let size_pt = char_shape.base_size as f64 / 100.0;
-            inline_style.push_str(&format!("font-size:{}pt;", size_pt));
+            inline_style.push_str(&format!("font-size:{size_pt}pt;"));
 
             // 텍스트 색상 / Text color
             let color = &char_shape.text_color;
@@ -112,36 +112,34 @@ pub fn render_text(
             // Bold is handled by CSS font-weight:bold, so don't use <strong> tag
             let mut styled_text = text_for_styling;
             if char_shape.attributes.italic {
-                styled_text = format!("<em>{}</em>", styled_text);
+                styled_text = format!("<em>{styled_text}</em>");
             }
             if char_shape.attributes.underline_type > 0 {
-                styled_text = format!("<u>{}</u>", styled_text);
+                styled_text = format!("<u>{styled_text}</u>");
             }
             if char_shape.attributes.strikethrough > 0 {
-                styled_text = format!("<s>{}</s>", styled_text);
+                styled_text = format!("<s>{styled_text}</s>");
             }
             if char_shape.attributes.superscript {
-                styled_text = format!("<sup>{}</sup>", styled_text);
+                styled_text = format!("<sup>{styled_text}</sup>");
             }
             if char_shape.attributes.subscript {
-                styled_text = format!("<sub>{}</sub>", styled_text);
+                styled_text = format!("<sub>{styled_text}</sub>");
             }
 
             // .hrt span으로 래핑 / Wrap with .hrt span
             if !inline_style.is_empty() {
                 result.push_str(&format!(
-                    r#"<span class="hrt {}" style="{}">{}</span>"#,
-                    class_name, inline_style, styled_text
+                    r#"<span class="hrt {class_name}" style="{inline_style}">{styled_text}</span>"#
                 ));
             } else {
                 result.push_str(&format!(
-                    r#"<span class="hrt {}">{}</span>"#,
-                    class_name, styled_text
+                    r#"<span class="hrt {class_name}">{styled_text}</span>"#
                 ));
             }
         } else {
             // CharShape가 없는 경우 기본 스타일 / Default style when no CharShape
-            result.push_str(&format!(r#"<span class="hrt">{}</span>"#, text_for_styling));
+            result.push_str(&format!(r#"<span class="hrt">{text_for_styling}</span>"#));
         }
     }
 

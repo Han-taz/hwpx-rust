@@ -68,7 +68,7 @@ impl ParaCharShape {
         for i in 0..count {
             let offset = i * 8;
             let shape_data = &data[offset..offset + 8];
-            let shape_info = CharShapeInfo::parse(shape_data).map_err(|e| HwpError::from(e))?;
+            let shape_info = CharShapeInfo::parse(shape_data)?;
             shapes.push(shape_info);
         }
 

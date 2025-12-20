@@ -136,8 +136,7 @@ impl FileTime {
         }
 
         format!(
-            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}+09:00",
-            year, month, day, hours, minutes, seconds
+            "{year:04}-{month:02}-{day:02}T{hours:02}:{minutes:02}:{seconds:02}+09:00"
         )
     }
 }
@@ -229,7 +228,7 @@ impl SummaryInformation {
             return Err(HwpError::UnexpectedValue {
                 field: "Property Set byte order".to_string(),
                 expected: "0xFEFF or 0xFFFE".to_string(),
-                found: format!("0x{:04X}", byte_order),
+                found: format!("0x{byte_order:04X}"),
             });
         }
         offset += 2;
@@ -327,7 +326,7 @@ impl SummaryInformation {
         let property_set_start = property_set_offset;
         if property_set_start >= data.len() {
             return Err(HwpError::UnexpectedValue {
-                field: format!("Property Set offset (start={})", property_set_start),
+                field: format!("Property Set offset (start={property_set_start})"),
                 expected: format!("< {}", data.len()),
                 found: property_set_start.to_string(),
             });
@@ -536,8 +535,8 @@ impl SummaryInformation {
         if vt_type != VT_I2 {
             return Err(HwpError::UnexpectedValue {
                 field: "VT_I2 type".to_string(),
-                expected: format!("0x{:08X}", VT_I2),
-                found: format!("0x{:08X}", vt_type),
+                expected: format!("0x{VT_I2:08X}"),
+                found: format!("0x{vt_type:08X}"),
             });
         }
 
@@ -578,8 +577,8 @@ impl SummaryInformation {
         if vt_type != VT_LPSTR {
             return Err(HwpError::UnexpectedValue {
                 field: "VT_LPSTR/VT_LPWSTR type".to_string(),
-                expected: format!("0x{:08X} or 0x{:08X}", VT_LPSTR, VT_LPWSTR),
-                found: format!("0x{:08X}", vt_type),
+                expected: format!("0x{VT_LPSTR:08X} or 0x{VT_LPWSTR:08X}"),
+                found: format!("0x{vt_type:08X}"),
             });
         }
 
@@ -607,8 +606,7 @@ impl SummaryInformation {
         Self::decode_string_by_codepage(string_data, codepage).map_err(|e| {
             HwpError::EncodingError {
                 reason: format!(
-                    "Failed to decode VT_LPSTR string with codepage {}: {}",
-                    codepage, e
+                    "Failed to decode VT_LPSTR string with codepage {codepage}: {e}"
                 ),
             }
         })
@@ -630,8 +628,8 @@ impl SummaryInformation {
         if vt_type != VT_FILETIME {
             return Err(HwpError::UnexpectedValue {
                 field: "VT_FILETIME type".to_string(),
-                expected: format!("0x{:08X}", VT_FILETIME),
-                found: format!("0x{:08X}", vt_type),
+                expected: format!("0x{VT_FILETIME:08X}"),
+                found: format!("0x{vt_type:08X}"),
             });
         }
 
@@ -667,8 +665,8 @@ impl SummaryInformation {
         if vt_type != VT_LPWSTR {
             return Err(HwpError::UnexpectedValue {
                 field: "VT_LPWSTR type".to_string(),
-                expected: format!("0x{:08X}", VT_LPWSTR),
-                found: format!("0x{:08X}", vt_type),
+                expected: format!("0x{VT_LPWSTR:08X}"),
+                found: format!("0x{vt_type:08X}"),
             });
         }
 
@@ -768,7 +766,7 @@ impl SummaryInformation {
                 }
                 CP_UTF8 => {
                     String::from_utf8(data.to_vec()).map_err(|e| HwpError::EncodingError {
-                        reason: format!("UTF-8 decode error: {}", e),
+                        reason: format!("UTF-8 decode error: {e}"),
                     })?
                 }
                 CP_MS949 => EUC_KR.decode(data).0.to_string(),
@@ -807,8 +805,8 @@ impl SummaryInformation {
         if vt_type != VT_I4 {
             return Err(HwpError::UnexpectedValue {
                 field: "VT_I4 type".to_string(),
-                expected: format!("0x{:08X}", VT_I4),
-                found: format!("0x{:08X}", vt_type),
+                expected: format!("0x{VT_I4:08X}"),
+                found: format!("0x{vt_type:08X}"),
             });
         }
 

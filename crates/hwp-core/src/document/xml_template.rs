@@ -57,7 +57,7 @@ impl XmlTemplate {
                 }
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse _SchemaName stream: {}", e);
+                    eprintln!("Warning: Failed to parse _SchemaName stream: {e}");
                 }
             }
         }
@@ -73,7 +73,7 @@ impl XmlTemplate {
                 }
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse Schema stream: {}", e);
+                    eprintln!("Warning: Failed to parse Schema stream: {e}");
                 }
             }
         }
@@ -89,7 +89,7 @@ impl XmlTemplate {
                 }
                 Err(e) => {
                     #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse Instance stream: {}", e);
+                    eprintln!("Warning: Failed to parse Instance stream: {e}");
                 }
             }
         }
@@ -122,7 +122,7 @@ impl XmlTemplate {
         if len > 0 {
             let schema_name_bytes = &data[4..4 + (len * 2)];
             decode_utf16le(schema_name_bytes).map_err(|e| HwpError::EncodingError {
-                reason: format!("Failed to decode schema name: {}", e),
+                reason: format!("Failed to decode schema name: {e}"),
             })
         } else {
             Ok(String::new())
@@ -150,7 +150,7 @@ impl XmlTemplate {
         if len > 0 {
             let schema_bytes = &data[4..4 + (len * 2)];
             decode_utf16le(schema_bytes).map_err(|e| HwpError::EncodingError {
-                reason: format!("Failed to decode schema: {}", e),
+                reason: format!("Failed to decode schema: {e}"),
             })
         } else {
             Ok(String::new())
@@ -178,7 +178,7 @@ impl XmlTemplate {
         if len > 0 {
             let instance_bytes = &data[4..4 + (len * 2)];
             decode_utf16le(instance_bytes).map_err(|e| HwpError::EncodingError {
-                reason: format!("Failed to decode instance: {}", e),
+                reason: format!("Failed to decode instance: {e}"),
             })
         } else {
             Ok(String::new())

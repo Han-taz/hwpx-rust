@@ -152,7 +152,7 @@ impl ShapeComponent {
         // 표 83: 개체 요소 속성 / Table 83: Shape component attributes
         if data.len() < offset + 42 {
             return Err(HwpError::InsufficientData {
-                field: format!("ShapeComponent attributes at offset {}", offset),
+                field: format!("ShapeComponent attributes at offset {offset}"),
                 expected: offset + 42,
                 actual: data.len(),
             });
@@ -273,20 +273,20 @@ impl ShapeComponent {
         // BYTE stream (48바이트): translation matrix / BYTE stream (48 bytes): Translation matrix
         if data.len() < offset + 48 {
             return Err(HwpError::InsufficientData {
-                field: format!("ShapeComponent translation matrix at offset {}", offset),
+                field: format!("ShapeComponent translation matrix at offset {offset}"),
                 expected: offset + 48,
                 actual: data.len(),
             });
         }
         let translation_matrix =
-            parse_matrix(&data[offset..offset + 48]).map_err(|e| HwpError::from(e))?;
+            parse_matrix(&data[offset..offset + 48])?;
         offset += 48;
 
         // BYTE stream (cnt×48×2): scale matrix/rotation matrix sequence
         let matrix_sequence_size = matrix_count as usize * 48 * 2;
         if data.len() < offset + matrix_sequence_size {
             return Err(HwpError::InsufficientData {
-                field: format!("ShapeComponent matrix sequence at offset {}", offset),
+                field: format!("ShapeComponent matrix sequence at offset {offset}"),
                 expected: offset + matrix_sequence_size,
                 actual: data.len(),
             });
@@ -296,9 +296,8 @@ impl ShapeComponent {
         for i in 0..matrix_count as usize {
             let seq_offset = offset + (i * 48 * 2);
             let scale_matrix =
-                parse_matrix(&data[seq_offset..seq_offset + 48]).map_err(|e| HwpError::from(e))?;
-            let rotation_matrix = parse_matrix(&data[seq_offset + 48..seq_offset + 96])
-                .map_err(|e| HwpError::from(e))?;
+                parse_matrix(&data[seq_offset..seq_offset + 48])?;
+            let rotation_matrix = parse_matrix(&data[seq_offset + 48..seq_offset + 96])?;
             matrix_sequence.push(MatrixPair {
                 scale: scale_matrix,
                 rotation: rotation_matrix,

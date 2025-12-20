@@ -166,7 +166,7 @@ impl Numbering {
                     let str =
                         decode_utf16le(&data[offset..offset + format_bytes]).map_err(|e| {
                             HwpError::EncodingError {
-                                reason: format!("Failed to decode numbering format: {}", e),
+                                reason: format!("Failed to decode numbering format: {e}"),
                             }
                         })?;
                     offset += format_bytes;
@@ -236,7 +236,7 @@ impl Numbering {
             let format_string =
                 decode_utf16le(&data[offset..offset + format_bytes]).map_err(|e| {
                     HwpError::EncodingError {
-                        reason: format!("Failed to decode extended numbering format: {}", e),
+                        reason: format!("Failed to decode extended numbering format: {e}"),
                     }
                 })?;
             offset += format_bytes;
