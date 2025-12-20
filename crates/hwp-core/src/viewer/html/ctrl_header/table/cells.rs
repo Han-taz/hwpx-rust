@@ -33,7 +33,7 @@ pub(crate) fn render_cells(
 
     for cell in &table.cells {
         let row_idx = cell.cell_attributes.row_address as usize;
-        let col_idx = cell.cell_attributes.col_address as usize;
+        let _col_idx = cell.cell_attributes.col_address as usize;
 
         // 실제 셀 높이 가져오기 / Get actual cell height
         let mut cell_height = get_cell_height(table, cell, ctrl_header_height_mm);
@@ -208,7 +208,7 @@ pub(crate) fn render_cells(
 
         // 셀 마진(mm) 계산은 렌더링 전반(특히 special-case)에서 필요하므로 먼저 계산합니다.
         let left_margin_mm = cell_margin_to_mm(cell.cell_attributes.left_margin);
-        let right_margin_mm = cell_margin_to_mm(cell.cell_attributes.right_margin);
+        let _right_margin_mm = cell_margin_to_mm(cell.cell_attributes.right_margin);
         let top_margin_mm = cell_margin_to_mm(cell.cell_attributes.top_margin);
 
         // 셀 내부 문단 렌더링 / Render paragraphs inside cell
@@ -261,8 +261,9 @@ pub(crate) fn render_cells(
                 // CtrlHeader가 없을 때만 직접 처리 / Only process directly if no CtrlHeader
                 for record in &para.records {
                     if let ParagraphRecord::ShapeComponentPicture {
-                            shape_component_picture,
-                        } = record {
+                        shape_component_picture,
+                    } = record
+                    {
                         let bindata_id = shape_component_picture.picture_info.bindata_id;
                         let image_url = common::get_image_url(
                             document,
@@ -273,9 +274,8 @@ pub(crate) fn render_cells(
                         if !image_url.is_empty() {
                             // ShapeComponentPicture가 직접 올 때는 border_rectangle 사용 (부모 ShapeComponent가 없음)
                             // When ShapeComponentPicture comes directly, use border_rectangle (no parent ShapeComponent)
-                            let width_hwpunit =
-                                shape_component_picture.border_rectangle_x.right
-                                    - shape_component_picture.border_rectangle_x.left;
+                            let width_hwpunit = shape_component_picture.border_rectangle_x.right
+                                - shape_component_picture.border_rectangle_x.left;
                             let mut height_hwpunit =
                                 shape_component_picture.border_rectangle_y.bottom
                                     - shape_component_picture.border_rectangle_y.top;
@@ -568,7 +568,7 @@ pub(crate) fn render_cells(
         }
 
         // (마진 값은 위에서 이미 계산됨)
-        let bottom_margin_mm = cell_margin_to_mm(cell.cell_attributes.bottom_margin);
+        let _bottom_margin_mm = cell_margin_to_mm(cell.cell_attributes.bottom_margin);
 
         // hcI의 top 위치 계산 / Calculate hcI top position
         // NOTE: hcI는 "셀 안에서 컨텐츠 블록을 어디에 둘지"만 담당합니다(Top/Center/Bottom).

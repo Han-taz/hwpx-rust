@@ -258,16 +258,12 @@ impl CfbParser {
 
             if name_matches {
                 #[cfg(debug_assertions)]
-                eprintln!(
-                    "Debug: Found matching entry at index {i} (type: {entry_type})"
-                );
+                eprintln!("Debug: Found matching entry at index {i} (type: {entry_type})");
                 // Found matching entry, check if it's a stream (type = 2)
                 // 일치하는 엔트리를 찾았으므로 스트림인지 확인 (타입 = 2)
                 if entry_type != 2 {
                     #[cfg(debug_assertions)]
-                    eprintln!(
-                        "Debug: Entry is not a stream (type: {entry_type}), continuing..."
-                    );
+                    eprintln!("Debug: Entry is not a stream (type: {entry_type}), continuing...");
                     // Not a stream
                     continue;
                 }

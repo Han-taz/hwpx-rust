@@ -58,6 +58,7 @@ where
 
 /// Trait for outline number tracker reference
 /// 개요 번호 추적기 참조를 위한 트레이트
+#[allow(dead_code)]
 trait TrackerRef {
     /// Get mutable reference to HTML tracker
     /// HTML 추적기의 가변 참조 가져오기

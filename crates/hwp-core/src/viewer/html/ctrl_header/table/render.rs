@@ -609,9 +609,7 @@ pub fn render_table(
                             }
                         } else {
                             // 나머지 segment: body의 나머지 부분만 / Remaining segments: only remaining part of body
-                            format!(
-                                r#"<span class="hrt {cs_class}">{segment_text}</span>"#
-                            )
+                            format!(r#"<span class="hrt {cs_class}">{segment_text}</span>"#)
                         };
 
                         hls_htmls.push(format!(

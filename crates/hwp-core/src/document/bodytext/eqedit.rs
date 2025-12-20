@@ -136,7 +136,7 @@ impl EqEdit {
         let font_name = decode_utf16le(font_bytes).map_err(|e| HwpError::EncodingError {
             reason: format!("Failed to decode EqEdit font_name: {e}"),
         })?;
-        offset += 2 * script_length_usize;
+        let _ = offset + 2 * script_length_usize; // Mark as intentionally unused
 
         Ok(EqEdit {
             attribute,

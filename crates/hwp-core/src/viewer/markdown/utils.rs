@@ -54,6 +54,7 @@ impl OutlineNumberTracker {
 
 /// 버전 번호를 읽기 쉬운 문자열로 변환
 /// Convert version number to readable string
+#[allow(dead_code)]
 pub(crate) fn format_version(document: &HwpDocument) -> String {
     let version = document.file_header.version;
     let major = (version >> 24) & 0xFF;
@@ -65,6 +66,7 @@ pub(crate) fn format_version(document: &HwpDocument) -> String {
 }
 
 /// 문서에서 첫 번째 PageDef 정보 추출 / Extract first PageDef information from document
+#[allow(dead_code)]
 pub(crate) fn extract_page_info(
     document: &HwpDocument,
 ) -> Option<&crate::document::bodytext::PageDef> {
@@ -118,14 +120,14 @@ pub(crate) fn should_process_control_header(header: &crate::document::CtrlHeader
 /// 레벨에 따라 다른 번호 형식 사용 / Use different number format based on level
 fn format_outline_number(level: u8, number: u32) -> String {
     match level {
-        1 => format!("{number}."),                    // 1.
+        1 => format!("{number}."),                      // 1.
         2 => format!("{}.", number_to_hangul(number)),  // 가.
-        3 => format!("{number})"),                    // 1)
+        3 => format!("{number})"),                      // 1)
         4 => format!("{})", number_to_hangul(number)),  // 가)
-        5 => format!("({number})"),                   // (1)
+        5 => format!("({number})"),                     // (1)
         6 => format!("({})", number_to_hangul(number)), // (가)
-        7 => number_to_circled(number).to_string(),  // ①
-        _ => format!("{number}."),                    // 기본값 / default
+        7 => number_to_circled(number).to_string(),     // ①
+        _ => format!("{number}."),                      // 기본값 / default
     }
 }
 

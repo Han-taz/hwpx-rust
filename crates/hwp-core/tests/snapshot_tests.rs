@@ -198,9 +198,7 @@ fn test_debug_record_levels() {
         println!("LIST_HEADER records: {}", list_header_records.len());
 
         for (table_idx, table_level, table_offset) in &table_records {
-            println!(
-                "\nTABLE at record {table_idx} (offset {table_offset}, level {table_level}):"
-            );
+            println!("\nTABLE at record {table_idx} (offset {table_offset}, level {table_level}):");
             for (list_idx, list_level, list_offset) in &list_header_records {
                 if *list_offset > *table_offset && *list_offset < *table_offset + 1000 {
                     println!(
@@ -766,9 +764,7 @@ fn test_parse_all_fixtures() {
     }
 
     println!("\n=== Summary ===",);
-    println!(
-        "Parsed {success_count} files successfully, {error_count} errors"
-    );
+    println!("Parsed {success_count} files successfully, {error_count} errors");
 
     // 에러 유형별 통계 / Statistics by error type
     let mut object_common_errors: Vec<(String, String, String)> = Vec::new();
@@ -857,9 +853,7 @@ fn test_analyze_object_common_properties_size() {
                             let minor = (fh.version >> 16) & 0xFF;
                             let patch = (fh.version >> 8) & 0xFF;
                             let revision = fh.version & 0xFF;
-                            println!(
-                                "{file_name}: Version {major}.{minor}.{patch}.{revision}"
-                            );
+                            println!("{file_name}: Version {major}.{minor}.{patch}.{revision}");
                             fh
                         }
                         Err(e) => {
@@ -1239,9 +1233,7 @@ fn test_footnote_endnote_debug() {
                     // UTF-16LE로 디코딩
                     let data = node.data();
                     if let Ok(text) = hwp_core::types::decode_utf16le(data) {
-                        eprintln!(
-                            "{indent}[ORIGINAL] PARA_TEXT inside {ctrl_id:?}: {text}"
-                        );
+                        eprintln!("{indent}[ORIGINAL] PARA_TEXT inside {ctrl_id:?}: {text}");
                     } else {
                         eprintln!(
                             "{}[ORIGINAL] PARA_TEXT inside {:?}: (decode failed, len={})",

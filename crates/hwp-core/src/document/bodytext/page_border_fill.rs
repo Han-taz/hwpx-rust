@@ -106,7 +106,7 @@ impl PageBorderFill {
 
         // UINT16 테두리/배경 ID / UINT16 border/fill ID
         let border_fill_id = UINT16::from_le_bytes([data[offset], data[offset + 1]]);
-        offset += 2;
+        // offset += 2; // Not needed, end of parsing
 
         Ok(PageBorderFill {
             attributes,

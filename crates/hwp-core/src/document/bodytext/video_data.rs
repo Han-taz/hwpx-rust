@@ -98,7 +98,7 @@ impl VideoData {
                 let video_bindata_id = UINT16::from_le_bytes([data[offset], data[offset + 1]]);
                 offset += 2;
                 let thumbnail_bindata_id = UINT16::from_le_bytes([data[offset], data[offset + 1]]);
-                offset += 2;
+                // offset += 2; // Not needed, end of branch
                 VideoAttributes::Local {
                     video_bindata_id,
                     thumbnail_bindata_id,
@@ -132,7 +132,7 @@ impl VideoData {
                     })?;
                 offset += web_tag_length;
                 let thumbnail_bindata_id = UINT16::from_le_bytes([data[offset], data[offset + 1]]);
-                offset += 2;
+                // offset += 2; // Not needed, end of branch
                 VideoAttributes::Web {
                     web_tag,
                     thumbnail_bindata_id,

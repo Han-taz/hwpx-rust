@@ -135,9 +135,7 @@ impl FileTime {
             month += 1;
         }
 
-        format!(
-            "{year:04}-{month:02}-{day:02}T{hours:02}:{minutes:02}:{seconds:02}+09:00"
-        )
+        format!("{year:04}-{month:02}-{day:02}T{hours:02}:{minutes:02}:{seconds:02}+09:00")
     }
 }
 
@@ -605,9 +603,7 @@ impl SummaryInformation {
         // codepage에 따라 적절한 인코딩으로 디코딩
         Self::decode_string_by_codepage(string_data, codepage).map_err(|e| {
             HwpError::EncodingError {
-                reason: format!(
-                    "Failed to decode VT_LPSTR string with codepage {codepage}: {e}"
-                ),
+                reason: format!("Failed to decode VT_LPSTR string with codepage {codepage}: {e}"),
             }
         })
     }

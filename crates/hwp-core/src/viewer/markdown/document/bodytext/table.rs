@@ -256,7 +256,8 @@ fn convert_table_to_markdown_simple(
     for row_idx in 0..row_count {
         let row_data: Vec<String> = (0..col_count)
             .map(|col| {
-                grid[row_idx][col].clone()
+                grid[row_idx][col]
+                    .clone()
                     .unwrap_or_else(|| " ".to_string())
             })
             .collect();
@@ -323,6 +324,7 @@ fn get_cell_content(
 
 /// Fill cell content and handle cell merging
 /// 셀 내용을 채우고 셀 병합을 처리
+#[allow(unused_assignments)]
 fn fill_cell_content(
     grid: &mut [Vec<Option<String>>],
     cell: &crate::document::bodytext::TableCell,

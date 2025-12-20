@@ -1,19 +1,38 @@
-/// HWP Core Library
-///
-/// This library provides core functionality for parsing HWP and HWPX files.
-/// It accepts byte arrays as input to support cross-platform usage.
-///
-/// ## Supported Formats
-/// - **HWP 5.0**: Binary format using CFB (Compound File Binary) structure
-/// - **HWPX**: XML-based format using ZIP compression (OWPML standard, KS X 6101)
-///
-/// ## Usage
-/// ```ignore
-/// use hwp_core::HwpParser;
-///
-/// let parser = HwpParser::new();
-/// let document = parser.parse(&file_bytes)?;  // Automatically detects HWP or HWPX
-/// ```
+// Clippy lints - allow stylistic lints that would require significant refactoring
+#![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::wrong_self_convention)]
+#![allow(clippy::doc_lazy_continuation)]
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::collapsible_match)]
+#![allow(clippy::manual_clamp)]
+#![allow(clippy::manual_strip)]
+#![allow(clippy::format_in_format_args)]
+#![allow(clippy::unnecessary_unwrap)]
+#![allow(clippy::unused_enumerate_index)]
+// Rustc lint - internal API uses pub(crate) types
+#![allow(private_interfaces)]
+
+//! HWP Core Library
+//!
+//! This library provides core functionality for parsing HWP and HWPX files.
+//! It accepts byte arrays as input to support cross-platform usage.
+//!
+//! ## Supported Formats
+//! - **HWP 5.0**: Binary format using CFB (Compound File Binary) structure
+//! - **HWPX**: XML-based format using ZIP compression (OWPML standard, KS X 6101)
+//!
+//! ## Usage
+//! ```ignore
+//! use hwp_core::HwpParser;
+//!
+//! let parser = HwpParser::new();
+//! let document = parser.parse(&file_bytes)?;  // Automatically detects HWP or HWPX
+//! ```
+
 pub mod cfb;
 pub mod decompress;
 pub mod document;
@@ -367,8 +386,7 @@ impl HwpParser {
 
         // Read and parse FileHeader
         let fileheader_data = CfbParser::read_stream(&mut cfb, "FileHeader")?;
-        let fileheader =
-            FileHeader::parse(&fileheader_data)?;
+        let fileheader = FileHeader::parse(&fileheader_data)?;
 
         // Convert to JSON
         fileheader.to_json()

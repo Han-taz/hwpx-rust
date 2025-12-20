@@ -74,7 +74,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
     let mut in_table = false;
     let mut in_cell = false;
     let mut in_caption = false;
-    let mut in_picture = false;
+    let mut _in_picture = false;
 
     // Image parsing
     let mut current_image_ref: Option<String> = None;
@@ -220,7 +220,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         current_cell = HwpxCell::default();
                     }
                     s if s.ends_with(":pic") || s == "pic" => {
-                        in_picture = true;
+                        _in_picture = true;
                         current_image_ref = None;
                     }
                     _ => {}
@@ -294,7 +294,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         if let Some(ref image_ref) = current_image_ref {
                             paragraphs.push(create_image_paragraph(image_ref));
                         }
-                        in_picture = false;
+                        _in_picture = false;
                         current_image_ref = None;
                     }
                     _ => {}

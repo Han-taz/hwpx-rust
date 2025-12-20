@@ -1,3 +1,5 @@
+#![allow(clippy::useless_conversion)]
+
 use hwp_core::viewer::html::{to_html, HtmlOptions};
 use hwp_core::viewer::markdown::{to_markdown, MarkdownOptions};
 use hwp_core::{HwpDocument, HwpParser};

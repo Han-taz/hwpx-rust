@@ -193,7 +193,7 @@ impl FootnoteShape {
             data[offset + 2],
             data[offset + 3],
         ]));
-        offset += 4;
+        // offset += 4; // Not needed, end of parsing
 
         Ok(FootnoteShape {
             attributes,

@@ -27,6 +27,7 @@ pub fn find_fixtures_dir() -> Option<PathBuf> {
 }
 
 /// Helper function to find test HWP file (for snapshot tests, uses noori.hwp)
+#[allow(dead_code)]
 pub fn find_test_file() -> Option<String> {
     if let Some(dir) = find_fixtures_dir() {
         let file_path = dir.join("noori.hwp");
@@ -38,6 +39,7 @@ pub fn find_test_file() -> Option<String> {
 }
 
 /// Helper function to find headerfooter.hwp file
+#[allow(dead_code)]
 pub fn find_headerfooter_file() -> Option<String> {
     if let Some(dir) = find_fixtures_dir() {
         let file_path = dir.join("headerfooter.hwp");
@@ -49,6 +51,7 @@ pub fn find_headerfooter_file() -> Option<String> {
 }
 
 /// Helper function to get all HWP files in fixtures directory
+#[allow(dead_code)]
 pub fn find_all_hwp_files() -> Vec<String> {
     if let Some(dir) = find_fixtures_dir() {
         let mut files = Vec::new();

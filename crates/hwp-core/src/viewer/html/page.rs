@@ -37,9 +37,7 @@ pub fn render_page(
     };
 
     // 일반 내용은 hcD > hcI 안에 배치 / Place regular content in hcD > hcI
-    let mut html = format!(
-        r#"<div class="hpa" style="width:{width_mm}mm;height:{height_mm}mm;">"#
-    );
+    let mut html = format!(r#"<div class="hpa" style="width:{width_mm}mm;height:{height_mm}mm;">"#);
 
     if !content.is_empty() {
         html.push_str(&format!(
@@ -67,8 +65,7 @@ pub fn render_page(
             let prefix_clean: String = prefix.chars().filter(|c| *c != '\0').collect();
             let suffix_clean: String = suffix.chars().filter(|c| *c != '\0').collect();
 
-            let page_number_text =
-                format!("{prefix_clean}{actual_page_number}{suffix_clean}");
+            let page_number_text = format!("{prefix_clean}{actual_page_number}{suffix_clean}");
 
             // 페이지 크기 계산 / Calculate page size
             let page_width_mm = page_def

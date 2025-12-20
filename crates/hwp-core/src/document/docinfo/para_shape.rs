@@ -442,7 +442,7 @@ impl ParaShape {
                 data[offset + 2],
                 data[offset + 3],
             ]);
-            offset += 4;
+            let _ = offset + 4; // Mark as intentionally unused
             Some(value)
         } else {
             None

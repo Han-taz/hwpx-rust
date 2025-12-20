@@ -39,7 +39,6 @@ fn colorref_to_hex(c: u32) -> String {
 }
 
 fn borderline_stroke_color(line: &BorderLine) -> String {
-    
     colorref_to_hex(line.color.0)
 }
 
@@ -121,6 +120,7 @@ fn cell_border_fill_id(table: &Table, cell: &TableCell) -> u16 {
     }
 }
 
+#[allow(dead_code)]
 fn pick_thicker(a: BorderLine, b: BorderLine) -> BorderLine {
     if border_width_code_to_mm(b.width) > border_width_code_to_mm(a.width) {
         b
@@ -210,8 +210,6 @@ fn vertical_segment_borderline(
             }
         }
     }
-
-    
 
     if is_left_edge {
         from_right_cell_left.or(from_left_cell_right)
@@ -303,8 +301,6 @@ fn horizontal_segment_borderline(
         }
     }
 
-    
-
     if is_top_edge {
         from_lower_cell_top.or(from_upper_cell_bottom)
     } else if is_bottom_edge {
@@ -324,9 +320,9 @@ pub(crate) fn render_vertical_borders(
 ) -> String {
     let mut svg_paths = String::new();
     let epsilon = 0.01; // 부동소수점 비교를 위한 작은 오차 / Small epsilon for floating point comparison
-    let is_suspect_image_or_caption_table =
+    let _is_suspect_image_or_caption_table =
         table.attributes.row_count as usize >= 6 && table.cells.len() >= 12;
-    let h11_logged_count = 0usize;
+    let _h11_logged_count = 0usize;
 
     for &col_x in column_positions {
         let is_left_edge = (col_x - 0.0).abs() < epsilon;

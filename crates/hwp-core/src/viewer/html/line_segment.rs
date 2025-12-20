@@ -59,6 +59,7 @@ pub struct ImageInfo {
     /// object_common 속성: 글자처럼 취급 여부 / object_common attribute: treat as letters
     pub like_letters: bool,
     /// object_common 속성: 줄 간격에 영향 여부 / object_common attribute: affect line spacing
+    #[allow(dead_code)]
     pub affect_line_spacing: bool,
     /// object_common 속성: 세로 기준 위치 / object_common attribute: vertical reference position
     pub vert_rel_to: Option<VertRelTo>,
@@ -149,12 +150,11 @@ pub fn render_line_segment(
         }
     }
 
-    format!(
-        r#"<div class="hls {para_shape_class}" style="{style}">{content}</div>"#
-    )
+    format!(r#"<div class="hls {para_shape_class}" style="{style}">{content}</div>"#)
 }
 
 /// 라인 세그먼트를 HTML로 렌더링 (ParaShape indent 포함) / Render line segment to HTML (with ParaShape indent)
+#[allow(dead_code)]
 pub fn render_line_segment_with_indent(
     segment: &LineSegmentInfo,
     content: &str,
@@ -173,6 +173,7 @@ pub fn render_line_segment_with_indent(
 }
 
 /// 라인 세그먼트 그룹을 HTML로 렌더링 / Render line segment group to HTML
+#[allow(dead_code)]
 pub fn render_line_segments(
     segments: &[LineSegmentInfo],
     text: &str,

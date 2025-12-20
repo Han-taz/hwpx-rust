@@ -164,7 +164,7 @@ impl Style {
             ));
         }
         let char_shape_id_value = UINT16::from_le_bytes([data[offset], data[offset + 1]]);
-        offset += 2;
+        // offset += 2; // Not needed, end of parsing
         let char_shape_id = if style_type == StyleType::Character {
             Some(char_shape_id_value)
         } else {

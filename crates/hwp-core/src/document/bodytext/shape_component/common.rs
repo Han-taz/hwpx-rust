@@ -110,7 +110,7 @@ impl ShapeComponent {
         let mut offset = 0;
 
         // 표 82: 개체 컨트롤 ID (UINT32, 4바이트) / Table 82: Object control ID (UINT32, 4 bytes)
-        let ctrl_id_value1 = UINT32::from_le_bytes([
+        let _ctrl_id_value1 = UINT32::from_le_bytes([
             data[offset],
             data[offset + 1],
             data[offset + 2],
@@ -132,7 +132,7 @@ impl ShapeComponent {
         // Legacy code also always reads the second ID
         let object_control_id2 = if data.len() >= offset + 4 {
             // 두 번째 ID 읽기 / Read second ID
-            let ctrl_id_value2 = UINT32::from_le_bytes([
+            let _ctrl_id_value2 = UINT32::from_le_bytes([
                 data[offset],
                 data[offset + 1],
                 data[offset + 2],
@@ -278,8 +278,7 @@ impl ShapeComponent {
                 actual: data.len(),
             });
         }
-        let translation_matrix =
-            parse_matrix(&data[offset..offset + 48])?;
+        let translation_matrix = parse_matrix(&data[offset..offset + 48])?;
         offset += 48;
 
         // BYTE stream (cnt×48×2): scale matrix/rotation matrix sequence
@@ -295,8 +294,7 @@ impl ShapeComponent {
         let mut matrix_sequence = Vec::new();
         for i in 0..matrix_count as usize {
             let seq_offset = offset + (i * 48 * 2);
-            let scale_matrix =
-                parse_matrix(&data[seq_offset..seq_offset + 48])?;
+            let scale_matrix = parse_matrix(&data[seq_offset..seq_offset + 48])?;
             let rotation_matrix = parse_matrix(&data[seq_offset + 48..seq_offset + 96])?;
             matrix_sequence.push(MatrixPair {
                 scale: scale_matrix,
