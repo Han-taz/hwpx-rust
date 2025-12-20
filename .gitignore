@@ -1,0 +1,48 @@
+# Rust
+**/target/
+**/*.rs.bk
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+**/.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# IDEs
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+*.pem
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+
+# Build outputs
+*.dylib
+*.dll
+
+# Test outputs
+*.lcov
+coverage/

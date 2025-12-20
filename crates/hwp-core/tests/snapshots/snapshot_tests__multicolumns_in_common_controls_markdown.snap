@@ -1,0 +1,26 @@
+---
+source: crates/hwp-core/tests/snapshot_tests.rs
+assertion_line: 446
+expression: markdown
+---
+# HWP 문서
+
+
+
+**버전**: 5.00.01.07
+
+
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+  <tr>
+    <td>다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 </td>
+  </tr>
+</table>
+  
+표
+
+그림  
+다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단  
+다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단 다단  
+그림

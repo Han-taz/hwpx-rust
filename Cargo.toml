@@ -1,0 +1,21 @@
+[workspace]
+members = [
+    "crates/*",
+    "packages/hwpx-python",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["ohah <bookyoon173@gmail.com>"]
+license = "MIT"
+
+[workspace.dependencies]
+
+[profile.release]
+lto = "fat"
+strip = true
+codegen-units = 1
+opt-level = "z"
+panic = "abort"

@@ -1,0 +1,95 @@
+# HWP 문서
+
+
+
+**버전**: 5.00.01.07
+
+
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 0mm, 글자처럼 취급  
+전후
+
+---
+
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 문단 왼쪽부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 단 왼쪽부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 쪽 왼쪽부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 종이 왼쪽부터 35mm
+
+---
+
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 문단 오른쪽부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 단 오른쪽부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 쪽 오른쪽부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 종이 오른쪽부터 35mm
+
+---
+
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 문단 가운데로부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 단 가운데로부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 쪽 가운데로부터 5mm
+
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+</table>
+  
+표  여백 10mm, 종이 가운데로부터 5mm

@@ -1,0 +1,30 @@
+[package]
+name = "hwp-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core HWP file parsing library"
+repository = "https://github.com/ohah/hwpjs"
+
+[lib]
+name = "hwp_core"
+path = "src/lib.rs"
+
+[dependencies]
+base64 = "0.22.1"
+cfb = "0.12.1"
+encoding_rs = "0.8.33"
+flate2 = "1.1.5"
+pathdiff = "0.2.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+thiserror = "2.0.17"
+
+# HWPX parsing (ZIP + XML)
+zip = "2.2"
+quick-xml = { version = "0.37", features = ["serialize"] }
+
+[dev-dependencies]
+insta = "1.43.2"
+

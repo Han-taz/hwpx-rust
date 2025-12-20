@@ -1,0 +1,19 @@
+[package]
+name = "hwpx-python"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kevin"]
+license = "MIT"
+description = "Python bindings for HWP/HWPX document parser"
+
+[lib]
+name = "hwpx"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module"] }
+hwp-core = { path = "../../crates/hwp-core" }
+serde_json = "1.0"
+
+[build-dependencies]
+pyo3-build-config = "0.22"
