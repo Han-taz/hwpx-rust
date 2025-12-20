@@ -1225,9 +1225,7 @@ fn parse_chart_obj(
             *offset += 1;
         }
         if *offset < data.len() {
-            _stored_name = Some(
-                String::from_utf8_lossy(&data[name_start..*offset]).to_string()
-            );
+            _stored_name = Some(String::from_utf8_lossy(&data[name_start..*offset]).to_string());
             *offset += 1; // null terminator
         } else {
             _stored_name = None;

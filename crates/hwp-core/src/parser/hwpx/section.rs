@@ -2,7 +2,6 @@
 ///
 /// Section files (section0.xml, section1.xml, etc.) contain the main document content
 /// including paragraphs, tables, images, and other elements.
-
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
@@ -402,7 +401,7 @@ fn create_table_paragraph_with_spans(rows: &[Vec<HwpxCell>]) -> Paragraph {
                     row_address,
                     col_span: cell_data.col_span,
                     row_span: cell_data.row_span,
-                    width: HWPUNIT(5000), // Default width
+                    width: HWPUNIT(5000),  // Default width
                     height: HWPUNIT(1000), // Default height
                     left_margin: 0,
                     right_margin: 0,

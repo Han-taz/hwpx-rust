@@ -16,7 +16,6 @@
 /// ├── BinData/                    # Binary data (images, OLE)
 /// └── Preview/                    # Preview images
 /// ```
-
 pub mod bindata;
 pub mod container;
 pub mod header;

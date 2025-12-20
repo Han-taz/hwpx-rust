@@ -1,7 +1,6 @@
 /// HWPX ZIP container handling
 ///
 /// HWPX files are ZIP archives containing XML files and binary data.
-
 use std::io::{Cursor, Read};
 use zip::ZipArchive;
 
@@ -16,7 +15,8 @@ impl<'a> HwpxContainer<'a> {
     /// Open HWPX container from byte array
     pub fn open(data: &'a [u8]) -> Result<Self, HwpError> {
         let cursor = Cursor::new(data);
-        let archive = ZipArchive::new(cursor).map_err(|e| HwpError::ZipParseError(e.to_string()))?;
+        let archive =
+            ZipArchive::new(cursor).map_err(|e| HwpError::ZipParseError(e.to_string()))?;
 
         Ok(Self { archive })
     }
@@ -90,9 +90,7 @@ impl<'a> HwpxContainer<'a> {
         let mut sections: Vec<String> = self
             .archive
             .file_names()
-            .filter(|name| {
-                name.starts_with("Contents/section") && name.ends_with(".xml")
-            })
+            .filter(|name| name.starts_with("Contents/section") && name.ends_with(".xml"))
             .map(|s| s.to_string())
             .collect();
 

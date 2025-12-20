@@ -2,7 +2,6 @@
 ///
 /// header.xml contains document settings like character shapes, paragraph shapes,
 /// styles, fonts, and other document-wide properties.
-
 use quick_xml::events::Event;
 use quick_xml::Reader;
 

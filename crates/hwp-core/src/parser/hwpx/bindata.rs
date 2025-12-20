@@ -1,7 +1,6 @@
 /// HWPX BinData parser
 ///
 /// BinData folder contains binary files like images, OLE objects, etc.
-
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 use crate::document::bindata::{BinData, BinaryDataItem};

@@ -28,9 +28,10 @@ pub fn convert_table_to_markdown(
 
     // 복잡한 테이블인지 확인 (colspan > 1 또는 rowspan > 1인 셀이 있는지)
     // Check if table is complex (has cells with colspan > 1 or rowspan > 1)
-    let has_merged_cells = table.cells.iter().any(|cell| {
-        cell.cell_attributes.col_span > 1 || cell.cell_attributes.row_span > 1
-    });
+    let has_merged_cells = table
+        .cells
+        .iter()
+        .any(|cell| cell.cell_attributes.col_span > 1 || cell.cell_attributes.row_span > 1);
 
     // HTML 모드이거나 병합된 셀이 있으면 HTML 테이블로 출력
     // Use HTML table if in HTML mode or has merged cells
@@ -550,4 +551,3 @@ fn fill_cell_content(
         }
     }
 }
-

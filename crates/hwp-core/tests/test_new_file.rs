@@ -17,11 +17,18 @@ fn test_parse_new_hwpx_file() {
 
             // Output paragraphs from first section
             if let Some(section) = doc.body_text.sections.first() {
-                println!("\n=== Section 0 - {} paragraphs ===", section.paragraphs.len());
+                println!(
+                    "\n=== Section 0 - {} paragraphs ===",
+                    section.paragraphs.len()
+                );
 
                 for (i, para) in section.paragraphs.iter().take(50).enumerate() {
                     for record in &para.records {
-                        if let hwp_core::document::bodytext::ParagraphRecord::ParaText { text, .. } = record {
+                        if let hwp_core::document::bodytext::ParagraphRecord::ParaText {
+                            text,
+                            ..
+                        } = record
+                        {
                             if !text.trim().is_empty() {
                                 println!("[{}] {}", i, text.trim());
                             }

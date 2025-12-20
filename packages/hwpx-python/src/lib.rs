@@ -1,8 +1,8 @@
-use pyo3::prelude::*;
-use pyo3::exceptions::PyValueError;
-use hwp_core::{HwpParser, HwpDocument};
-use hwp_core::viewer::markdown::{to_markdown, MarkdownOptions};
 use hwp_core::viewer::html::{to_html, HtmlOptions};
+use hwp_core::viewer::markdown::{to_markdown, MarkdownOptions};
+use hwp_core::{HwpDocument, HwpParser};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 
 /// Format version DWORD to "M.n.P.r" string
 /// Format: 0xMMnnPPrr (e.g., 0x05000300 = "5.0.3.0")
@@ -94,7 +94,10 @@ impl Document {
         for section in &self.inner.body_text.sections {
             for paragraph in &section.paragraphs {
                 for record in &paragraph.records {
-                    if let hwp_core::document::bodytext::ParagraphRecord::ParaText { text, .. } = record {
+                    if let hwp_core::document::bodytext::ParagraphRecord::ParaText {
+                        text, ..
+                    } = record
+                    {
                         if !text.trim().is_empty() {
                             text_parts.push(text.trim().to_string());
                         }

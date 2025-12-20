@@ -2,7 +2,6 @@
 ///
 /// This module provides format detection and parsing for both HWP 5.0 (CFB-based)
 /// and HWPX (ZIP-based) file formats.
-
 pub mod detect;
 pub mod hwpx;
 
