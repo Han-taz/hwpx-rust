@@ -28,6 +28,8 @@ struct HwpxCell {
     row_span: u16,
     col_addr: Option<u16>,
     row_addr: Option<u16>,
+    /// 셀 내부의 이미지 참조 목록 / List of image references inside the cell
+    images: Vec<String>,
 }
 
 impl Default for HwpxCell {
@@ -38,6 +40,7 @@ impl Default for HwpxCell {
             row_span: 1,
             col_addr: None,
             row_addr: None,
+            images: Vec::new(),
         }
     }
 }
@@ -291,8 +294,16 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                     }
                     s if s.ends_with(":pic") || s == "pic" => {
                         // Create image paragraph when picture element ends
+                        // 테이블 셀 내부의 이미지는 셀에 저장하고, 그 외에는 별도 paragraph로 추가
+                        // Store images inside table cells, otherwise add as separate paragraph
                         if let Some(ref image_ref) = current_image_ref {
-                            paragraphs.push(create_image_paragraph(image_ref));
+                            if in_table && in_cell {
+                                // 테이블 셀 내부의 이미지는 셀에 저장
+                                current_cell.images.push(image_ref.clone());
+                            } else {
+                                // 테이블 밖의 이미지는 별도 paragraph로 추가
+                                paragraphs.push(create_image_paragraph(image_ref));
+                            }
                         }
                         _in_picture = false;
                         current_image_ref = None;
@@ -386,9 +397,28 @@ fn create_table_paragraph_with_spans(rows: &[Vec<HwpxCell>]) -> Paragraph {
             let col_address = cell_data.col_addr.unwrap_or(calc_col_address);
             let row_address = cell_data.row_addr.unwrap_or(row_idx as u16);
 
+            // 셀 내용 구성: 텍스트 + 이미지
+            // Build cell content: text + images
+            let mut cell_paragraphs = Vec::new();
+
+            // 텍스트가 있으면 텍스트 paragraph 추가
+            if !cell_data.text.is_empty() {
+                cell_paragraphs.push(create_paragraph(&cell_data.text));
+            }
+
+            // 이미지가 있으면 이미지 paragraph 추가
+            for image_ref in &cell_data.images {
+                cell_paragraphs.push(create_image_paragraph(image_ref));
+            }
+
+            // 내용이 없으면 빈 paragraph 추가
+            if cell_paragraphs.is_empty() {
+                cell_paragraphs.push(create_paragraph(""));
+            }
+
             let cell = TableCell {
                 list_header: ListHeader {
-                    paragraph_count: 1,
+                    paragraph_count: cell_paragraphs.len() as i16,
                     attribute: ListHeaderAttribute {
                         text_direction: TextDirection::Horizontal,
                         line_break: LineBreak::Normal,
@@ -408,7 +438,7 @@ fn create_table_paragraph_with_spans(rows: &[Vec<HwpxCell>]) -> Paragraph {
                     bottom_margin: 0,
                     border_fill_id: 0,
                 },
-                paragraphs: vec![create_paragraph(&cell_data.text)],
+                paragraphs: cell_paragraphs,
             };
             cells.push(cell);
 

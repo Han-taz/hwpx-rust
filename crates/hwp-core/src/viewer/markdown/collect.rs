@@ -22,6 +22,30 @@ pub fn collect_text_and_images_from_paragraph(
                 // 이미지 ID 수집 / Collect image ID
                 table_cell_image_ids.insert(shape_component_picture.picture_info.bindata_id);
             }
+            ParagraphRecord::ShapeComponent { children, .. } => {
+                // SHAPE_COMPONENT의 children 확인 / Check SHAPE_COMPONENT's children
+                for shape_child in children {
+                    match shape_child {
+                        ParagraphRecord::ShapeComponentPicture {
+                            shape_component_picture,
+                        } => {
+                            table_cell_image_ids
+                                .insert(shape_component_picture.picture_info.bindata_id);
+                        }
+                        ParagraphRecord::ListHeader { paragraphs, .. } => {
+                            // LIST_HEADER의 paragraphs도 확인 / Check LIST_HEADER's paragraphs
+                            for list_para in paragraphs {
+                                collect_text_and_images_from_paragraph(
+                                    list_para,
+                                    table_cell_texts,
+                                    table_cell_image_ids,
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
             ParagraphRecord::CtrlHeader {
                 children,
                 paragraphs: ctrl_paragraphs,

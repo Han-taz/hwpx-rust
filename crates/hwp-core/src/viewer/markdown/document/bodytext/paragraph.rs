@@ -48,6 +48,49 @@ pub fn convert_paragraph_to_markdown(
         document.doc_info.char_shapes.get(shape_id as usize)
     };
 
+    // paragraph.records에서 테이블 관련 이미지 ID를 먼저 수집
+    // First collect image IDs related to tables in paragraph.records
+    let mut para_table_cell_image_ids: std::collections::HashSet<u16> =
+        std::collections::HashSet::new();
+    for record in &paragraph.records {
+        if let ParagraphRecord::CtrlHeader { header, children, .. } = record {
+            if header.ctrl_id == crate::document::CtrlId::TABLE {
+                // TABLE 컨트롤의 children에서 모든 이미지 ID 수집 (셀 내용 + children 직접)
+                // Collect all image IDs from TABLE control's children (cell content + direct children)
+                for child in children {
+                    match child {
+                        ParagraphRecord::Table { table } => {
+                            // 테이블 셀 내용에서 이미지 ID 수집
+                            for cell in &table.cells {
+                                for para in &cell.paragraphs {
+                                    let mut dummy_texts = std::collections::HashSet::new();
+                                    collect_text_and_images_from_paragraph(
+                                        para,
+                                        &mut dummy_texts,
+                                        &mut para_table_cell_image_ids,
+                                    );
+                                }
+                            }
+                        }
+                        ParagraphRecord::ShapeComponent { children: shape_children, .. } => {
+                            // CtrlHeader.children의 ShapeComponent에서 이미지 ID 수집
+                            for shape_child in shape_children {
+                                if let ParagraphRecord::ShapeComponentPicture { shape_component_picture } = shape_child {
+                                    para_table_cell_image_ids.insert(shape_component_picture.picture_info.bindata_id);
+                                }
+                            }
+                        }
+                        ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
+                            // CtrlHeader.children의 직접 ShapeComponentPicture에서 이미지 ID 수집
+                            para_table_cell_image_ids.insert(shape_component_picture.picture_info.bindata_id);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
     // Process all records in order / 모든 레코드를 순서대로 처리
     for record in &paragraph.records {
         match record {
@@ -83,18 +126,43 @@ pub fn convert_paragraph_to_markdown(
                 children,
             } => {
                 // SHAPE_COMPONENT의 children을 재귀적으로 처리 / Recursively process SHAPE_COMPONENT's children
-                let shape_parts = convert_shape_component_children_to_markdown(
-                    children,
-                    document,
-                    options.image_output_dir.as_deref(),
-                    tracker,
-                );
-                parts.extend(shape_parts);
+                // 테이블 셀 내부의 이미지는 테이블 변환 시 이미 포함되므로 건너뜀
+                // Skip images inside table cells as they are already included in table conversion
+                for child in children {
+                    match child {
+                        ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
+                            if para_table_cell_image_ids.contains(&shape_component_picture.picture_info.bindata_id) {
+                                continue; // 테이블 셀 내부 이미지는 건너뜀
+                            }
+                            if let Some(image_md) = convert_shape_component_picture_to_markdown(
+                                shape_component_picture,
+                                document,
+                                options.image_output_dir.as_deref(),
+                            ) {
+                                parts.push(image_md);
+                            }
+                        }
+                        _ => {
+                            // 다른 타입은 기존 방식으로 처리
+                            let shape_parts = convert_shape_component_children_to_markdown(
+                                &[child.clone()],
+                                document,
+                                options.image_output_dir.as_deref(),
+                                tracker,
+                            );
+                            parts.extend(shape_parts);
+                        }
+                    }
+                }
             }
             ParagraphRecord::ShapeComponentPicture {
                 shape_component_picture,
             } => {
                 // ShapeComponentPicture 변환 / Convert ShapeComponentPicture
+                // 테이블 셀 내부의 이미지는 테이블 변환 시 이미 포함되므로 건너뜀
+                if para_table_cell_image_ids.contains(&shape_component_picture.picture_info.bindata_id) {
+                    continue; // 테이블 셀 내부 이미지는 건너뜀
+                }
                 if let Some(image_md) = convert_shape_component_picture_to_markdown(
                     shape_component_picture,
                     document,
@@ -207,23 +275,30 @@ pub fn convert_paragraph_to_markdown(
                 // and LIST_HEADERs after TABLE are only processed as cells
 
                 // 컨트롤 헤더의 자식 레코드들을 순회하며 처리 / Iterate through control header's child records and process them
-                let mut index = 0;
                 let children_slice: &[ParagraphRecord] = children;
                 let is_shape_object = header.ctrl_id == crate::document::CtrlId::SHAPE_OBJECT;
 
-                while index < children_slice.len() {
-                    let child = &children_slice[index];
-                    match child {
-                        ParagraphRecord::Table { table } => {
-                            // 표 변환 / Convert table
-                            let table_md =
-                                convert_table_to_markdown(table, document, options, tracker);
-                            if !table_md.is_empty() {
-                                parts.push(table_md);
-                                has_table = true;
-                            }
-                            index += 1;
+                // 먼저 Table을 처리 (표 안의 이미지가 표보다 앞에 배치되는 문제 방지)
+                // First process Table (prevent images inside table from being placed before table)
+                if let Some(table_idx) = table_index {
+                    if let ParagraphRecord::Table { table } = &children_slice[table_idx] {
+                        let table_md =
+                            convert_table_to_markdown(table, document, options, tracker);
+                        if !table_md.is_empty() {
+                            parts.push(table_md);
+                            has_table = true;
                         }
+                    }
+                }
+
+                // 그 다음 나머지 children 처리 / Then process remaining children
+                for (index, child) in children_slice.iter().enumerate() {
+                    // Table은 이미 처리됨 / Table already processed
+                    if Some(index) == table_index {
+                        continue;
+                    }
+
+                    match child {
                         ParagraphRecord::ListHeader { paragraphs, .. } => {
                             // LIST_HEADER 처리 (표 아래 캡션 등) / Process LIST_HEADER (caption below, etc.)
                             // libhwp 방식: TABLE 이후의 LIST_HEADER는 Table.cells에 포함되어 있으므로 children에서 처리하지 않음
@@ -259,7 +334,6 @@ pub fn convert_paragraph_to_markdown(
                                     }
                                 }
                             }
-                            index += 1;
                         }
                         ParagraphRecord::ShapeComponent {
                             shape_component: _,
@@ -329,8 +403,6 @@ pub fn convert_paragraph_to_markdown(
                                     parts.push(shape_part);
                                 }
                             }
-
-                            index += 1;
                         }
                         ParagraphRecord::ShapeComponentPicture {
                             shape_component_picture,
@@ -363,12 +435,10 @@ pub fn convert_paragraph_to_markdown(
                                     }
                                 }
                             }
-                            index += 1;
                         }
                         _ => {
                             // 기타 레코드는 무시 / Ignore other records
                             // CtrlHeader는 이미 위에서 처리됨 / CtrlHeader is already processed above
-                            index += 1;
                         }
                     }
                 }

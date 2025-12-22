@@ -314,6 +314,18 @@ fn get_cell_content(
                         );
                     cell_parts.extend(shape_parts);
                 }
+                ParagraphRecord::HwpxImage { binary_item_ref } => {
+                    // HWPX 이미지 참조 변환 / Convert HWPX image reference
+                    if let Some(image_md) =
+                        crate::viewer::markdown::document::bodytext::shape_component_picture::convert_hwpx_image_to_markdown(
+                            binary_item_ref,
+                            document,
+                            options.image_output_dir.as_deref(),
+                        )
+                    {
+                        cell_parts.push(image_md);
+                    }
+                }
                 _ => {}
             }
         }
@@ -494,6 +506,19 @@ fn fill_cell_content(
                                 has_image = true;
                             }
                             cell_parts.push(shape_part);
+                        }
+                    }
+                    ParagraphRecord::HwpxImage { binary_item_ref } => {
+                        // HWPX 이미지 참조 변환 / Convert HWPX image reference
+                        if let Some(image_md) =
+                            crate::viewer::markdown::document::bodytext::shape_component_picture::convert_hwpx_image_to_markdown(
+                                binary_item_ref,
+                                document,
+                                options.image_output_dir.as_deref(),
+                            )
+                        {
+                            cell_parts.push(image_md);
+                            has_image = true;
                         }
                     }
                     _ => {
