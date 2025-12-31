@@ -20,27 +20,36 @@ use crate::types::{HWPUNIT, UINT16, WORD};
 
 use super::container::HwpxContainer;
 
+/// Content item type within a cell paragraph
+/// 셀 문단 내 콘텐츠 항목 유형
+#[derive(Debug, Clone)]
+enum CellContentItem {
+    Text(String),
+    Image(String),
+}
+
 /// Cell data with colspan/rowspan and address information
 #[derive(Debug, Clone)]
 struct HwpxCell {
-    text: String,
+    /// 현재 문단의 텍스트 / Current paragraph text
+    current_text: String,
     col_span: u16,
     row_span: u16,
     col_addr: Option<u16>,
     row_addr: Option<u16>,
-    /// 셀 내부의 이미지 참조 목록 / List of image references inside the cell
-    images: Vec<String>,
+    /// 셀 내부의 콘텐츠 항목 목록 (순서 보존) / List of content items inside the cell (order preserved)
+    content_items: Vec<CellContentItem>,
 }
 
 impl Default for HwpxCell {
     fn default() -> Self {
         Self {
-            text: String::new(),
+            current_text: String::new(),
             col_span: 1,
             row_span: 1,
             col_addr: None,
             row_addr: None,
-            images: Vec::new(),
+            content_items: Vec::new(),
         }
     }
 }
@@ -147,7 +156,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                     if in_table && in_caption {
                         table_caption.push_str(&tab_text);
                     } else if in_table && in_cell {
-                        current_cell.text.push_str(&tab_text);
+                        current_cell.current_text.push_str(&tab_text);
                     } else if !in_table {
                         current_text.push_str(&tab_text);
                     }
@@ -236,7 +245,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         // Text inside table caption
                         table_caption.push_str(&text);
                     } else if in_table && in_cell {
-                        current_cell.text.push_str(&text);
+                        current_cell.current_text.push_str(&text);
                     } else if !in_table {
                         current_text.push_str(&text);
                     }
@@ -252,9 +261,13 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             paragraphs.push(create_paragraph(&current_text));
                             current_text.clear();
                         }
-                        // Add newline between paragraphs inside cells
-                        if in_cell && !current_cell.text.is_empty() {
-                            current_cell.text.push('\n');
+                        // Save current paragraph text as a content item when paragraph ends inside cell
+                        // 셀 내부 문단이 끝나면 현재 텍스트를 콘텐츠 항목으로 저장
+                        if in_cell && !current_cell.current_text.is_empty() {
+                            current_cell.content_items.push(CellContentItem::Text(
+                                current_cell.current_text.clone(),
+                            ));
+                            current_cell.current_text.clear();
                         }
                         // Add newline between nested paragraphs (e.g., in drawText/container)
                         // This ensures proper line breaks in TOC and other nested structures
@@ -287,8 +300,8 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         }
                     }
                     s if s.ends_with(":tc") || s == "tc" => {
-                        // Trim trailing newline from cell text
-                        current_cell.text = current_cell.text.trim_end_matches('\n').to_string();
+                        // Cell parsing complete, push to current row
+                        // 셀 파싱 완료, 현재 행에 추가
                         current_row.push(current_cell.clone());
                         in_cell = false;
                     }
@@ -298,8 +311,11 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         // Store images inside table cells, otherwise add as separate paragraph
                         if let Some(ref image_ref) = current_image_ref {
                             if in_table && in_cell {
-                                // 테이블 셀 내부의 이미지는 셀에 저장
-                                current_cell.images.push(image_ref.clone());
+                                // 테이블 셀 내부의 이미지는 순서대로 콘텐츠 항목에 추가
+                                // Add image to content items in order
+                                current_cell
+                                    .content_items
+                                    .push(CellContentItem::Image(image_ref.clone()));
                             } else {
                                 // 테이블 밖의 이미지는 별도 paragraph로 추가
                                 paragraphs.push(create_image_paragraph(image_ref));
@@ -397,21 +413,25 @@ fn create_table_paragraph_with_spans(rows: &[Vec<HwpxCell>]) -> Paragraph {
             let col_address = cell_data.col_addr.unwrap_or(calc_col_address);
             let row_address = cell_data.row_addr.unwrap_or(row_idx as u16);
 
-            // 셀 내용 구성: 텍스트 + 이미지
-            // Build cell content: text + images
+            // 셀 내용 구성: 콘텐츠 항목 순서대로 paragraph 추가
+            // Build cell content: add paragraphs in content item order
             let mut cell_paragraphs = Vec::new();
 
-            // 텍스트가 있으면 텍스트 paragraph 추가
-            if !cell_data.text.is_empty() {
-                cell_paragraphs.push(create_paragraph(&cell_data.text));
+            // 콘텐츠 항목을 순서대로 처리 / Process content items in order
+            for item in &cell_data.content_items {
+                match item {
+                    CellContentItem::Text(text) => {
+                        if !text.is_empty() {
+                            cell_paragraphs.push(create_paragraph(text));
+                        }
+                    }
+                    CellContentItem::Image(image_ref) => {
+                        cell_paragraphs.push(create_image_paragraph(image_ref));
+                    }
+                }
             }
 
-            // 이미지가 있으면 이미지 paragraph 추가
-            for image_ref in &cell_data.images {
-                cell_paragraphs.push(create_image_paragraph(image_ref));
-            }
-
-            // 내용이 없으면 빈 paragraph 추가
+            // 내용이 없으면 빈 paragraph 추가 / Add empty paragraph if no content
             if cell_paragraphs.is_empty() {
                 cell_paragraphs.push(create_paragraph(""));
             }

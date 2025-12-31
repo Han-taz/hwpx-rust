@@ -19,6 +19,20 @@ cd packages/hwpx-python
 maturin develop
 ```
 
+## Build Wheel
+
+```bash
+cd packages/hwpx-python
+
+# Using uv (recommended)
+uv tool run maturin build --release --interpreter python3.12 --out dist
+
+# Or using maturin directly
+maturin build --release --interpreter python3.12 --out dist
+```
+
+The built wheel will be in the `dist/` directory.
+
 ## Usage
 
 ### Parse a document
