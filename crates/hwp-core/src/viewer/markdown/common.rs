@@ -8,6 +8,25 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use std::fs;
 use std::path::Path;
 
+/// Detect MIME type from base64 encoded image data using magic bytes
+/// base64 인코딩된 이미지 데이터의 매직 바이트로 MIME 타입 감지
+///
+/// Magic bytes (base64 encoded):
+/// - PNG: starts with "iVBORw" (0x89 0x50 0x4E 0x47)
+/// - JPEG: starts with "/9j/" (0xFF 0xD8 0xFF)
+/// - BMP: starts with "Qk" (0x42 0x4D = "BM")
+pub(crate) fn detect_mime_type_from_base64(base64_data: &str) -> &'static str {
+    if base64_data.starts_with("iVBORw") {
+        "image/png"
+    } else if base64_data.starts_with("/9j/") {
+        "image/jpeg"
+    } else if base64_data.starts_with("Qk") {
+        "image/bmp"
+    } else {
+        "application/octet-stream"
+    }
+}
+
 /// Get MIME type from BinData ID using bin_data_records
 /// bin_data_records를 사용하여 BinData ID에서 MIME 타입 가져오기
 pub(crate) fn get_mime_type_from_bindata_id(
@@ -76,14 +95,16 @@ pub(crate) fn format_image_markdown(
                 Err(e) => {
                     eprintln!("Failed to save image: {e}");
                     // 실패 시 base64로 폴백 / Fallback to base64 on failure
-                    let mime_type = get_mime_type_from_bindata_id(document, bindata_id);
+                    let mime_type = detect_mime_type_from_base64(base64_data);
                     format!("![이미지](data:{mime_type};base64,{base64_data})")
                 }
             }
         }
         None => {
             // base64 데이터 URI로 임베드 / Embed as base64 data URI
-            let mime_type = get_mime_type_from_bindata_id(document, bindata_id);
+            // 매직 바이트로 실제 MIME 타입 감지 (HWPX 등에서 확장자 정보가 없을 때 정확한 MIME 타입 사용)
+            // Detect actual MIME type from magic bytes (use accurate MIME type when extension info is missing in HWPX, etc.)
+            let mime_type = detect_mime_type_from_base64(base64_data);
             format!("![이미지](data:{mime_type};base64,{base64_data})")
         }
     }
