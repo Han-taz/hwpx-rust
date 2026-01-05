@@ -26,6 +26,7 @@ use super::container::HwpxContainer;
 enum CellContentItem {
     Text(String),
     Image(String),
+    NestedTable(Table),
 }
 
 /// Cell data with colspan/rowspan and address information
@@ -39,6 +40,17 @@ struct HwpxCell {
     row_addr: Option<u16>,
     /// 셀 내부의 콘텐츠 항목 목록 (순서 보존) / List of content items inside the cell (order preserved)
     content_items: Vec<CellContentItem>,
+}
+
+/// Saved table state for nested table handling
+/// 중첩 테이블 처리를 위해 저장되는 부모 테이블 상태
+#[derive(Debug, Clone)]
+struct TableState {
+    table_rows: Vec<Vec<HwpxCell>>,
+    current_row: Vec<HwpxCell>,
+    current_cell: HwpxCell,
+    table_caption: String,
+    in_cell: bool,
 }
 
 impl Default for HwpxCell {
@@ -83,7 +95,6 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
     let mut paragraphs = Vec::new();
     let mut current_text = String::new();
     let mut in_text = false;
-    let mut in_table = false;
     let mut in_cell = false;
     let mut in_caption = false;
     let mut _in_picture = false;
@@ -97,8 +108,14 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
     let mut current_cell = HwpxCell::default();
     let mut table_caption = String::new();
 
-    // Track nesting depth for paragraphs
+    // Track nesting depth for paragraphs and tables
+    // 문단과 테이블의 중첩 깊이 추적
     let mut para_depth: u32 = 0;
+    let mut table_depth: u32 = 0;
+
+    // Stack to save parent table state when entering nested table
+    // 중첩 테이블에 진입할 때 부모 테이블 상태를 저장하는 스택
+    let mut table_state_stack: Vec<TableState> = Vec::new();
 
     loop {
         match reader.read_event() {
@@ -153,6 +170,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                     };
 
                     // Add tab representation to current text context
+                    let in_table = table_depth > 0;
                     if in_table && in_caption {
                         table_caption.push_str(&tab_text);
                     } else if in_table && in_cell {
@@ -209,7 +227,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                 match local_name.as_ref() {
                     s if s.ends_with(":p") || s == "p" => {
                         para_depth += 1;
-                        if !in_table && para_depth == 1 {
+                        if table_depth == 0 && para_depth == 1 {
                             current_text.clear();
                         }
                     }
@@ -217,7 +235,18 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         in_text = true;
                     }
                     s if s.ends_with(":tbl") || s == "tbl" => {
-                        in_table = true;
+                        // If already in a table (nested table), save current state
+                        // 이미 테이블 안에 있으면 (중첩 테이블) 현재 상태 저장
+                        if table_depth > 0 {
+                            table_state_stack.push(TableState {
+                                table_rows: std::mem::take(&mut table_rows),
+                                current_row: std::mem::take(&mut current_row),
+                                current_cell: std::mem::take(&mut current_cell),
+                                table_caption: std::mem::take(&mut table_caption),
+                                in_cell,
+                            });
+                        }
+                        table_depth += 1;
                         table_rows.clear();
                         table_caption.clear();
                     }
@@ -241,6 +270,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
             Ok(Event::Text(ref e)) => {
                 if in_text {
                     let text = e.unescape().unwrap_or_default().to_string();
+                    let in_table = table_depth > 0;
                     if in_table && in_caption {
                         // Text inside table caption
                         table_caption.push_str(&text);
@@ -257,6 +287,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
 
                 match local_name.as_ref() {
                     s if s.ends_with(":p") || s == "p" => {
+                        let in_table = table_depth > 0;
                         if para_depth == 1 && !in_table && !current_text.is_empty() {
                             paragraphs.push(create_paragraph(&current_text));
                             current_text.clear();
@@ -283,16 +314,46 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         in_caption = false;
                     }
                     s if s.ends_with(":tbl") || s == "tbl" => {
-                        // Add caption as a paragraph before the table
-                        let caption_trimmed = table_caption.trim();
-                        if !caption_trimmed.is_empty() {
-                            paragraphs.push(create_paragraph(caption_trimmed));
+                        table_depth = table_depth.saturating_sub(1);
+
+                        if table_depth == 0 {
+                            // Outermost table complete - add to paragraphs
+                            // 최외곽 테이블 완료 - paragraph로 추가
+                            let caption_trimmed = table_caption.trim();
+                            if !caption_trimmed.is_empty() {
+                                paragraphs.push(create_paragraph(caption_trimmed));
+                            }
+                            if !table_rows.is_empty() {
+                                paragraphs.push(create_table_paragraph_with_spans(&table_rows));
+                            }
+                            table_caption.clear();
+                        } else {
+                            // Nested table complete - convert to content for parent cell
+                            // 중첩 테이블 완료 - 부모 셀의 콘텐츠로 변환
+                            let nested_table = if !table_rows.is_empty() {
+                                Some(create_table_from_rows(&table_rows))
+                            } else {
+                                None
+                            };
+
+                            // Restore parent table state
+                            // 부모 테이블 상태 복원
+                            if let Some(parent_state) = table_state_stack.pop() {
+                                table_rows = parent_state.table_rows;
+                                current_row = parent_state.current_row;
+                                current_cell = parent_state.current_cell;
+                                table_caption = parent_state.table_caption;
+                                in_cell = parent_state.in_cell;
+
+                                // Add nested table to parent cell's content
+                                // 중첩 테이블을 부모 셀의 콘텐츠에 추가
+                                if let Some(table) = nested_table {
+                                    current_cell
+                                        .content_items
+                                        .push(CellContentItem::NestedTable(table));
+                                }
+                            }
                         }
-                        if !table_rows.is_empty() {
-                            paragraphs.push(create_table_paragraph_with_spans(&table_rows));
-                        }
-                        in_table = false;
-                        table_caption.clear();
                     }
                     s if s.ends_with(":tr") || s == "tr" => {
                         if !current_row.is_empty() {
@@ -310,6 +371,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         // 테이블 셀 내부의 이미지는 셀에 저장하고, 그 외에는 별도 paragraph로 추가
                         // Store images inside table cells, otherwise add as separate paragraph
                         if let Some(ref image_ref) = current_image_ref {
+                            let in_table = table_depth > 0;
                             if in_table && in_cell {
                                 // 테이블 셀 내부의 이미지는 순서대로 콘텐츠 항목에 추가
                                 // Add image to content items in order
@@ -364,6 +426,120 @@ fn create_paragraph(text: &str) -> Paragraph {
     Paragraph {
         para_header,
         records,
+    }
+}
+
+/// Create a Table struct from rows (used for nested tables)
+/// 행 데이터로부터 Table 구조체 생성 (중첩 테이블용)
+fn create_table_from_rows(rows: &[Vec<HwpxCell>]) -> Table {
+    let row_count = rows.len() as UINT16;
+
+    // Calculate actual column count from maximum (col_addr + col_span) across all cells
+    let col_count = rows
+        .iter()
+        .flat_map(|row| row.iter())
+        .map(|c| {
+            let col_addr = c.col_addr.unwrap_or(0) as usize;
+            col_addr + c.col_span as usize
+        })
+        .max()
+        .unwrap_or(0) as UINT16;
+
+    let table_attributes = TableAttributes {
+        attribute: TableAttribute {
+            page_break: PageBreakBehavior::NoBreak,
+            header_row_repeat: false,
+        },
+        row_count,
+        col_count,
+        cell_spacing: 0,
+        padding: TablePadding {
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+        },
+        row_sizes: vec![],
+        border_fill_id: 0,
+        zones: vec![],
+    };
+
+    let mut cells = Vec::new();
+
+    for (row_idx, row) in rows.iter().enumerate() {
+        let mut calc_col_address: u16 = 0;
+
+        for cell_data in row.iter() {
+            let col_address = cell_data.col_addr.unwrap_or(calc_col_address);
+            let row_address = cell_data.row_addr.unwrap_or(row_idx as u16);
+
+            let mut cell_paragraphs = Vec::new();
+
+            for item in &cell_data.content_items {
+                match item {
+                    CellContentItem::Text(text) => {
+                        if !text.is_empty() {
+                            cell_paragraphs.push(create_paragraph(text));
+                        }
+                    }
+                    CellContentItem::Image(image_ref) => {
+                        cell_paragraphs.push(create_image_paragraph(image_ref));
+                    }
+                    CellContentItem::NestedTable(nested_table) => {
+                        // Create a paragraph containing the nested table
+                        // 중첩 테이블을 포함하는 paragraph 생성
+                        let para_header = ParaHeader {
+                            text_char_count: 1,
+                            ..Default::default()
+                        };
+                        let records = vec![ParagraphRecord::Table {
+                            table: nested_table.clone(),
+                        }];
+                        cell_paragraphs.push(Paragraph {
+                            para_header,
+                            records,
+                        });
+                    }
+                }
+            }
+
+            if cell_paragraphs.is_empty() {
+                cell_paragraphs.push(create_paragraph(""));
+            }
+
+            let cell = TableCell {
+                list_header: ListHeader {
+                    paragraph_count: cell_paragraphs.len() as i16,
+                    attribute: ListHeaderAttribute {
+                        text_direction: TextDirection::Horizontal,
+                        line_break: LineBreak::Normal,
+                        vertical_align: VerticalAlign::Top,
+                    },
+                },
+                cell_attributes: CellAttributes {
+                    col_address,
+                    row_address,
+                    col_span: cell_data.col_span,
+                    row_span: cell_data.row_span,
+                    width: HWPUNIT(5000),
+                    height: HWPUNIT(1000),
+                    left_margin: 0,
+                    right_margin: 0,
+                    top_margin: 0,
+                    bottom_margin: 0,
+                    border_fill_id: 0,
+                },
+                paragraphs: cell_paragraphs,
+            };
+            cells.push(cell);
+
+            calc_col_address = col_address + cell_data.col_span;
+        }
+    }
+
+    Table {
+        attributes: table_attributes,
+        cells,
     }
 }
 
@@ -427,6 +603,21 @@ fn create_table_paragraph_with_spans(rows: &[Vec<HwpxCell>]) -> Paragraph {
                     }
                     CellContentItem::Image(image_ref) => {
                         cell_paragraphs.push(create_image_paragraph(image_ref));
+                    }
+                    CellContentItem::NestedTable(nested_table) => {
+                        // Create a paragraph containing the nested table
+                        // 중첩 테이블을 포함하는 paragraph 생성
+                        let para_header = ParaHeader {
+                            text_char_count: 1,
+                            ..Default::default()
+                        };
+                        let records = vec![ParagraphRecord::Table {
+                            table: nested_table.clone(),
+                        }];
+                        cell_paragraphs.push(Paragraph {
+                            para_header,
+                            records,
+                        });
                     }
                 }
             }

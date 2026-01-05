@@ -5,6 +5,101 @@
 /// Spec mapping: Table 57 - BodyText data records, TABLE (HWPTAG_BEGIN + 61)
 use crate::document::{bodytext::Table, HwpDocument, ParagraphRecord};
 
+/// Convert nested table to text with line breaks
+/// 중첩 테이블을 줄바꿈이 포함된 텍스트로 변환
+fn convert_nested_table_to_text(
+    table: &Table,
+    document: &HwpDocument,
+    options: &crate::viewer::markdown::MarkdownOptions,
+    tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
+) -> String {
+    let row_count = table.attributes.row_count as usize;
+    let col_count = table.attributes.col_count as usize;
+
+    if row_count == 0 || col_count == 0 || table.cells.is_empty() {
+        return String::new();
+    }
+
+    // 셀을 row_address 기준으로 그룹화
+    let min_row = table
+        .cells
+        .iter()
+        .map(|c| c.cell_attributes.row_address)
+        .min()
+        .unwrap_or(0);
+
+    // 셀을 row, col 순서로 정렬
+    let mut sorted_cells: Vec<_> = table.cells.iter().collect();
+    sorted_cells.sort_by_key(|cell| {
+        (
+            cell.cell_attributes.row_address,
+            cell.cell_attributes.col_address,
+        )
+    });
+
+    let mut row_contents = Vec::new();
+
+    for row_idx in 0..row_count {
+        // 이 행에 속한 셀들 찾기
+        let row_cells: Vec<_> = sorted_cells
+            .iter()
+            .filter(|cell| {
+                (cell.cell_attributes.row_address.saturating_sub(min_row)) as usize == row_idx
+            })
+            .collect();
+
+        let mut cell_texts = Vec::new();
+        for cell in &row_cells {
+            // 셀 내용 추출 (재귀적으로 중첩 테이블도 처리)
+            let cell_text = get_nested_cell_content(cell, document, options, tracker);
+            if !cell_text.trim().is_empty() {
+                cell_texts.push(cell_text);
+            }
+        }
+
+        if !cell_texts.is_empty() {
+            // 같은 행의 셀들을 탭으로 구분
+            row_contents.push(cell_texts.join("\t"));
+        }
+    }
+
+    // 행들을 줄바꿈으로 구분
+    row_contents.join("\n")
+}
+
+/// Get nested cell content (simplified version for nested tables)
+/// 중첩 셀 내용 추출 (중첩 테이블용 간소화 버전)
+fn get_nested_cell_content(
+    cell: &crate::document::bodytext::TableCell,
+    document: &HwpDocument,
+    options: &crate::viewer::markdown::MarkdownOptions,
+    tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
+) -> String {
+    let mut parts = Vec::new();
+
+    for para in &cell.paragraphs {
+        for record in &para.records {
+            match record {
+                ParagraphRecord::ParaText { text, .. } => {
+                    if !text.trim().is_empty() {
+                        parts.push(text.clone());
+                    }
+                }
+                ParagraphRecord::Table { table } => {
+                    // 재귀적으로 중첩 테이블 처리
+                    let nested = convert_nested_table_to_text(table, document, options, tracker);
+                    if !nested.trim().is_empty() {
+                        parts.push(nested);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    parts.join(" ")
+}
+
 /// Convert table to markdown/HTML format
 /// 테이블을 마크다운/HTML 형식으로 변환
 /// 복잡한 테이블(colspan/rowspan)은 HTML로, 단순한 테이블은 마크다운으로 변환
@@ -161,7 +256,13 @@ fn convert_table_to_html(
 
             // 셀 내용에 줄바꿈이 있으면 <br>로 변환
             // Convert newlines to <br> in cell content
-            let cell_html = cell_content.replace('\n', "<br>");
+            // 중첩 테이블이 포함된 경우 줄바꿈 변환 스킵 (이미 HTML 포맷됨)
+            // Skip newline conversion if nested table is included (already HTML formatted)
+            let cell_html = if cell_content.contains("<table") {
+                cell_content // 이미 HTML 포맷된 중첩 테이블
+            } else {
+                cell_content.replace('\n', "<br>")
+            };
 
             html.push_str(&format!("    <td{attrs_str}>{cell_html}</td>\n"));
         }
@@ -283,14 +384,16 @@ fn get_cell_content(
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
-    let mut cell_parts = Vec::new();
+    let mut paragraph_contents = Vec::new();
 
     for para in &cell.paragraphs {
+        let mut para_parts = Vec::new();
+
         for record in &para.records {
             match record {
                 ParagraphRecord::ParaText { text, .. } => {
                     if !text.trim().is_empty() {
-                        cell_parts.push(text.clone());
+                        para_parts.push(text.clone());
                     }
                 }
                 ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
@@ -301,7 +404,7 @@ fn get_cell_content(
                             options.image_output_dir.as_deref(),
                         )
                     {
-                        cell_parts.push(image_md);
+                        para_parts.push(image_md);
                     }
                 }
                 ParagraphRecord::ShapeComponent { children, .. } => {
@@ -312,7 +415,7 @@ fn get_cell_content(
                             options.image_output_dir.as_deref(),
                             tracker,
                         );
-                    cell_parts.extend(shape_parts);
+                    para_parts.extend(shape_parts);
                 }
                 ParagraphRecord::HwpxImage { binary_item_ref } => {
                     // HWPX 이미지 참조 변환 / Convert HWPX image reference
@@ -323,15 +426,32 @@ fn get_cell_content(
                             options.image_output_dir.as_deref(),
                         )
                     {
-                        cell_parts.push(image_md);
+                        para_parts.push(image_md);
+                    }
+                }
+                ParagraphRecord::Table { table } => {
+                    // 중첩 테이블을 HTML 테이블로 렌더링 (재귀)
+                    // Render nested table as HTML table (recursive)
+                    let nested_table_html =
+                        convert_table_to_html(table, document, options, tracker);
+                    if !nested_table_html.trim().is_empty() {
+                        para_parts.push(nested_table_html);
                     }
                 }
                 _ => {}
             }
         }
+
+        // 한 문단 내의 내용을 공백으로 결합 / Join content within a paragraph with space
+        let para_content = para_parts.join(" ");
+        if !para_content.trim().is_empty() {
+            paragraph_contents.push(para_content);
+        }
     }
 
-    cell_parts.join(" ")
+    // 문단들을 줄바꿈으로 결합 (HTML 테이블에서 <br>로 변환됨)
+    // Join paragraphs with newline (will be converted to <br> in HTML table)
+    paragraph_contents.join("\n")
 }
 
 /// Fill cell content and handle cell merging
@@ -521,6 +641,24 @@ fn fill_cell_content(
                             has_image = true;
                         }
                     }
+                    ParagraphRecord::Table { table } => {
+                        // 중첩 테이블 처리 / Handle nested table
+                        if options.use_html == Some(true) {
+                            // HTML 모드: 중첩 테이블을 HTML로 렌더링 (재귀)
+                            let nested_table_html =
+                                convert_table_to_html(table, document, options, tracker);
+                            if !nested_table_html.trim().is_empty() {
+                                cell_parts.push(nested_table_html);
+                            }
+                        } else {
+                            // 마크다운 모드: 텍스트로 변환 (마크다운은 중첩 테이블 미지원)
+                            let nested_table_content =
+                                convert_nested_table_to_text(table, document, options, tracker);
+                            if !nested_table_content.trim().is_empty() {
+                                cell_parts.push(nested_table_content);
+                            }
+                        }
+                    }
                     _ => {
                         // 기타 레코드는 서식 정보이므로 건너뜀 / Other records are formatting info, skip
                     }
@@ -528,16 +666,14 @@ fn fill_cell_content(
             }
         }
 
-        // 마지막 문단이 아니면 문단 사이 공백 추가
-        // If not last paragraph, add space between paragraphs
+        // 마지막 문단이 아니면 문단 사이 줄바꿈 추가
+        // If not last paragraph, add line break between paragraphs
         if idx < cell.paragraphs.len() - 1 {
-            cell_parts.push(" ".to_string());
+            cell_parts.push("<br>".to_string());
         }
     }
 
     // 셀 내용을 하나의 문자열로 결합 / Combine cell parts into a single string
-    // 표 셀 내부에서는 개행을 공백으로 변환 (마크다운 표는 한 줄로 표시)
-    // In table cells, convert line breaks to spaces (markdown tables are displayed in one line)
     let cell_text = cell_parts.join("");
 
     // 마크다운 표에서 파이프 문자 이스케이프 처리 / Escape pipe characters in markdown table
