@@ -57,7 +57,11 @@ hwp-rs/
 ## 기능
 
 - HWP/HWPX 문서 파싱
-- Markdown 변환 (테이블, 이미지 지원)
+- Markdown 변환
+  - 테이블 지원 (HTML 테이블 렌더링)
+  - 중첩 테이블(Nested Table) 지원
+  - 테이블 셀 내 이미지 렌더링
+  - 이미지 추출 (base64 또는 파일 저장)
 - HTML 변환
 - JSON 변환
 - 텍스트 추출
