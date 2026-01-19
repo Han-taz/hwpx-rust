@@ -1,5 +1,6 @@
 mod column_def;
 mod endnote;
+mod field;
 mod footer;
 mod footnote;
 mod header;
@@ -9,6 +10,9 @@ mod section_def;
 /// 각 ctrl_id 타입별로 독립적인 모듈로 처리합니다.
 /// Each ctrl_id type is processed in its own independent module.
 mod shape_object;
+
+#[allow(unused_imports)]
+pub use field::convert_field_ctrl_to_html;
 
 // table 모듈은 폴더로 분리되어 있음 / table module is separated into a folder
 pub mod table;

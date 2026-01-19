@@ -5,6 +5,7 @@
 /// Spec mapping: Table 57 - BodyText data records, CTRL_HEADER (HWPTAG_BEGIN + 55)
 mod column_def;
 mod endnote;
+mod field;
 mod footer;
 mod footnote;
 mod header;
@@ -16,6 +17,7 @@ use crate::document::{CtrlHeader, CtrlId};
 
 use column_def::convert_column_def_ctrl_to_markdown;
 use endnote::convert_endnote_ctrl_to_markdown;
+pub use field::convert_field_ctrl_to_markdown;
 use footer::convert_footer_ctrl_to_markdown;
 use footnote::convert_footnote_ctrl_to_markdown;
 use header::convert_header_ctrl_to_markdown;
@@ -44,10 +46,19 @@ pub fn convert_control_to_markdown(header: &CtrlHeader, has_table: bool) -> Stri
         CtrlId::PAGE_NUMBER | CtrlId::PAGE_NUMBER_POS => {
             convert_page_number_ctrl_to_markdown(header)
         }
+        // Field controls (including hyperlinks)
+        // 필드 컨트롤 (하이퍼링크 포함)
+        CtrlId::FIELD_START => convert_field_ctrl_to_markdown(header, None),
         _ => {
-            // 기타 컨트롤은 마크다운으로 표현할 수 없으므로 빈 문자열 반환
-            // Other controls cannot be expressed in markdown, so return empty string
-            String::new()
+            // Check if it's a field type by prefix
+            // 필드 타입인지 접두사로 확인
+            if header.ctrl_id.starts_with('%') {
+                convert_field_ctrl_to_markdown(header, None)
+            } else {
+                // 기타 컨트롤은 마크다운으로 표현할 수 없으므로 빈 문자열 반환
+                // Other controls cannot be expressed in markdown, so return empty string
+                String::new()
+            }
         }
     }
 }

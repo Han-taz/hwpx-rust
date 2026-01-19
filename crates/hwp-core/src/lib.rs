@@ -51,7 +51,10 @@ pub use document::{
     FaceName, FileHeader, HwpDocument, IdMappings, Numbering, ParaShape, Section,
     SummaryInformation, TabDef,
 };
-pub use error::{CompressionFormat, HwpError};
+pub use error::{
+    CompressionFormat, HwpError, HwpResult, ParseContext, ParseWarning, ParseWarnings,
+    WarningSeverity,
+};
 pub use types::{
     RecordHeader, BYTE, COLORREF, DWORD, HWPUNIT, HWPUNIT16, INT16, INT32, INT8, SHWPUNIT, UINT,
     UINT16, UINT32, UINT8, WCHAR, WORD,

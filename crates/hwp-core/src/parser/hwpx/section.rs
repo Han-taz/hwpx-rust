@@ -66,6 +66,14 @@ impl Default for HwpxCell {
     }
 }
 
+/// Text run with associated character shape ID
+/// 문자 스타일 ID가 연결된 텍스트 run
+#[derive(Debug, Clone)]
+struct TextRunInfo {
+    text: String,
+    char_shape_id: Option<u16>,
+}
+
 /// Parse all section files and create BodyText
 pub fn parse_sections(container: &mut HwpxContainer) -> Result<BodyText, HwpError> {
     let section_files = container.get_section_files();
@@ -101,6 +109,12 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
 
     // Image parsing
     let mut current_image_ref: Option<String> = None;
+
+    // Text run tracking with char shape ID
+    // charPrIDRef를 추적하여 텍스트 run에 스타일 연결
+    let mut current_char_shape_id: Option<u16> = None;
+    let mut current_runs: Vec<TextRunInfo> = Vec::new();
+    let mut current_run_text = String::new();
 
     // Table parsing with colspan/rowspan support
     let mut table_rows: Vec<Vec<HwpxCell>> = Vec::new();
@@ -229,6 +243,27 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         para_depth += 1;
                         if table_depth == 0 && para_depth == 1 {
                             current_text.clear();
+                            current_runs.clear();
+                            current_run_text.clear();
+                        }
+                    }
+                    s if s.ends_with(":run") || s == "run" => {
+                        // Save previous run if any text accumulated
+                        // 이전 run의 텍스트가 있으면 저장
+                        if !current_run_text.is_empty() {
+                            current_runs.push(TextRunInfo {
+                                text: std::mem::take(&mut current_run_text),
+                                char_shape_id: current_char_shape_id,
+                            });
+                        }
+                        // Parse charPrIDRef from <hp:run charPrIDRef="N">
+                        current_char_shape_id = None;
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref());
+                            if key == "charPrIDRef" {
+                                let value = String::from_utf8_lossy(&attr.value);
+                                current_char_shape_id = value.parse().ok();
+                            }
                         }
                     }
                     s if s.ends_with(":t") || s == "t" => {
@@ -277,6 +312,8 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                     } else if in_table && in_cell {
                         current_cell.current_text.push_str(&text);
                     } else if !in_table {
+                        // Collect text for current run (with char_shape_id tracking)
+                        current_run_text.push_str(&text);
                         current_text.push_str(&text);
                     }
                 }
@@ -286,10 +323,34 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                 let local_name = String::from_utf8_lossy(name.as_ref());
 
                 match local_name.as_ref() {
+                    s if s.ends_with(":run") || s == "run" => {
+                        // Save current run when </hp:run> ends
+                        // </hp:run>이 끝나면 현재 run 저장
+                        if !current_run_text.is_empty() {
+                            current_runs.push(TextRunInfo {
+                                text: std::mem::take(&mut current_run_text),
+                                char_shape_id: current_char_shape_id,
+                            });
+                        }
+                    }
                     s if s.ends_with(":p") || s == "p" => {
                         let in_table = table_depth > 0;
-                        if para_depth == 1 && !in_table && !current_text.is_empty() {
-                            paragraphs.push(create_paragraph(&current_text));
+                        if para_depth == 1 && !in_table {
+                            // Save any remaining run text
+                            if !current_run_text.is_empty() {
+                                current_runs.push(TextRunInfo {
+                                    text: std::mem::take(&mut current_run_text),
+                                    char_shape_id: current_char_shape_id,
+                                });
+                            }
+                            // Create paragraph with runs if any
+                            if !current_runs.is_empty() {
+                                paragraphs.push(create_paragraph_with_runs(&current_runs));
+                                current_runs.clear();
+                            } else if !current_text.is_empty() {
+                                // Fallback to old behavior
+                                paragraphs.push(create_paragraph(&current_text));
+                            }
                             current_text.clear();
                         }
                         // Save current paragraph text as a content item when paragraph ends inside cell
@@ -414,6 +475,7 @@ fn create_paragraph(text: &str) -> Paragraph {
     // Create ParaText record
     let runs = vec![ParaTextRun::Text {
         text: text.to_string(),
+        char_shape_id: None,
     }];
 
     records.push(ParagraphRecord::ParaText {
@@ -422,6 +484,38 @@ fn create_paragraph(text: &str) -> Paragraph {
         control_char_positions: vec![],
         inline_control_params: vec![],
     });
+
+    Paragraph {
+        para_header,
+        records,
+    }
+}
+
+/// Create a paragraph from text runs with char_shape_id
+/// char_shape_id가 연결된 텍스트 run들로 paragraph 생성
+fn create_paragraph_with_runs(text_runs: &[TextRunInfo]) -> Paragraph {
+    let total_text: String = text_runs.iter().map(|r| r.text.as_str()).collect();
+
+    let para_header = ParaHeader {
+        text_char_count: total_text.chars().count() as u32,
+        ..Default::default()
+    };
+
+    let runs: Vec<ParaTextRun> = text_runs
+        .iter()
+        .filter(|r| !r.text.is_empty())
+        .map(|r| ParaTextRun::Text {
+            text: r.text.clone(),
+            char_shape_id: r.char_shape_id,
+        })
+        .collect();
+
+    let records = vec![ParagraphRecord::ParaText {
+        text: total_text,
+        runs,
+        control_char_positions: vec![],
+        inline_control_params: vec![],
+    }];
 
     Paragraph {
         para_header,

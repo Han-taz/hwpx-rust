@@ -29,6 +29,7 @@ pub(crate) fn detect_mime_type_from_base64(base64_data: &str) -> &'static str {
 
 /// Get MIME type from BinData ID using bin_data_records
 /// bin_data_records를 사용하여 BinData ID에서 MIME 타입 가져오기
+#[allow(dead_code)]
 pub(crate) fn get_mime_type_from_bindata_id(
     document: &HwpDocument,
     bindata_id: crate::types::WORD,

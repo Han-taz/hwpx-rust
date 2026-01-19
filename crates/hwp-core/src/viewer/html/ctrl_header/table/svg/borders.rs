@@ -369,7 +369,7 @@ pub(crate) fn render_vertical_borders(
             }
         }
 
-        covered_ranges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        covered_ranges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut segments = Vec::new();
         let mut current_y = 0.0;
@@ -486,7 +486,7 @@ pub(crate) fn render_horizontal_borders(
             }
         }
 
-        covered_ranges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        covered_ranges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut segments = Vec::new();
         let mut current_x = 0.0;

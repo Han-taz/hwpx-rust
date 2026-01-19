@@ -6,8 +6,8 @@
 
 
 
-google google google google google google
+[google google google google google google](http\://google.com)
 
-gmail gmail gmail gmail gmail gmail
+gmail g[mail gmail gmail gmail gmail](http\://gmail.com)
 
-gmaile
+[gmai](http\://gmail.com)le

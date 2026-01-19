@@ -13,7 +13,8 @@ pub mod table;
 use crate::document::{ColumnDivideType, HwpDocument, ParagraphRecord};
 use crate::viewer::markdown::MarkdownOptions;
 
-pub use paragraph::convert_paragraph_to_markdown;
+pub use paragraph::{convert_paragraph_to_markdown, convert_paragraph_to_markdown_with_state, ParagraphConversionResult};
+pub use para_text::CrossingHyperlinkState;
 pub use table::convert_table_to_markdown;
 
 /// Convert body text to markdown
@@ -40,6 +41,9 @@ pub fn convert_bodytext_to_markdown(
 
     // Convert body text to markdown / 본문 텍스트를 마크다운으로 변환
     for section in &document.body_text.sections {
+        // 문단 경계 하이퍼링크 상태 추적 / Track cross-paragraph hyperlink state
+        let mut open_hyperlink: Option<para_text::CrossingHyperlinkState> = None;
+
         for paragraph in &section.paragraphs {
             // control_mask를 사용하여 빠른 필터링 (최적화) / Use control_mask for quick filtering (optimization)
             let control_mask = &paragraph.para_header.control_mask;
@@ -206,16 +210,20 @@ pub fn convert_bodytext_to_markdown(
                     }
                 }
 
-                // Convert paragraph to markdown (includes text and controls) / 문단을 마크다운으로 변환 (텍스트와 컨트롤 포함)
-                let markdown = paragraph::convert_paragraph_to_markdown(
+                // Convert paragraph to markdown with cross-paragraph hyperlink support
+                // 문단 경계 하이퍼링크를 지원하여 문단을 마크다운으로 변환
+                let result = paragraph::convert_paragraph_to_markdown_with_state(
                     paragraph,
                     document,
                     options,
                     &mut outline_tracker,
+                    open_hyperlink.as_ref(),
                 );
-                if !markdown.is_empty() {
-                    body_lines.push(markdown);
+                if !result.markdown.is_empty() {
+                    body_lines.push(result.markdown);
                 }
+                // 열린 하이퍼링크 상태 업데이트 / Update open hyperlink state
+                open_hyperlink = result.new_open_state;
             }
         }
     }

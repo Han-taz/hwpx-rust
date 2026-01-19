@@ -1,5 +1,6 @@
 ---
 source: crates/hwp-core/tests/snapshot_tests.rs
+assertion_line: 622
 expression: html
 ---
 <!DOCTYPE html>
@@ -104,52 +105,52 @@ body {margin:0;padding-left:0;padding-right:0;padding-bottom:0;padding-top:2mm;}
   font-size:11pt;color:rgb(0,0,0);font-family:"함초롬돋움";
 }
 .ps0 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;
 }
 .ps1 {
-  text-align:justify;
+  text-align:justify;padding-left:10.58mm;margin-bottom:0.56mm;
 }
 .ps2 {
-  text-align:justify;
+  text-align:justify;padding-left:7.06mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps3 {
-  text-align:justify;
+  text-align:justify;padding-left:14.11mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps4 {
-  text-align:justify;
+  text-align:justify;padding-left:21.17mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps5 {
-  text-align:justify;
+  text-align:justify;padding-left:28.22mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps6 {
-  text-align:justify;
+  text-align:justify;padding-left:35.28mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps7 {
-  text-align:justify;
+  text-align:justify;padding-left:42.33mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps8 {
-  text-align:justify;
+  text-align:justify;padding-left:49.39mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps9 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.53mm;
 }
 .ps10 {
-  text-align:justify;
+  text-align:justify;text-indent:-9.24mm;margin-bottom:0.46mm;
 }
 .ps11 {
-  text-align:left;
+  text-align:left;margin-bottom:0.46mm;
 }
 .ps12 {
-  text-align:left;
+  text-align:left;margin-top:2.12mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps13 {
-  text-align:left;
+  text-align:left;margin-top:4.94mm;margin-bottom:0.56mm;line-height:0.02;
 }
 .ps14 {
-  text-align:left;
+  text-align:left;padding-left:7.76mm;margin-top:4.94mm;margin-bottom:0.56mm;line-height:0.02;
 }
 .ps15 {
-  text-align:left;
+  text-align:left;padding-left:15.52mm;margin-top:4.94mm;margin-bottom:0.56mm;line-height:0.02;
 }
 @media print {
 .hpa {margin:0;border:0 black none;box-shadow:none;}

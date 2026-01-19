@@ -152,6 +152,53 @@ pub fn generate_css_styles(document: &HwpDocument) -> String {
             css.push_str(&format!("letter-spacing:{letter_spacing_em:.2}em;"));
         }
 
+        // 그림자 / Shadow
+        // shadow_type: 0=없음, 1=연한 그림자, 2=진한 그림자
+        // shadow_type: 0=none, 1=light shadow, 2=dark shadow
+        if char_shape.attributes.shadow_type > 0 {
+            let shadow_color = &char_shape.shadow_color;
+            // 그림자 간격 계산 (폰트 크기의 비율) / Calculate shadow spacing (ratio of font size)
+            let shadow_x = char_shape.shadow_spacing_x as f64 * size_pt / 100.0;
+            let shadow_y = char_shape.shadow_spacing_y as f64 * size_pt / 100.0;
+            css.push_str(&format!(
+                "text-shadow:{shadow_x:.2}pt {shadow_y:.2}pt 0 rgb({},{},{});",
+                shadow_color.r(),
+                shadow_color.g(),
+                shadow_color.b()
+            ));
+        }
+
+        // 외곽선 / Outline
+        // outline_type: 0=없음, 1=실선, 2=점선, 3=파선, ...
+        // outline_type: 0=none, 1=solid, 2=dotted, 3=dashed, ...
+        // CSS에서는 text-stroke 또는 -webkit-text-stroke 사용 / Use text-stroke or -webkit-text-stroke in CSS
+        if char_shape.attributes.outline_type > 0 {
+            // 외곽선 두께는 폰트 크기의 1% 정도로 설정 / Set outline thickness to about 1% of font size
+            let outline_width = (size_pt * 0.01).max(0.5);
+            css.push_str(&format!(
+                "-webkit-text-stroke:{outline_width:.2}pt rgb({},{},{});",
+                color.r(),
+                color.g(),
+                color.b()
+            ));
+        }
+
+        // 양각/음각 / Emboss/Engrave
+        // CSS에서는 text-shadow로 근사 구현 / Approximate with text-shadow in CSS
+        if char_shape.attributes.emboss {
+            // 양각: 왼쪽 위에 밝은 그림자, 오른쪽 아래에 어두운 그림자 / Emboss: light shadow on top-left, dark shadow on bottom-right
+            let offset = size_pt * 0.02;
+            css.push_str(&format!(
+                "text-shadow:{offset:.2}pt {offset:.2}pt 0 rgba(0,0,0,0.3),-{offset:.2}pt -{offset:.2}pt 0 rgba(255,255,255,0.5);"
+            ));
+        } else if char_shape.attributes.engrave {
+            // 음각: 오른쪽 아래에 밝은 그림자, 왼쪽 위에 어두운 그림자 / Engrave: light shadow on bottom-right, dark shadow on top-left
+            let offset = size_pt * 0.02;
+            css.push_str(&format!(
+                "text-shadow:-{offset:.2}pt -{offset:.2}pt 0 rgba(0,0,0,0.3),{offset:.2}pt {offset:.2}pt 0 rgba(255,255,255,0.5);"
+            ));
+        }
+
         css.push_str("\n}\n");
     }
 
@@ -177,6 +224,77 @@ pub fn generate_css_styles(document: &HwpDocument) -> String {
             }
             _ => {
                 css.push_str("  text-align:justify;");
+            }
+        }
+
+        // 들여쓰기 / Text indent (first line)
+        // indent 값이 0이 아니면 적용 / Apply if indent is not 0
+        if para_shape.indent != 0 {
+            let indent_mm = int32_to_mm(para_shape.indent);
+            css.push_str(&format!("text-indent:{indent_mm:.2}mm;"));
+        }
+
+        // 왼쪽 여백 / Left margin (padding for paragraph)
+        if para_shape.left_margin != 0 {
+            let left_mm = int32_to_mm(para_shape.left_margin);
+            css.push_str(&format!("padding-left:{left_mm:.2}mm;"));
+        }
+
+        // 오른쪽 여백 / Right margin (padding for paragraph)
+        if para_shape.right_margin != 0 {
+            let right_mm = int32_to_mm(para_shape.right_margin);
+            css.push_str(&format!("padding-right:{right_mm:.2}mm;"));
+        }
+
+        // 문단 위 간격 / Paragraph top spacing
+        if para_shape.top_spacing != 0 {
+            let top_mm = int32_to_mm(para_shape.top_spacing);
+            css.push_str(&format!("margin-top:{top_mm:.2}mm;"));
+        }
+
+        // 문단 아래 간격 / Paragraph bottom spacing
+        if para_shape.bottom_spacing != 0 {
+            let bottom_mm = int32_to_mm(para_shape.bottom_spacing);
+            css.push_str(&format!("margin-bottom:{bottom_mm:.2}mm;"));
+        }
+
+        // 줄 간격 / Line spacing
+        // 5.0.2.5 이상: line_spacing 사용, 이전 버전: line_spacing_old 사용
+        // 5.0.2.5+: use line_spacing, older versions: use line_spacing_old
+        let line_spacing_value = para_shape.line_spacing.unwrap_or(para_shape.line_spacing_old);
+        if line_spacing_value > 0 {
+            // 줄 간격 타입에 따라 다르게 처리 / Process differently based on line spacing type
+            // 타입 정보가 있으면 사용, 없으면 기본(ByCharacter) 가정
+            // Use type info if available, otherwise assume default (ByCharacter)
+            use crate::document::docinfo::para_shape::LineSpacingType;
+            let spacing_type = para_shape
+                .attributes3
+                .as_ref()
+                .map(|a| a.line_spacing_type)
+                .unwrap_or(LineSpacingType::ByCharacter);
+
+            match spacing_type {
+                LineSpacingType::ByCharacter => {
+                    // 글자에 따라: 퍼센트 값 (예: 160 = 160%)
+                    // By character: percentage value (e.g., 160 = 160%)
+                    let line_height_percent = line_spacing_value as f64 / 100.0;
+                    if (line_height_percent - 1.0).abs() > 0.01 {
+                        // 기본값(100%)이 아닐 때만 출력 / Output only when not default (100%)
+                        css.push_str(&format!("line-height:{line_height_percent:.2};"));
+                    }
+                }
+                LineSpacingType::Fixed | LineSpacingType::Minimum => {
+                    // 고정값/최소값: 1/7200인치 단위를 mm로 변환
+                    // Fixed/Minimum: convert 1/7200 inch unit to mm
+                    let line_height_mm = int32_to_mm(line_spacing_value);
+                    css.push_str(&format!("line-height:{line_height_mm:.2}mm;"));
+                }
+                LineSpacingType::MarginOnly => {
+                    // 여백만 지정: 추가 여백을 line-height 대신 margin으로 처리
+                    // Margin only: handle additional margin with margin instead of line-height
+                    // 이 경우는 복잡하므로 일단 기본 처리
+                    // This case is complex, so use default handling for now
+                }
             }
         }
 

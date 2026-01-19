@@ -67,6 +67,11 @@ impl CtrlHeader {
             CtrlId::OVERLAP => overlap::parse_overlap(remaining_data)?,
             CtrlId::COMMENT => comment::parse_comment(remaining_data)?,
             CtrlId::HIDDEN_DESC => CtrlHeaderData::HiddenDescription,
+            // Field control types (starting with %)
+            // 필드 컨트롤 타입 (% 로 시작)
+            // ctrl_id 자체가 field_type이므로 parse_field_with_type 사용
+            // ctrl_id itself is field_type, so use parse_field_with_type
+            s if s.starts_with('%') => field::parse_field_with_type(remaining_data, Some(s))?,
             _ => CtrlHeaderData::Other,
         };
 

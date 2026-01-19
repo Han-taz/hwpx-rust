@@ -358,7 +358,12 @@ pub enum ParagraphRecord {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ParaTextRun {
     /// 일반 텍스트 조각 / Plain text chunk
-    Text { text: String },
+    Text {
+        text: String,
+        /// CharShape ID (HWPX charPrIDRef) - 0-based index into doc_info.char_shapes
+        #[serde(skip_serializing_if = "Option::is_none")]
+        char_shape_id: Option<u16>,
+    },
     /// 컨트롤 토큰(표/개체 등) / Control token (table/shape object etc.)
     Control {
         /// 원본 WCHAR 인덱스 위치 / Original WCHAR index position
@@ -588,6 +593,7 @@ impl Section {
                                     cleaned_text.push_str(text_repr);
                                     runs.push(ParaTextRun::Text {
                                         text: text_repr.to_string(),
+                                        char_shape_id: None,
                                     });
                                 }
                             }
@@ -615,7 +621,10 @@ impl Section {
                             if let Ok(text) = decode_utf16le(text_bytes) {
                                 cleaned_text.push_str(&text);
                                 if !text.is_empty() {
-                                    runs.push(ParaTextRun::Text { text });
+                                    runs.push(ParaTextRun::Text {
+                                        text,
+                                        char_shape_id: None,
+                                    });
                                 }
                             }
                             idx = text_end;

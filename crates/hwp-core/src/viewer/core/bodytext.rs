@@ -8,8 +8,16 @@
 /// Output format is handled through the Renderer trait.
 use crate::document::{ColumnDivideType, CtrlHeader, HwpDocument, Paragraph, ParagraphRecord};
 use crate::viewer::core::renderer::{DocumentParts, Renderer};
+use crate::viewer::markdown::document::bodytext::CrossingHyperlinkState;
 use crate::viewer::markdown::utils::OutlineNumberTracker;
 use crate::viewer::{html, html::HtmlOptions, MarkdownOptions};
+
+/// Render paragraph with crossing hyperlink state
+/// 문단 경계 하이퍼링크 상태를 포함하여 문단 렌더링
+struct ParagraphRenderResult {
+    content: String,
+    new_open_state: Option<CrossingHyperlinkState>,
+}
 
 /// Render paragraph using viewer-specific functions
 /// 뷰어별 함수를 사용하여 문단 렌더링
@@ -32,6 +40,23 @@ fn render_paragraph_with_viewer<R: Renderer>(
 where
     R::Options: 'static,
 {
+    render_paragraph_with_crossing_hyperlinks(paragraph, document, renderer, options, tracker, None)
+        .content
+}
+
+/// Render paragraph with crossing hyperlink support
+/// 문단 경계 하이퍼링크를 지원하여 문단 렌더링
+fn render_paragraph_with_crossing_hyperlinks<R: Renderer>(
+    paragraph: &Paragraph,
+    document: &HwpDocument,
+    renderer: &R,
+    options: &R::Options,
+    tracker: &mut dyn TrackerRef,
+    open_hyperlink: Option<&CrossingHyperlinkState>,
+) -> ParagraphRenderResult
+where
+    R::Options: 'static,
+{
     // 타입 체크를 통해 기존 뷰어 함수 호출 / Call existing viewer functions through type checking
     // HTML 렌더러인 경우 - 새로운 HTML 뷰어는 process_paragraph를 사용 / If HTML renderer - new HTML viewer uses process_paragraph
     // HTML 뷰어는 to_html() 함수에서 직접 처리하므로 여기서는 기본 처리 사용
@@ -41,19 +66,32 @@ where
     if std::any::TypeId::of::<R::Options>()
         == std::any::TypeId::of::<crate::viewer::markdown::MarkdownOptions>()
     {
-        use crate::viewer::markdown::document::bodytext::paragraph::convert_paragraph_to_markdown;
+        use crate::viewer::markdown::document::bodytext::paragraph::convert_paragraph_to_markdown_with_state;
         // 안전하게 타입 캐스팅 / Safely cast type
         unsafe {
             let md_options =
                 &*(options as *const R::Options as *const crate::viewer::markdown::MarkdownOptions);
             let md_tracker = tracker.as_markdown_tracker_mut();
-            return convert_paragraph_to_markdown(paragraph, document, md_options, md_tracker);
+            let result = convert_paragraph_to_markdown_with_state(
+                paragraph,
+                document,
+                md_options,
+                md_tracker,
+                open_hyperlink,
+            );
+            return ParagraphRenderResult {
+                content: result.markdown,
+                new_open_state: result.new_open_state,
+            };
         }
     }
 
     // 기본: 공통 paragraph 처리 사용 / Default: Use common paragraph processing
     use crate::viewer::core::paragraph::process_paragraph;
-    process_paragraph(paragraph, document, renderer, options)
+    ParagraphRenderResult {
+        content: process_paragraph(paragraph, document, renderer, options),
+        new_open_state: None,
+    }
 }
 
 /// Trait for outline number tracker reference
@@ -133,6 +171,9 @@ where
 
     // Convert body text / 본문 텍스트를 변환
     for section in &document.body_text.sections {
+        // 문단 경계 하이퍼링크 상태 추적 / Track cross-paragraph hyperlink state
+        let mut open_hyperlink: Option<CrossingHyperlinkState> = None;
+
         for paragraph in &section.paragraphs {
             // control_mask를 사용하여 빠른 필터링 (최적화) / Use control_mask for quick filtering (optimization)
             let control_mask = &paragraph.para_header.control_mask;
@@ -228,17 +269,20 @@ where
                     }
                 }
 
-                // 문단 처리 / Process paragraph
-                let para_content = render_paragraph_with_viewer(
+                // 문단 처리 (문단 경계 하이퍼링크 지원) / Process paragraph (with crossing hyperlink support)
+                let result = render_paragraph_with_crossing_hyperlinks(
                     paragraph,
                     document,
                     renderer,
                     options,
                     &mut tracker,
+                    open_hyperlink.as_ref(),
                 );
-                if !para_content.is_empty() {
-                    parts.body_lines.push(para_content);
+                if !result.content.is_empty() {
+                    parts.body_lines.push(result.content);
                 }
+                // 열린 하이퍼링크 상태 업데이트 / Update open hyperlink state
+                open_hyperlink = result.new_open_state;
             }
         }
     }
