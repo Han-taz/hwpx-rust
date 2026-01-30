@@ -1,5 +1,6 @@
 ---
 source: crates/hwp-core/tests/hwpx_tests.rs
+assertion_line: 124
 expression: html
 ---
 <!DOCTYPE html>
@@ -91,6 +92,69 @@ body {margin:0;padding-left:0;padding-right:0;padding-bottom:0;padding-top:2mm;}
 .cs7 {
   font-size:15pt;color:rgb(0,0,0);font-family:"함초롬바탕";
 }
+.ps0 {
+  text-align:justify;text-indent:-2.31mm;
+}
+.ps1 {
+  text-align:justify;
+}
+.ps2 {
+  text-align:justify;
+}
+.ps3 {
+  text-align:justify;padding-left:2.65mm;
+}
+.ps4 {
+  text-align:justify;padding-left:1.76mm;
+}
+.ps5 {
+  text-align:justify;padding-left:3.53mm;
+}
+.ps6 {
+  text-align:justify;padding-left:5.29mm;
+}
+.ps7 {
+  text-align:justify;padding-left:7.06mm;
+}
+.ps8 {
+  text-align:justify;padding-left:8.82mm;
+}
+.ps9 {
+  text-align:justify;padding-left:10.58mm;
+}
+.ps10 {
+  text-align:justify;padding-left:12.35mm;
+}
+.ps11 {
+  text-align:justify;
+}
+.ps12 {
+  text-align:justify;
+}
+.ps13 {
+  text-align:justify;
+}
+.ps14 {
+  text-align:justify;
+}
+.ps15 {
+  text-align:justify;
+}
+.ps16 {
+  text-align:justify;
+}
+.ps17 {
+  text-align:justify;
+}
+.ps18 {
+  text-align:justify;
+}
+.ps19 {
+  text-align:justify;
+}
+.ps20 {
+  text-align:justify;
+}
 @media print {
 .hpa {margin:0;border:0 black none;box-shadow:none;}
 body {padding:0;}
@@ -100,6 +164,6 @@ body {padding:0;}
 
 
 <body>
-<div class="hpa" style="width:210mm;height:297mm;"><div class="hcD" style="left:20mm;top:24.99mm;"><div class="hcI"><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 글자에 따라 150%</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 고정 값 15pt</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 여백만 지정 5pt</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 글자에 따라 100%</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 고정 값 10pt</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 여백만 지정 0pt</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 글자에 따라 200%</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 고정 값 20pt</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 여백만 지정 10pt</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 글자에 따라</u></span><span class="hrt cs6" style="font-size:20pt;"><u>100%</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 고정 값</u></span><span class="hrt cs7" style="font-size:15pt;"><u>0pt</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|H 여백만 지정</u></span><span class="hrt cs6" style="font-size:20pt;"><u>0pt</u></span></div><div class="hls "><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div></div></div></div></body>
+<div class="hpa" style="width:210mm;height:297mm;"><div class="hcD" style="left:20mm;top:24.99mm;"><div class="hcI"><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 글자에 따라 150%</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 고정 값 15pt</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 여백만 지정 5pt</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 글자에 따라 100%</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 고정 값 10pt</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 여백만 지정 0pt</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 글자에 따라 200%</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 고정 값 20pt</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 여백만 지정 10pt</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 글자에 따라</u></span><span class="hrt cs6" style="font-size:20pt;"><u>100%</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 고정 값</u></span><span class="hrt cs7" style="font-size:15pt;"><u>0pt</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|H 여백만 지정</u></span><span class="hrt cs6" style="font-size:20pt;"><u>0pt</u></span></div><div class="hls ps0"><span class="hrt cs5" style="font-size:10pt;"><u>|HHHHHHHHHHHHHH</u></span></div></div></div></div></body>
 
 </html>

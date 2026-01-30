@@ -1,5 +1,6 @@
 ---
 source: crates/hwp-core/tests/hwpx_tests.rs
+assertion_line: 124
 expression: html
 ---
 <!DOCTYPE html>
@@ -307,6 +308,195 @@ body {margin:0;padding-left:0;padding-right:0;padding-bottom:0;padding-top:2mm;}
 .cs79 {
   font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
 }
+.ps0 {
+  text-align:justify;
+}
+.ps1 {
+  text-align:justify;
+}
+.ps2 {
+  text-align:justify;text-indent:-2.31mm;
+}
+.ps3 {
+  text-align:justify;padding-left:2.65mm;
+}
+.ps4 {
+  text-align:justify;
+}
+.ps5 {
+  text-align:left;
+}
+.ps6 {
+  text-align:right;
+}
+.ps7 {
+  text-align:justify;padding-left:1.76mm;
+}
+.ps8 {
+  text-align:justify;padding-left:3.53mm;
+}
+.ps9 {
+  text-align:justify;padding-left:8.82mm;
+}
+.ps10 {
+  text-align:justify;padding-left:10.58mm;
+}
+.ps11 {
+  text-align:justify;padding-left:7.06mm;
+}
+.ps12 {
+  text-align:justify;padding-left:5.29mm;
+}
+.ps13 {
+  text-align:justify;padding-left:12.35mm;
+}
+.ps14 {
+  text-align:justify;padding-left:1.76mm;
+}
+.ps15 {
+  text-align:right;
+}
+.ps16 {
+  text-align:center;text-indent:-4.30mm;
+}
+.ps17 {
+  text-align:center;text-indent:-0.79mm;padding-left:-0.79mm;
+}
+.ps18 {
+  text-align:center;
+}
+.ps19 {
+  text-align:center;text-indent:-6.31mm;
+}
+.ps20 {
+  text-align:justify;text-indent:-4.99mm;
+}
+.ps21 {
+  text-align:justify;text-indent:-5.32mm;
+}
+.ps22 {
+  text-align:justify;
+}
+.ps23 {
+  text-align:right;
+}
+.ps24 {
+  text-align:justify;
+}
+.ps25 {
+  text-align:justify;text-indent:-4.99mm;
+}
+.ps26 {
+  text-align:center;text-indent:-4.11mm;
+}
+.ps27 {
+  text-align:center;
+}
+.ps28 {
+  text-align:left;text-indent:-6.31mm;
+}
+.ps29 {
+  text-align:justify;text-indent:-5.51mm;
+}
+.ps30 {
+  text-align:justify;text-indent:-5.39mm;
+}
+.ps31 {
+  text-align:justify;text-indent:-6.21mm;
+}
+.ps32 {
+  text-align:justify;text-indent:-6.39mm;
+}
+.ps33 {
+  text-align:justify;text-indent:-5.55mm;
+}
+.ps34 {
+  text-align:right;text-indent:-6.31mm;
+}
+.ps35 {
+  text-align:right;text-indent:-5.32mm;
+}
+.ps36 {
+  text-align:center;text-indent:-2.65mm;
+}
+.ps37 {
+  text-align:center;
+}
+.ps38 {
+  text-align:justify;text-indent:-1.68mm;
+}
+.ps39 {
+  text-align:justify;text-indent:-1.70mm;
+}
+.ps40 {
+  text-align:center;text-indent:-1.68mm;
+}
+.ps41 {
+  text-align:center;
+}
+.ps42 {
+  text-align:justify;text-indent:-1.71mm;
+}
+.ps43 {
+  text-align:justify;text-indent:-1.75mm;
+}
+.ps44 {
+  text-align:justify;text-indent:-1.68mm;
+}
+.ps45 {
+  text-align:justify;text-indent:-1.70mm;
+}
+.ps46 {
+  text-align:center;
+}
+.ps47 {
+  text-align:justify;text-indent:-1.74mm;
+}
+.ps48 {
+  text-align:justify;text-indent:-1.96mm;
+}
+.ps49 {
+  text-align:justify;text-indent:-1.76mm;
+}
+.ps50 {
+  text-align:justify;text-indent:-1.71mm;
+}
+.ps51 {
+  text-align:justify;text-indent:-1.73mm;
+}
+.ps52 {
+  text-align:center;
+}
+.ps53 {
+  text-align:left;text-indent:-6.31mm;
+}
+.ps54 {
+  text-align:justify;text-indent:-4.99mm;
+}
+.ps55 {
+  text-align:justify;text-indent:-5.33mm;
+}
+.ps56 {
+  text-align:justify;text-indent:-5.51mm;
+}
+.ps57 {
+  text-align:justify;text-indent:-5.29mm;
+}
+.ps58 {
+  text-align:right;text-indent:-5.33mm;
+}
+.ps59 {
+  text-align:justify;text-indent:-5.30mm;
+}
+.ps60 {
+  text-align:justify;text-indent:-5.31mm;
+}
+.ps61 {
+  text-align:justify;text-indent:-5.46mm;
+}
+.ps62 {
+  text-align:center;
+}
 @media print {
 .hpa {margin:0;border:0 black none;box-shadow:none;}
 body {padding:0;}
@@ -316,6 +506,6 @@ body {padding:0;}
 
 
 <body>
-<div class="hpa" style="width:210mm;height:297mm;"><div class="hcD" style="left:20mm;top:24.99mm;"><div class="hcI"><div class="hls "><span class="hrt cs12" style="font-size:15pt;"><s>□ 목 적</s></span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs28" style="font-size:15pt;">2026년도 정보통신산업진흥원「AI 응용제품 신속 상용화 지원」사업의</span><span class="hrt cs19" style="font-size:15pt;">산·학·연·관 대상 사전 수요조사를 통해 차년도 사업기획의 기초자료로 활용</span></div><div class="hls "><span class="hrt cs12" style="font-size:15pt;"><s>□ 과제 수요조사 세부 내용</s></span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs39" style="font-size:15pt;font-weight:bold;">(과제 목적)</span><span class="hrt cs41" style="font-size:15pt;">국산 NPU</span><span class="hrt cs41" style="font-size:15pt;">및 AI기술을 활용한 생활 분야</span><span class="hrt cs29" style="font-size:13pt;">(치안·안전 등)</span><span class="hrt cs41" style="font-size:15pt;">유망 AI 응용 제품·서비스 발굴 및 조기 상용화 지원</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(지원분야)</span><span class="hrt cs23" style="font-size:15pt;">생활 분야</span><span class="hrt cs26" style="font-size:13pt;">(치안·안전 등 국민 생활 밀접 분야)</span></div><div class="hls "><span class="hrt cs35" style="font-size:12pt;">※ 서비스 예시는 [붙임] 자료 참조</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs32" style="font-size:15pt;font-weight:bold;">(지원내용)</span><span class="hrt cs34" style="font-size:15pt;"><s>지원 기간 및 상용화 시점에 따라 2개 Type으로 구분</s></span></div><div class="hls "><span class="hrt cs35" style="font-size:12pt;">※ 예산지원 규모는 추후 상세 기획과정에서 변동될 수 있음</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs32" style="font-size:15pt;font-weight:bold;">(지원대상)</span><span class="hrt cs47" style="font-size:15pt;">생활 분야 AI 응용제품 수요처</span><span class="hrt cs46" style="font-size:13pt;">(공공·민간 수요처)</span><span class="hrt cs61" style="font-size:15pt;">, 공급기업</span><span class="hrt cs63" style="font-size:13pt;">(AI 서비스(모델) 기업, AI 반도체 기업, 엔드 프로덕트 제조기업 등)</span><span class="hrt cs61" style="font-size:15pt;">등에 소속된 자나 개인</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(적용기술 요건)</span><span class="hrt cs64" style="font-size:15pt;">국산 NPU 반도체 및 AI 기술</span><span class="hrt cs65" style="font-size:15pt;">*</span><span class="hrt cs64" style="font-size:15pt;">활용</span></div><div class="hls "><span class="hrt cs35" style="font-size:12pt;">* 단순 자동화(규칙 기반)가 아닌 상황 및 데이터를 자율판단하여 실행</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs62" style="font-size:15pt;font-weight:bold;">(수요조사 항목)</span><span class="hrt cs45" style="font-size:15pt;">제안과제명, 제안기관, 보유기술 및 역량, 과제내용, 기대효과 및 애로사항</span></div><div class="hls "><span class="hrt cs12" style="font-size:15pt;"><s>□ 수요조사서 접수</s></span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(조사기간)</span><span class="hrt cs23" style="font-size:15pt;">2025. 10. 1.(수) ~ 10. 24.(금), 16시까지</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(접수방법 및 문의처)</span><span class="hrt cs23" style="font-size:15pt;">이메일 접수</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(제출서류)</span><span class="hrt cs23" style="font-size:15pt;">수요조사서, 개인정보 수집·이용 동의서</span><span class="hrt cs38" style="font-size:15pt;">*</span></div><div class="hls "><span class="hrt cs16" style="font-size:12pt;"><s>* 수요조사서에 담당자로 기재된 개인별로 제출</s></span></div><div class="hls "><span class="hrt cs12" style="font-size:15pt;"><s>□ 유의 및 참고사항</s></span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs25" style="font-size:15pt;">제안사항에 대해 제안자가 권리 등을 주장할 수 없으며, 제출 서류는 일체 반환하지 않음</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">-</span><span class="hrt cs20" style="font-size:15pt;">제안 사항 검토를 위해 제출된 내용을 관련 전문가 등 제3자</span><span class="hrt cs38" style="font-size:15pt;">*</span><span class="hrt cs20" style="font-size:15pt;">에게 공개하거나 공유할 수 있음</span></div><div class="hls "><span class="hrt cs16" style="font-size:12pt;"><s>* 법적, 제도적 보안유지 준수의무에 대한 보안서약서 징구 예정</s></span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs20" style="font-size:15pt;">수요조사를 통해 접수된 내용은 과제 기획과정에서 타 제안사항과 융합되는 등 내용과 요건이 변경될 수 있음</span></div><div class="hls "><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs45" style="font-size:15pt;">본 수요조사는 신규 지원과제를 선정하는 것이 아니라, 과제 기획의 참고자료로 활용</span></div><div class="hls "><span class="hrt cs12" style="font-size:15pt;"><s>□ 향후 일정</s></span></div><div class="hls "><span class="hrt cs16" style="font-size:12pt;"><s>※ 향후 일정은 대내외 여건에 따라 변동 가능</s></span></div></div></div></div></body>
+<div class="hpa" style="width:210mm;height:297mm;"><div class="hcD" style="left:20mm;top:24.99mm;"><div class="hcI"><div class="hls ps0"><span class="hrt cs12" style="font-size:15pt;"><s>□ 목 적</s></span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs28" style="font-size:15pt;">2026년도 정보통신산업진흥원「AI 응용제품 신속 상용화 지원」사업의</span><span class="hrt cs19" style="font-size:15pt;">산·학·연·관 대상 사전 수요조사를 통해 차년도 사업기획의 기초자료로 활용</span></div><div class="hls ps0"><span class="hrt cs12" style="font-size:15pt;"><s>□ 과제 수요조사 세부 내용</s></span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs39" style="font-size:15pt;font-weight:bold;">(과제 목적)</span><span class="hrt cs41" style="font-size:15pt;">국산 NPU</span><span class="hrt cs41" style="font-size:15pt;">및 AI기술을 활용한 생활 분야</span><span class="hrt cs29" style="font-size:13pt;">(치안·안전 등)</span><span class="hrt cs41" style="font-size:15pt;">유망 AI 응용 제품·서비스 발굴 및 조기 상용화 지원</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(지원분야)</span><span class="hrt cs23" style="font-size:15pt;">생활 분야</span><span class="hrt cs26" style="font-size:13pt;">(치안·안전 등 국민 생활 밀접 분야)</span></div><div class="hls ps0"><span class="hrt cs35" style="font-size:12pt;">※ 서비스 예시는 [붙임] 자료 참조</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs32" style="font-size:15pt;font-weight:bold;">(지원내용)</span><span class="hrt cs34" style="font-size:15pt;"><s>지원 기간 및 상용화 시점에 따라 2개 Type으로 구분</s></span></div><div class="hls ps0"><span class="hrt cs35" style="font-size:12pt;">※ 예산지원 규모는 추후 상세 기획과정에서 변동될 수 있음</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs32" style="font-size:15pt;font-weight:bold;">(지원대상)</span><span class="hrt cs47" style="font-size:15pt;">생활 분야 AI 응용제품 수요처</span><span class="hrt cs46" style="font-size:13pt;">(공공·민간 수요처)</span><span class="hrt cs61" style="font-size:15pt;">, 공급기업</span><span class="hrt cs63" style="font-size:13pt;">(AI 서비스(모델) 기업, AI 반도체 기업, 엔드 프로덕트 제조기업 등)</span><span class="hrt cs61" style="font-size:15pt;">등에 소속된 자나 개인</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(적용기술 요건)</span><span class="hrt cs64" style="font-size:15pt;">국산 NPU 반도체 및 AI 기술</span><span class="hrt cs65" style="font-size:15pt;">*</span><span class="hrt cs64" style="font-size:15pt;">활용</span></div><div class="hls ps0"><span class="hrt cs35" style="font-size:12pt;">* 단순 자동화(규칙 기반)가 아닌 상황 및 데이터를 자율판단하여 실행</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs62" style="font-size:15pt;font-weight:bold;">(수요조사 항목)</span><span class="hrt cs45" style="font-size:15pt;">제안과제명, 제안기관, 보유기술 및 역량, 과제내용, 기대효과 및 애로사항</span></div><div class="hls ps0"><span class="hrt cs12" style="font-size:15pt;"><s>□ 수요조사서 접수</s></span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(조사기간)</span><span class="hrt cs23" style="font-size:15pt;">2025. 10. 1.(수) ~ 10. 24.(금), 16시까지</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(접수방법 및 문의처)</span><span class="hrt cs23" style="font-size:15pt;">이메일 접수</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs24" style="font-size:15pt;font-weight:bold;">(제출서류)</span><span class="hrt cs23" style="font-size:15pt;">수요조사서, 개인정보 수집·이용 동의서</span><span class="hrt cs38" style="font-size:15pt;">*</span></div><div class="hls ps0"><span class="hrt cs16" style="font-size:12pt;"><s>* 수요조사서에 담당자로 기재된 개인별로 제출</s></span></div><div class="hls ps0"><span class="hrt cs12" style="font-size:15pt;"><s>□ 유의 및 참고사항</s></span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs25" style="font-size:15pt;">제안사항에 대해 제안자가 권리 등을 주장할 수 없으며, 제출 서류는 일체 반환하지 않음</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">-</span><span class="hrt cs20" style="font-size:15pt;">제안 사항 검토를 위해 제출된 내용을 관련 전문가 등 제3자</span><span class="hrt cs38" style="font-size:15pt;">*</span><span class="hrt cs20" style="font-size:15pt;">에게 공개하거나 공유할 수 있음</span></div><div class="hls ps0"><span class="hrt cs16" style="font-size:12pt;"><s>* 법적, 제도적 보안유지 준수의무에 대한 보안서약서 징구 예정</s></span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs20" style="font-size:15pt;">수요조사를 통해 접수된 내용은 과제 기획과정에서 타 제안사항과 융합되는 등 내용과 요건이 변경될 수 있음</span></div><div class="hls ps0"><span class="hrt cs23" style="font-size:15pt;">ㅇ</span><span class="hrt cs45" style="font-size:15pt;">본 수요조사는 신규 지원과제를 선정하는 것이 아니라, 과제 기획의 참고자료로 활용</span></div><div class="hls ps0"><span class="hrt cs12" style="font-size:15pt;"><s>□ 향후 일정</s></span></div><div class="hls ps0"><span class="hrt cs16" style="font-size:12pt;"><s>※ 향후 일정은 대내외 여건에 따라 변동 가능</s></span></div></div></div></div></body>
 
 </html>

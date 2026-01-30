@@ -9,6 +9,10 @@ use crate::document::docinfo::char_shape::{
     CharShape, CharShapeAttributes, LanguageCharAttributesI8, LanguageCharAttributesU8,
     LanguageFontInfo,
 };
+use crate::document::docinfo::para_shape::{
+    HeaderShapeType, LineDivideUnit, LineSpacingTypeOld, ParagraphAlignment, ParaShape,
+    ParaShapeAttributes1, VerticalAlignment,
+};
 use crate::document::{DocInfo, FileHeader};
 use crate::error::HwpError;
 use crate::types::{COLORREF, DWORD};
@@ -111,9 +115,13 @@ fn parse_header_xml_content(
     let mut in_char_properties = false;
     let mut in_para_shapes = false;
     let mut in_face_names = false;
+    let mut in_margin = false; // Track if inside <hh:margin> element
 
     // Current charPr being parsed
     let mut current_char_shape: Option<CharShape> = None;
+
+    // Current paraPr being parsed
+    let mut current_para_shape: Option<ParaShape> = None;
 
     loop {
         match reader.read_event() {
@@ -301,8 +309,109 @@ fn parse_header_xml_content(
                             cs.attributes.italic = true;
                         }
                     }
-                    s if s.ends_with("paraShape") && in_para_shapes => {
-                        // Parse paragraph shape - simplified for now
+                    s if (s.ends_with("paraPr") || s.ends_with("paraShape")) && in_para_shapes => {
+                        // Create new ParaShape with default values
+                        current_para_shape = Some(ParaShape {
+                            attributes1: ParaShapeAttributes1 {
+                                line_spacing_type_old: LineSpacingTypeOld::ByCharacter,
+                                align: ParagraphAlignment::Justify, // Default: justify
+                                line_divide_en: LineDivideUnit::Word,
+                                line_divide_ko: LineDivideUnit::Word,
+                                use_line_grid: false,
+                                blank_min_value: 0,
+                                protect_orphan_line: false,
+                                with_next_paragraph: false,
+                                protect_paragraph: false,
+                                always_page_break_before: false,
+                                vertical_align: VerticalAlignment::Baseline,
+                                line_height_matches_font: false,
+                                header_shape_type: HeaderShapeType::None,
+                                paragraph_level: 0,
+                                connect_border: false,
+                                ignore_margin: false,
+                                tail_shape: false,
+                            },
+                            left_margin: 0,
+                            right_margin: 0,
+                            indent: 0,
+                            outdent: 0,
+                            top_spacing: 0,
+                            bottom_spacing: 0,
+                            line_spacing_old: 0,
+                            tab_def_id: 0,
+                            number_bullet_id: 0,
+                            border_fill_id: 0,
+                            border_spacing_left: 0,
+                            border_spacing_right: 0,
+                            border_spacing_top: 0,
+                            border_spacing_bottom: 0,
+                            attributes2: None,
+                            attributes3: None,
+                            line_spacing: None,
+                        });
+                    }
+                    s if s.ends_with(":align") && current_para_shape.is_some() => {
+                        // Parse <hh:align horizontal="JUSTIFY|LEFT|RIGHT|CENTER" />
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref());
+                            let value = String::from_utf8_lossy(&attr.value);
+                            if key == "horizontal" {
+                                if let Some(ref mut ps) = current_para_shape {
+                                    ps.attributes1.align = match value.as_ref() {
+                                        "LEFT" => ParagraphAlignment::Left,
+                                        "RIGHT" => ParagraphAlignment::Right,
+                                        "CENTER" => ParagraphAlignment::Center,
+                                        "DISTRIBUTE" => ParagraphAlignment::Distribute,
+                                        _ => ParagraphAlignment::Justify,
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    s if s.ends_with(":margin") && current_para_shape.is_some() => {
+                        // Enter <hh:margin> element
+                        in_margin = true;
+                    }
+                    s if s.ends_with(":intent") && in_margin && current_para_shape.is_some() => {
+                        // Parse <hc:intent value="N" unit="HWPUNIT" />
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref());
+                            let value = String::from_utf8_lossy(&attr.value);
+                            if key == "value" {
+                                if let Some(ref mut ps) = current_para_shape {
+                                    // HWPUNIT = 1/7200 inch, HWP INT32 = 1/1800 inch
+                                    // Convert: value / 4
+                                    let hwpunit_value: i32 = value.parse().unwrap_or(0);
+                                    ps.indent = hwpunit_value / 4;
+                                }
+                            }
+                        }
+                    }
+                    s if s.ends_with(":left") && in_margin && current_para_shape.is_some() => {
+                        // Parse <hc:left value="N" unit="HWPUNIT" />
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref());
+                            let value = String::from_utf8_lossy(&attr.value);
+                            if key == "value" {
+                                if let Some(ref mut ps) = current_para_shape {
+                                    let hwpunit_value: i32 = value.parse().unwrap_or(0);
+                                    ps.left_margin = hwpunit_value / 4;
+                                }
+                            }
+                        }
+                    }
+                    s if s.ends_with(":right") && in_margin && current_para_shape.is_some() => {
+                        // Parse <hc:right value="N" unit="HWPUNIT" />
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref());
+                            let value = String::from_utf8_lossy(&attr.value);
+                            if key == "value" {
+                                if let Some(ref mut ps) = current_para_shape {
+                                    let hwpunit_value: i32 = value.parse().unwrap_or(0);
+                                    ps.right_margin = hwpunit_value / 4;
+                                }
+                            }
+                        }
                     }
                     s if (s.ends_with("font") || s.ends_with("faceName")) && in_face_names => {
                         // Parse font face - simplified for now
@@ -327,6 +436,16 @@ fn parse_header_xml_content(
                         if let Some(cs) = current_char_shape.take() {
                             doc_info.char_shapes.push(cs);
                         }
+                    }
+                    s if s.ends_with("paraPr") || s.ends_with("paraShape") => {
+                        // Save completed para shape
+                        if let Some(ps) = current_para_shape.take() {
+                            doc_info.para_shapes.push(ps);
+                        }
+                    }
+                    s if s.ends_with(":margin") => {
+                        // Exit <hh:margin> element
+                        in_margin = false;
                     }
                     _ => {}
                 }

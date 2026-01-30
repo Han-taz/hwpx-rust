@@ -257,6 +257,53 @@ pub fn render_text_runs(runs: &[ParaTextRun], document: &HwpDocument) -> String 
                     result.push_str(&html_escape(text));
                 }
             }
+            ParaTextRun::Hyperlink { text, url, char_shape_id } => {
+                // 하이퍼링크 렌더링 / Render hyperlink
+                if text.is_empty() {
+                    continue;
+                }
+
+                let escaped_url = html_escape_attr(url);
+                let mut link_text = html_escape(text);
+
+                // CharShape 스타일 적용 / Apply CharShape styles
+                let char_shape_opt = char_shape_id.and_then(|id| {
+                    document.doc_info.char_shapes.get(id as usize)
+                });
+
+                let mut inline_style = String::new();
+                if let Some(char_shape) = char_shape_opt {
+                    let size_pt = char_shape.base_size as f64 / 100.0;
+                    inline_style.push_str(&format!("font-size:{size_pt}pt;"));
+
+                    let color = &char_shape.text_color;
+                    if color.0 != 0 {
+                        inline_style.push_str(&format!(
+                            "color:rgb({},{},{});",
+                            color.r(),
+                            color.g(),
+                            color.b()
+                        ));
+                    }
+
+                    if char_shape.attributes.bold {
+                        link_text = format!("<strong>{link_text}</strong>");
+                    }
+                    if char_shape.attributes.italic {
+                        link_text = format!("<em>{link_text}</em>");
+                    }
+                }
+
+                if !inline_style.is_empty() {
+                    result.push_str(&format!(
+                        r#"<a href="{escaped_url}" class="hwp-link" style="{inline_style}">{link_text}</a>"#
+                    ));
+                } else {
+                    result.push_str(&format!(
+                        r#"<a href="{escaped_url}" class="hwp-link">{link_text}</a>"#
+                    ));
+                }
+            }
         }
     }
 
@@ -266,6 +313,14 @@ pub fn render_text_runs(runs: &[ParaTextRun], document: &HwpDocument) -> String 
 /// HTML 특수 문자 이스케이프 / Escape HTML special characters
 fn html_escape(text: &str) -> String {
     text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// HTML 속성 값을 위한 문자 이스케이프 / Escape characters for HTML attribute values
+fn html_escape_attr(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('"', "&quot;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
 }

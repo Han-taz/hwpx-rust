@@ -381,6 +381,16 @@ pub enum ParaTextRun {
         #[serde(skip_serializing_if = "Option::is_none")]
         display_text: Option<String>,
     },
+    /// 하이퍼링크 / Hyperlink (HWPX fieldBegin/fieldEnd)
+    Hyperlink {
+        /// 링크 텍스트 / Link text
+        text: String,
+        /// URL
+        url: String,
+        /// CharShape ID (HWPX charPrIDRef)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        char_shape_id: Option<u16>,
+    },
 }
 
 impl Section {

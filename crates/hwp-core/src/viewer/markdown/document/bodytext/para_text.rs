@@ -268,6 +268,29 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
                     result.push_str(text);
                 }
             }
+            ParaTextRun::Hyperlink { text, url, char_shape_id } => {
+                if text.is_empty() {
+                    continue;
+                }
+
+                // CharShape 스타일 적용 / Apply CharShape styles
+                let char_shape = char_shape_id
+                    .and_then(|id| document.doc_info.char_shapes.get(id as usize));
+
+                let styled_text = if let Some(shape) = char_shape {
+                    apply_markdown_styles(
+                        text.trim(),
+                        shape.attributes.bold,
+                        shape.attributes.italic,
+                        shape.attributes.strikethrough != 0,
+                    )
+                } else {
+                    text.trim().to_string()
+                };
+
+                // 마크다운 하이퍼링크 형식 / Markdown hyperlink format
+                result.push_str(&format!("[{}]({})", styled_text, url));
+            }
         }
     }
 
