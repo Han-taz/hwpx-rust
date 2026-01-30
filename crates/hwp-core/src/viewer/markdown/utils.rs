@@ -116,6 +116,42 @@ pub(crate) fn should_process_control_header(header: &crate::document::CtrlHeader
     }
 }
 
+/// Check if control header is a hyperlink field
+/// 컨트롤 헤더가 하이퍼링크 필드인지 확인
+pub(crate) fn is_hyperlink_field(header: &crate::document::CtrlHeader) -> bool {
+    use crate::document::CtrlHeaderData;
+    use crate::document::CtrlId;
+
+    // Check if ctrl_id is hyperlink
+    if header.ctrl_id == CtrlId::FIELD_HYPERLINK {
+        return true;
+    }
+
+    // Also check if field_type in data is hyperlink
+    if let CtrlHeaderData::Field { field_type, .. } = &header.data {
+        return field_type == "hlk" || field_type == "%hlk";
+    }
+
+    false
+}
+
+/// Extract URL from hyperlink field
+/// 하이퍼링크 필드에서 URL 추출
+pub(crate) fn get_hyperlink_url(header: &crate::document::CtrlHeader) -> Option<String> {
+    use crate::document::CtrlHeaderData;
+
+    if let CtrlHeaderData::Field { command, .. } = &header.data {
+        if !command.is_empty() {
+            // URL format: "url;extra;params;" - take the first part
+            let url = command.split(';').next().unwrap_or(command);
+            if !url.is_empty() {
+                return Some(url.to_string());
+            }
+        }
+    }
+    None
+}
+
 /// 한글 개요 번호 형식 생성 / Generate Korean outline number format
 /// 레벨에 따라 다른 번호 형식 사용 / Use different number format based on level
 fn format_outline_number(level: u8, number: u32) -> String {

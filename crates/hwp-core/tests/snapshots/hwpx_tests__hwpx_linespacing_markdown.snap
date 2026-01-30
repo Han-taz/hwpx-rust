@@ -1,0 +1,60 @@
+---
+source: crates/hwp-core/tests/hwpx_tests.rs
+assertion_line: 91
+expression: markdown
+---
+# HWP 문서
+
+
+
+|HHHHHHHHHHHHHH
+
+|HHHHHHHHHHHHHH
+
+|H 글자에 따라 150%
+
+|HHHHHHHHHHHHHH
+
+|H 고정 값 15pt
+
+|HHHHHHHHHHHHHH
+
+|H 여백만 지정 5pt
+
+|HHHHHHHHHHHHHH
+
+|H 글자에 따라 100%
+
+|HHHHHHHHHHHHHH
+
+|H 고정 값 10pt
+
+|HHHHHHHHHHHHHH
+
+|H 여백만 지정 0pt
+
+|HHHHHHHHHHHHHH
+
+|H 글자에 따라 200%
+
+|HHHHHHHHHHHHHH
+
+|H 고정 값 20pt
+
+|HHHHHHHHHHHHHH
+
+|H 여백만 지정 10pt
+
+|HHHHHHHHHHHHHH
+
+|H 글자에 따라100%
+
+|HHHHHHHHHHHHHH
+
+|H 고정 값0pt
+
+|HHHHHHHHHHHHHH
+
+|H 여백만 지정0pt
+
+|HHHHHHHHHHHHHH

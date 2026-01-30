@@ -66,6 +66,28 @@ impl Default for HwpxCell {
     }
 }
 
+/// Text run with associated character shape ID
+/// 문자 스타일 ID가 연결된 텍스트 run
+#[derive(Debug, Clone)]
+struct TextRunInfo {
+    text: String,
+    char_shape_id: Option<u16>,
+}
+
+/// Active hyperlink state for tracking fieldBegin/fieldEnd
+/// fieldBegin/fieldEnd 추적을 위한 활성 하이퍼링크 상태
+#[derive(Debug, Clone, Default)]
+struct HyperlinkState {
+    /// Whether we're inside a hyperlink (between fieldBegin and fieldEnd)
+    active: bool,
+    /// URL extracted from Path parameter
+    url: String,
+    /// Accumulated text between fieldBegin and fieldEnd
+    text: String,
+    /// CharShape ID for the hyperlink text
+    char_shape_id: Option<u16>,
+}
+
 /// Parse all section files and create BodyText
 pub fn parse_sections(container: &mut HwpxContainer) -> Result<BodyText, HwpError> {
     let section_files = container.get_section_files();
@@ -101,6 +123,19 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
 
     // Image parsing
     let mut current_image_ref: Option<String> = None;
+
+    // Text run tracking with char shape ID
+    // charPrIDRef를 추적하여 텍스트 run에 스타일 연결
+    let mut current_char_shape_id: Option<u16> = None;
+    let mut current_runs: Vec<TextRunInfo> = Vec::new();
+    let mut current_run_text = String::new();
+
+    // Hyperlink tracking (fieldBegin/fieldEnd)
+    // 하이퍼링크 추적 (fieldBegin/fieldEnd)
+    let mut hyperlink_state = HyperlinkState::default();
+    let mut in_field_begin = false;
+    let mut in_parameters = false;
+    let mut current_param_name = String::new();
 
     // Table parsing with colspan/rowspan support
     let mut table_rows: Vec<Vec<HwpxCell>> = Vec::new();
@@ -218,6 +253,19 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             current_image_ref = Some(value.to_string());
                         }
                     }
+                } else if local_name.ends_with(":fieldEnd") || local_name == "fieldEnd" {
+                    // Handle self-closing fieldEnd: <hp:fieldEnd beginIDRef="..." />
+                    // Self-closing fieldEnd 처리: <hp:fieldEnd beginIDRef="..." />
+                    if hyperlink_state.active && !hyperlink_state.url.is_empty() {
+                        // Add hyperlink as a special marker in runs
+                        // 하이퍼링크를 특수 마커로 runs에 추가
+                        current_runs.push(TextRunInfo {
+                            text: format!("\x00HYPERLINK:{}\x00{}", hyperlink_state.url, hyperlink_state.text),
+                            char_shape_id: hyperlink_state.char_shape_id,
+                        });
+                    }
+                    // Reset hyperlink state
+                    hyperlink_state = HyperlinkState::default();
                 }
             }
             Ok(Event::Start(ref e)) => {
@@ -229,6 +277,27 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         para_depth += 1;
                         if table_depth == 0 && para_depth == 1 {
                             current_text.clear();
+                            current_runs.clear();
+                            current_run_text.clear();
+                        }
+                    }
+                    s if s.ends_with(":run") || s == "run" => {
+                        // Save previous run if any text accumulated
+                        // 이전 run의 텍스트가 있으면 저장
+                        if !current_run_text.is_empty() {
+                            current_runs.push(TextRunInfo {
+                                text: std::mem::take(&mut current_run_text),
+                                char_shape_id: current_char_shape_id,
+                            });
+                        }
+                        // Parse charPrIDRef from <hp:run charPrIDRef="N">
+                        current_char_shape_id = None;
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref());
+                            if key == "charPrIDRef" {
+                                let value = String::from_utf8_lossy(&attr.value);
+                                current_char_shape_id = value.parse().ok();
+                            }
                         }
                     }
                     s if s.ends_with(":t") || s == "t" => {
@@ -264,12 +333,58 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         _in_picture = true;
                         current_image_ref = None;
                     }
+                    s if s.ends_with(":fieldBegin") || s == "fieldBegin" => {
+                        // Parse fieldBegin for hyperlinks
+                        // <hp:fieldBegin type="HYPERLINK" id="...">
+                        in_field_begin = true;
+                        let mut field_type = String::new();
+
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref());
+                            let value = String::from_utf8_lossy(&attr.value);
+                            if key == "type" {
+                                field_type = value.to_string();
+                            }
+                        }
+
+                        if field_type == "HYPERLINK" {
+                            // Start tracking hyperlink
+                            hyperlink_state = HyperlinkState {
+                                active: true,
+                                url: String::new(),
+                                text: String::new(),
+                                char_shape_id: current_char_shape_id,
+                            };
+                        }
+                    }
+                    s if s.ends_with(":parameters") || s == "parameters" => {
+                        if in_field_begin {
+                            in_parameters = true;
+                        }
+                    }
+                    s if s.ends_with(":stringParam") || s == "stringParam" => {
+                        // Parse stringParam for URL extraction
+                        // <hp:stringParam name="Path">URL</hp:stringParam>
+                        if in_parameters && hyperlink_state.active {
+                            for attr in e.attributes().flatten() {
+                                let key = String::from_utf8_lossy(attr.key.as_ref());
+                                let value = String::from_utf8_lossy(&attr.value);
+                                if key == "name" {
+                                    current_param_name = value.to_string();
+                                }
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
             Ok(Event::Text(ref e)) => {
-                if in_text {
-                    let text = e.unescape().unwrap_or_default().to_string();
+                let text = e.unescape().unwrap_or_default().to_string();
+
+                // Handle stringParam content for hyperlink URL
+                if in_parameters && hyperlink_state.active && current_param_name == "Path" {
+                    hyperlink_state.url = text.clone();
+                } else if in_text {
                     let in_table = table_depth > 0;
                     if in_table && in_caption {
                         // Text inside table caption
@@ -277,7 +392,19 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                     } else if in_table && in_cell {
                         current_cell.current_text.push_str(&text);
                     } else if !in_table {
-                        current_text.push_str(&text);
+                        // If inside hyperlink, collect text ONLY for hyperlink (not as regular text)
+                        // 하이퍼링크 내부면 하이퍼링크 텍스트로만 수집 (일반 텍스트로 추가 안 함)
+                        if hyperlink_state.active {
+                            hyperlink_state.text.push_str(&text);
+                            // Update char_shape_id if we have one for this run
+                            if hyperlink_state.char_shape_id.is_none() {
+                                hyperlink_state.char_shape_id = current_char_shape_id;
+                            }
+                        } else {
+                            // Normal text - collect for current run
+                            current_run_text.push_str(&text);
+                            current_text.push_str(&text);
+                        }
                     }
                 }
             }
@@ -286,10 +413,34 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                 let local_name = String::from_utf8_lossy(name.as_ref());
 
                 match local_name.as_ref() {
+                    s if s.ends_with(":run") || s == "run" => {
+                        // Save current run when </hp:run> ends
+                        // </hp:run>이 끝나면 현재 run 저장
+                        if !current_run_text.is_empty() {
+                            current_runs.push(TextRunInfo {
+                                text: std::mem::take(&mut current_run_text),
+                                char_shape_id: current_char_shape_id,
+                            });
+                        }
+                    }
                     s if s.ends_with(":p") || s == "p" => {
                         let in_table = table_depth > 0;
-                        if para_depth == 1 && !in_table && !current_text.is_empty() {
-                            paragraphs.push(create_paragraph(&current_text));
+                        if para_depth == 1 && !in_table {
+                            // Save any remaining run text
+                            if !current_run_text.is_empty() {
+                                current_runs.push(TextRunInfo {
+                                    text: std::mem::take(&mut current_run_text),
+                                    char_shape_id: current_char_shape_id,
+                                });
+                            }
+                            // Create paragraph with runs if any
+                            if !current_runs.is_empty() {
+                                paragraphs.push(create_paragraph_with_runs(&current_runs));
+                                current_runs.clear();
+                            } else if !current_text.is_empty() {
+                                // Fallback to old behavior
+                                paragraphs.push(create_paragraph(&current_text));
+                            }
                             current_text.clear();
                         }
                         // Save current paragraph text as a content item when paragraph ends inside cell
@@ -386,6 +537,30 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         _in_picture = false;
                         current_image_ref = None;
                     }
+                    s if s.ends_with(":fieldBegin") || s == "fieldBegin" => {
+                        in_field_begin = false;
+                    }
+                    s if s.ends_with(":fieldEnd") || s == "fieldEnd" => {
+                        // Hyperlink complete - create hyperlink run
+                        // 하이퍼링크 완료 - 하이퍼링크 run 생성
+                        if hyperlink_state.active && !hyperlink_state.url.is_empty() {
+                            // Add hyperlink as a special marker in runs
+                            // 하이퍼링크를 특수 마커로 runs에 추가
+                            current_runs.push(TextRunInfo {
+                                text: format!("\x00HYPERLINK:{}\x00{}", hyperlink_state.url, hyperlink_state.text),
+                                char_shape_id: hyperlink_state.char_shape_id,
+                            });
+                        }
+
+                        // Reset hyperlink state
+                        hyperlink_state = HyperlinkState::default();
+                    }
+                    s if s.ends_with(":parameters") || s == "parameters" => {
+                        in_parameters = false;
+                    }
+                    s if s.ends_with(":stringParam") || s == "stringParam" => {
+                        current_param_name.clear();
+                    }
                     _ => {}
                 }
             }
@@ -414,6 +589,7 @@ fn create_paragraph(text: &str) -> Paragraph {
     // Create ParaText record
     let runs = vec![ParaTextRun::Text {
         text: text.to_string(),
+        char_shape_id: None,
     }];
 
     records.push(ParagraphRecord::ParaText {
@@ -422,6 +598,59 @@ fn create_paragraph(text: &str) -> Paragraph {
         control_char_positions: vec![],
         inline_control_params: vec![],
     });
+
+    Paragraph {
+        para_header,
+        records,
+    }
+}
+
+/// Create a paragraph from text runs with char_shape_id
+/// char_shape_id가 연결된 텍스트 run들로 paragraph 생성
+fn create_paragraph_with_runs(text_runs: &[TextRunInfo]) -> Paragraph {
+    // Build runs, handling hyperlink markers
+    let mut runs: Vec<ParaTextRun> = Vec::new();
+    let mut total_text = String::new();
+
+    for run_info in text_runs {
+        if run_info.text.is_empty() {
+            continue;
+        }
+
+        // Check for hyperlink marker: \x00HYPERLINK:url\x00text
+        if run_info.text.starts_with("\x00HYPERLINK:") {
+            // Parse hyperlink: \x00HYPERLINK:url\x00text
+            let content = &run_info.text[11..]; // Skip "\x00HYPERLINK:"
+            if let Some(null_pos) = content.find('\x00') {
+                let url = &content[..null_pos];
+                let text = &content[null_pos + 1..];
+                runs.push(ParaTextRun::Hyperlink {
+                    text: text.to_string(),
+                    url: url.to_string(),
+                    char_shape_id: run_info.char_shape_id,
+                });
+                total_text.push_str(text);
+            }
+        } else {
+            runs.push(ParaTextRun::Text {
+                text: run_info.text.clone(),
+                char_shape_id: run_info.char_shape_id,
+            });
+            total_text.push_str(&run_info.text);
+        }
+    }
+
+    let para_header = ParaHeader {
+        text_char_count: total_text.chars().count() as u32,
+        ..Default::default()
+    };
+
+    let records = vec![ParagraphRecord::ParaText {
+        text: total_text,
+        runs,
+        control_char_positions: vec![],
+        inline_control_params: vec![],
+    }];
 
     Paragraph {
         para_header,

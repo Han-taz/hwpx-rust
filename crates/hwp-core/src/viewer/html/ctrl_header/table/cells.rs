@@ -57,7 +57,7 @@ pub(crate) fn render_cells(
                     ParagraphRecord::ShapeComponentPicture { .. } => {
                         let height_hwpunit = shape_component_height as i32;
                         let height_mm = round_to_2dp(int32_to_mm(height_hwpunit));
-                        if max_height_mm.is_none() || height_mm > max_height_mm.unwrap() {
+                        if max_height_mm.map_or(true, |h| height_mm > h) {
                             max_height_mm = Some(height_mm);
                         }
                     }
@@ -70,7 +70,7 @@ pub(crate) fn render_cells(
                         if let Some(height) =
                             find_shape_component_height(nested_children, shape_component.height)
                         {
-                            if max_height_mm.is_none() || height > max_height_mm.unwrap() {
+                            if max_height_mm.map_or(true, |h| height > h) {
                                 max_height_mm = Some(height);
                             }
                         }
@@ -89,7 +89,7 @@ pub(crate) fn render_cells(
                     | ParagraphRecord::ShapeComponentUnknown { .. } => {
                         // shape_component.height 사용 / Use shape_component.height
                         let height_mm = round_to_2dp(int32_to_mm(shape_component_height as i32));
-                        if max_height_mm.is_none() || height_mm > max_height_mm.unwrap() {
+                        if max_height_mm.map_or(true, |h| height_mm > h) {
                             max_height_mm = Some(height_mm);
                         }
                     }
@@ -102,7 +102,7 @@ pub(crate) fn render_cells(
                             segments.iter().map(|seg| seg.line_height).sum();
                         let height_mm = round_to_2dp(int32_to_mm(total_height_hwpunit));
                         if paraline_seg_height_mm.is_none()
-                            || height_mm > paraline_seg_height_mm.unwrap()
+                            || paraline_seg_height_mm.map_or(true, |h| height_mm > h)
                         {
                             paraline_seg_height_mm = Some(height_mm);
                         }
@@ -120,7 +120,7 @@ pub(crate) fn render_cells(
                 let paraline_seg_height = paraline_seg_height_mm.unwrap_or(0.0);
                 // shape_component.height와 ParaLineSeg 높이 중 더 큰 값 사용 / Use the larger value between shape_component.height and ParaLineSeg height
                 let final_height = shape_component_height_mm.max(paraline_seg_height);
-                if max_height_mm.is_none() || final_height > max_height_mm.unwrap() {
+                if max_height_mm.map_or(true, |h| final_height > h) {
                     max_height_mm = Some(final_height);
                 }
             } else if max_height_mm.is_none() {
@@ -145,7 +145,7 @@ pub(crate) fn render_cells(
                             find_shape_component_height(children, shape_component.height)
                         {
                             if max_shape_height_mm.is_none()
-                                || shape_height_mm > max_shape_height_mm.unwrap()
+                                || max_shape_height_mm.map_or(true, |h| shape_height_mm > h)
                             {
                                 max_shape_height_mm = Some(shape_height_mm);
                             }
@@ -157,7 +157,7 @@ pub(crate) fn render_cells(
                         let total_height_hwpunit: i32 =
                             segments.iter().map(|seg| seg.line_height).sum();
                         let height_mm = round_to_2dp(int32_to_mm(total_height_hwpunit));
-                        if max_shape_height_mm.is_none() || height_mm > max_shape_height_mm.unwrap()
+                        if max_shape_height_mm.map_or(true, |h| height_mm > h)
                         {
                             max_shape_height_mm = Some(height_mm);
                         }
@@ -511,6 +511,7 @@ pub(crate) fn render_cells(
                         original_text_len: para.para_header.text_char_count as usize,
                         images: &images,
                         tables: &[], // 셀 내부에서는 테이블 없음 / No tables inside cells
+                        hyperlinks: Vec::new(), // 셀 내부에서는 하이퍼링크 처리 안 함 / No hyperlink processing inside cells
                     };
 
                     let context = LineSegmentRenderContext {
@@ -537,8 +538,13 @@ pub(crate) fn render_cells(
                 }
             } else if !text.is_empty() {
                 // LineSegment가 없으면 텍스트만 렌더링 / Render text only if no LineSegment
-                let rendered_text =
-                    text::render_text(&text, &char_shapes, document, &options.css_class_prefix);
+                // HWPX char_shape_id가 있으면 runs 기반 렌더링 사용 / Use runs-based rendering if HWPX char_shape_id exists
+                let runs = text::extract_runs(para);
+                let rendered_text = if text::runs_have_char_shape_id(&runs) {
+                    text::render_text_runs(&runs, document)
+                } else {
+                    text::render_text(&text, &char_shapes, document, &options.css_class_prefix)
+                };
                 cell_content.push_str(&format!(
                     r#"<div class="hls {para_shape_class}">{rendered_text}</div>"#
                 ));

@@ -1,5 +1,6 @@
 ---
 source: crates/hwp-core/tests/snapshot_tests.rs
+assertion_line: 622
 expression: html
 ---
 <!DOCTYPE html>
@@ -239,139 +240,139 @@ body {margin:0;padding-left:0;padding-right:0;padding-bottom:0;padding-top:2mm;}
   font-size:15pt;color:rgb(0,0,0);font-family:"휴먼명조";font-weight:bold;letter-spacing:-0.05em;
 }
 .ps0 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;
 }
 .ps1 {
-  text-align:left;
+  text-align:left;margin-bottom:0.45mm;line-height:0.02;
 }
 .ps2 {
-  text-align:justify;
+  text-align:justify;text-indent:-9.24mm;margin-bottom:0.46mm;
 }
 .ps3 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps4 {
-  text-align:justify;
+  text-align:justify;text-indent:-18.37mm;padding-left:3.98mm;margin-bottom:0.56mm;
 }
 .ps5 {
-  text-align:justify;
+  text-align:justify;margin-bottom:12.70mm;
 }
 .ps6 {
-  text-align:center;
+  text-align:center;margin-bottom:0.35mm;
 }
 .ps7 {
-  text-align:center;
+  text-align:center;margin-bottom:0.35mm;
 }
 .ps8 {
-  text-align:center;
+  text-align:center;margin-bottom:0.42mm;line-height:0.01;
 }
 .ps9 {
-  text-align:center;
+  text-align:center;text-indent:-30.69mm;margin-bottom:0.49mm;line-height:0.01;
 }
 .ps10 {
-  text-align:center;
+  text-align:center;text-indent:-30.69mm;margin-bottom:0.42mm;line-height:0.01;
 }
 .ps11 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps12 {
-  text-align:justify;
+  text-align:justify;padding-left:7.06mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps13 {
-  text-align:justify;
+  text-align:justify;padding-left:14.11mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps14 {
-  text-align:justify;
+  text-align:justify;padding-left:21.17mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps15 {
-  text-align:justify;
+  text-align:justify;padding-left:28.22mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps16 {
-  text-align:justify;
+  text-align:justify;padding-left:35.28mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps17 {
-  text-align:justify;
+  text-align:justify;padding-left:42.33mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps18 {
-  text-align:left;
+  text-align:left;margin-bottom:0.35mm;
 }
 .ps19 {
-  text-align:justify;
+  text-align:justify;padding-left:49.39mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps20 {
-  text-align:justify;
+  text-align:justify;padding-left:10.58mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps21 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.53mm;line-height:0.01;
 }
 .ps22 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.46mm;
 }
 .ps23 {
-  text-align:center;
+  text-align:center;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps24 {
-  text-align:center;
+  text-align:center;margin-bottom:0.49mm;line-height:0.01;
 }
 .ps25 {
-  text-align:center;
+  text-align:center;text-indent:-26.95mm;padding-left:2.33mm;margin-bottom:0.53mm;line-height:0.01;
 }
 .ps26 {
-  text-align:center;
+  text-align:center;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps27 {
-  text-align:justify;
+  text-align:justify;text-indent:-21.67mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps28 {
-  text-align:justify;
+  text-align:justify;text-indent:-19.61mm;margin-bottom:0.64mm;line-height:655.37;
 }
 .ps29 {
-  text-align:justify;
+  text-align:justify;text-indent:-23.11mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps30 {
-  text-align:justify;
+  text-align:justify;text-indent:-21.76mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps31 {
-  text-align:center;
+  text-align:center;text-indent:-26.95mm;padding-left:2.33mm;margin-bottom:0.53mm;line-height:655.37;
 }
 .ps32 {
-  text-align:justify;
+  text-align:justify;text-indent:-23.78mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps33 {
-  text-align:justify;
+  text-align:justify;text-indent:-16.54mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps34 {
-  text-align:justify;
+  text-align:justify;text-indent:-23.54mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps35 {
-  text-align:justify;
+  text-align:justify;text-indent:-16.85mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps36 {
-  text-align:justify;
+  text-align:justify;text-indent:-21.72mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps37 {
-  text-align:justify;
+  text-align:justify;text-indent:-16.55mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps38 {
-  text-align:justify;
+  text-align:justify;text-indent:-21.61mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps39 {
-  text-align:justify;
+  text-align:justify;text-indent:-16.76mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps40 {
-  text-align:justify;
+  text-align:justify;text-indent:-23.26mm;margin-bottom:0.60mm;line-height:0.01;
 }
 .ps41 {
-  text-align:center;
+  text-align:center;text-indent:-16.43mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps42 {
-  text-align:center;
+  text-align:center;padding-left:-2.82mm;margin-bottom:0.56mm;line-height:0.01;
 }
 .ps43 {
-  text-align:center;
+  text-align:center;padding-left:-2.82mm;margin-bottom:0.42mm;line-height:0.01;
 }
 .ps44 {
-  text-align:center;
+  text-align:center;margin-bottom:0.46mm;
 }
 @media print {
 .hpa {margin:0;border:0 black none;box-shadow:none;}

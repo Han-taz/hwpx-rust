@@ -11,6 +11,16 @@ use crate::viewer::HtmlOptions;
 use crate::{HwpDocument, ParaShape};
 use std::collections::HashMap;
 
+/// 하이퍼링크 영역 정보 / Hyperlink region information
+/// NOTE: 현재 HTML에서 하이퍼링크 처리는 세그먼트 단위 위치 변환이 복잡하여 미사용
+/// Currently unused as HTML hyperlink processing is complex due to segment-level position conversion
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct HyperlinkInfo {
+    /// URL
+    pub url: String,
+}
+
 /// 라인 세그먼트 렌더링 콘텐츠 / Line segment rendering content
 pub struct LineSegmentContent<'a> {
     pub segments: &'a [LineSegmentInfo],
@@ -20,6 +30,8 @@ pub struct LineSegmentContent<'a> {
     pub original_text_len: usize,
     pub images: &'a [ImageInfo],
     pub tables: &'a [TableInfo<'a>],
+    /// 하이퍼링크 정보 / Hyperlink information
+    pub hyperlinks: Vec<HyperlinkInfo>,
 }
 
 /// 라인 세그먼트 렌더링 컨텍스트 / Line segment rendering context
@@ -195,6 +207,7 @@ pub fn render_line_segments(
         original_text_len: text.chars().count(),
         images: &[],
         tables: &[],
+        hyperlinks: Vec::new(),
     };
 
     let context = LineSegmentRenderContext {
@@ -229,6 +242,9 @@ pub fn render_line_segments_with_content(
     let original_text_len = content.original_text_len;
     let images = content.images;
     let tables = content.tables;
+    // NOTE: HTML에서 하이퍼링크 처리는 세그먼트 단위 위치 변환이 복잡하여 현재 미사용
+    // HTML hyperlink processing is complex due to segment-level position conversion, currently unused
+    let _hyperlinks = &content.hyperlinks;
 
     let document = context.document;
     let para_shape_class = context.para_shape_class;
@@ -455,6 +471,8 @@ pub fn render_line_segments_with_content(
             ));
         } else if !is_text_empty {
             // 텍스트 렌더링 / Render text
+            // NOTE: HTML에서 하이퍼링크 처리는 세그먼트 단위 위치 변환이 복잡하여 일단 기본 렌더링 사용
+            // HTML hyperlink processing is complex due to segment-level position conversion, so use basic rendering for now
             use crate::viewer::html::text::render_text;
             let rendered_text = render_text(&segment_text, &segment_char_shapes, document, "");
             content.push_str(&rendered_text);

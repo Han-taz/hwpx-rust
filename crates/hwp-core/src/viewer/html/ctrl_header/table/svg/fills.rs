@@ -61,7 +61,8 @@ pub(crate) fn render_fills(
                             color_to_pattern.insert(color_value, id.clone());
                             id
                         } else {
-                            color_to_pattern.get(&color_value).unwrap().clone()
+                            // Should always exist since we just checked !contains_key
+                            color_to_pattern.get(&color_value).cloned().unwrap_or_default()
                         };
 
                         svg_paths.push_str(&format!(

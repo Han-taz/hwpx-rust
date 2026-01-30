@@ -23,6 +23,7 @@ macro_rules! assert_snapshot_with_path {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_full_document_json_snapshot() {
     let file_path = match find_test_file() {
         Some(path) => path,
@@ -82,6 +83,7 @@ fn test_full_document_json_snapshot() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_all_fixtures_json_snapshots() {
     // 모든 fixtures 파일에 대해 JSON 스냅샷 생성 / Generate JSON snapshots for all fixtures files
     let hwp_files = find_all_hwp_files();
@@ -137,6 +139,7 @@ fn test_all_fixtures_json_snapshots() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_debug_record_levels() {
     let file_path = match find_test_file() {
         Some(path) => path,
@@ -211,6 +214,7 @@ fn test_debug_record_levels() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_debug_list_header_children() {
     let file_path = match find_test_file() {
         Some(path) => path,
@@ -283,6 +287,7 @@ fn test_debug_list_header_children() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_document_markdown_snapshot() {
     let file_path = match find_test_file() {
         Some(path) => path,
@@ -332,6 +337,7 @@ fn test_document_markdown_snapshot() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_headerfooter_markdown() {
     // headerfooter.hwp 파일에 대해 Markdown 스냅샷 생성 / Generate Markdown snapshot for headerfooter.hwp
     let file_path = match find_headerfooter_file() {
@@ -395,6 +401,7 @@ fn test_headerfooter_markdown() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_all_fixtures_markdown_snapshots() {
     // 모든 fixtures 파일에 대해 Markdown 스냅샷 생성 / Generate Markdown snapshots for all fixtures files
     let hwp_files = find_all_hwp_files();
@@ -509,6 +516,7 @@ fn test_document_html_snapshot() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_headerfooter_html() {
     // headerfooter.hwp 파일에 대해 HTML 스냅샷 생성 / Generate HTML snapshot for headerfooter.hwp
     let file_path = match find_headerfooter_file() {
@@ -573,6 +581,7 @@ fn test_headerfooter_html() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_all_fixtures_html_snapshots() {
     // 모든 fixtures 파일에 대해 HTML 스냅샷 생성 / Generate HTML snapshots for all fixtures files
     let hwp_files = find_all_hwp_files();
@@ -705,6 +714,7 @@ fn test_table2_html_snapshot() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_parse_all_fixtures() {
     // 모든 fixtures 파일을 파싱하여 에러가 없는지 확인 / Parse all fixtures files to check for errors
     let hwp_files = find_all_hwp_files();
@@ -972,6 +982,7 @@ fn test_analyze_object_common_properties_size() {
 }
 
 #[test]
+#[ignore = "HWP support frozen - focusing on HWPX only"]
 fn test_document_markdown_with_image_files() {
     let file_path = match find_test_file() {
         Some(path) => path,

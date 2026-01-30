@@ -1,7 +1,252 @@
 /// Error types for HWP file parsing
 ///
 /// This module defines all error types that can occur during HWP file parsing.
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+/// Parsing context for better error messages
+///
+/// Contains location and context information about where an error occurred.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ParseContext {
+    /// Source file or stream name (e.g., "section0.xml", "BodyText/Section0")
+    pub source: Option<String>,
+    /// Byte offset in the source
+    pub offset: Option<usize>,
+    /// Line number (1-based, for XML sources)
+    pub line: Option<usize>,
+    /// Column number (1-based, for XML sources)
+    pub column: Option<usize>,
+    /// Parent element or record type
+    pub parent: Option<String>,
+    /// Current element or record being parsed
+    pub element: Option<String>,
+}
+
+impl ParseContext {
+    /// Create a new empty context
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the source file/stream name
+    pub fn with_source(mut self, source: impl Into<String>) -> Self {
+        self.source = Some(source.into());
+        self
+    }
+
+    /// Set the byte offset
+    pub fn with_offset(mut self, offset: usize) -> Self {
+        self.offset = Some(offset);
+        self
+    }
+
+    /// Set line and column (1-based)
+    pub fn with_position(mut self, line: usize, column: usize) -> Self {
+        self.line = Some(line);
+        self.column = Some(column);
+        self
+    }
+
+    /// Set the parent element
+    pub fn with_parent(mut self, parent: impl Into<String>) -> Self {
+        self.parent = Some(parent.into());
+        self
+    }
+
+    /// Set the current element
+    pub fn with_element(mut self, element: impl Into<String>) -> Self {
+        self.element = Some(element.into());
+        self
+    }
+
+    /// Check if context has any information
+    pub fn is_empty(&self) -> bool {
+        self.source.is_none()
+            && self.offset.is_none()
+            && self.line.is_none()
+            && self.parent.is_none()
+            && self.element.is_none()
+    }
+}
+
+impl std::fmt::Display for ParseContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut parts = Vec::new();
+
+        if let Some(ref source) = self.source {
+            parts.push(format!("in '{}'", source));
+        }
+
+        if let (Some(line), Some(col)) = (self.line, self.column) {
+            parts.push(format!("at line {}:{}", line, col));
+        } else if let Some(offset) = self.offset {
+            parts.push(format!("at offset {}", offset));
+        }
+
+        if let Some(ref element) = self.element {
+            parts.push(format!("parsing <{}>", element));
+        }
+
+        if let Some(ref parent) = self.parent {
+            parts.push(format!("inside <{}>", parent));
+        }
+
+        if parts.is_empty() {
+            write!(f, "(no context)")
+        } else {
+            write!(f, "{}", parts.join(" "))
+        }
+    }
+}
+
+/// Warning severity level
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WarningSeverity {
+    /// Informational message (no action needed)
+    Info,
+    /// Warning: something unexpected but recoverable
+    Warning,
+    /// Error that was recovered from (data may be incomplete)
+    RecoveredError,
+}
+
+/// A parsing warning (non-fatal issue)
+///
+/// Warnings are collected during parsing and can be inspected after parsing completes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ParseWarning {
+    /// Warning severity
+    pub severity: WarningSeverity,
+    /// Warning message
+    pub message: String,
+    /// Context where the warning occurred
+    pub context: ParseContext,
+    /// Suggested action or workaround (optional)
+    pub suggestion: Option<String>,
+}
+
+impl ParseWarning {
+    /// Create a new info-level warning
+    pub fn info(message: impl Into<String>) -> Self {
+        Self {
+            severity: WarningSeverity::Info,
+            message: message.into(),
+            context: ParseContext::new(),
+            suggestion: None,
+        }
+    }
+
+    /// Create a new warning
+    pub fn warning(message: impl Into<String>) -> Self {
+        Self {
+            severity: WarningSeverity::Warning,
+            message: message.into(),
+            context: ParseContext::new(),
+            suggestion: None,
+        }
+    }
+
+    /// Create a recovered error warning
+    pub fn recovered_error(message: impl Into<String>) -> Self {
+        Self {
+            severity: WarningSeverity::RecoveredError,
+            message: message.into(),
+            context: ParseContext::new(),
+            suggestion: None,
+        }
+    }
+
+    /// Add context to the warning
+    pub fn with_context(mut self, context: ParseContext) -> Self {
+        self.context = context;
+        self
+    }
+
+    /// Add a suggestion
+    pub fn with_suggestion(mut self, suggestion: impl Into<String>) -> Self {
+        self.suggestion = Some(suggestion.into());
+        self
+    }
+}
+
+impl std::fmt::Display for ParseWarning {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let severity = match self.severity {
+            WarningSeverity::Info => "INFO",
+            WarningSeverity::Warning => "WARN",
+            WarningSeverity::RecoveredError => "RECOVERED",
+        };
+
+        write!(f, "[{}] {}", severity, self.message)?;
+
+        if !self.context.is_empty() {
+            write!(f, " ({})", self.context)?;
+        }
+
+        if let Some(ref suggestion) = self.suggestion {
+            write!(f, " - Suggestion: {}", suggestion)?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Collection of parsing warnings
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ParseWarnings {
+    warnings: Vec<ParseWarning>,
+}
+
+impl ParseWarnings {
+    /// Create a new empty warnings collection
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a warning
+    pub fn push(&mut self, warning: ParseWarning) {
+        self.warnings.push(warning);
+    }
+
+    /// Get all warnings
+    pub fn warnings(&self) -> &[ParseWarning] {
+        &self.warnings
+    }
+
+    /// Get warnings by severity
+    pub fn by_severity(&self, severity: WarningSeverity) -> Vec<&ParseWarning> {
+        self.warnings
+            .iter()
+            .filter(|w| w.severity == severity)
+            .collect()
+    }
+
+    /// Check if there are any warnings
+    pub fn has_warnings(&self) -> bool {
+        !self.warnings.is_empty()
+    }
+
+    /// Get the count of warnings
+    pub fn len(&self) -> usize {
+        self.warnings.len()
+    }
+
+    /// Check if empty
+    pub fn is_empty(&self) -> bool {
+        self.warnings.is_empty()
+    }
+
+    /// Merge another warnings collection into this one
+    pub fn merge(&mut self, other: ParseWarnings) {
+        self.warnings.extend(other.warnings);
+    }
+
+    /// Clear all warnings
+    pub fn clear(&mut self) {
+        self.warnings.clear();
+    }
+}
 
 /// Main error type for HWP parsing operations
 #[derive(Debug, Clone, Error)]
@@ -121,6 +366,23 @@ pub enum HwpError {
     /// Internal error (unexpected situation)
     #[error("Internal error: {message}")]
     InternalError { message: String },
+
+    // ===== Errors with context =====
+    /// Parsing error with context information
+    #[error("{message} ({context})")]
+    ParseErrorWithContext {
+        message: String,
+        context: ParseContext,
+    },
+
+    /// Attribute parsing error (recoverable)
+    #[error("Failed to parse attribute '{attribute}' with value '{value}': {reason}")]
+    AttributeParseError {
+        attribute: String,
+        value: String,
+        reason: String,
+        context: Option<ParseContext>,
+    },
 }
 
 /// Compression format type
@@ -184,6 +446,57 @@ impl HwpError {
         Self::DecompressError {
             format,
             reason: reason.into(),
+        }
+    }
+
+    /// Create a parsing error with context
+    pub fn parse_error_with_context(
+        message: impl Into<String>,
+        context: ParseContext,
+    ) -> Self {
+        Self::ParseErrorWithContext {
+            message: message.into(),
+            context,
+        }
+    }
+
+    /// Create an attribute parse error
+    pub fn attribute_parse_error(
+        attribute: impl Into<String>,
+        value: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> Self {
+        Self::AttributeParseError {
+            attribute: attribute.into(),
+            value: value.into(),
+            reason: reason.into(),
+            context: None,
+        }
+    }
+
+    /// Create an attribute parse error with context
+    pub fn attribute_parse_error_with_context(
+        attribute: impl Into<String>,
+        value: impl Into<String>,
+        reason: impl Into<String>,
+        context: ParseContext,
+    ) -> Self {
+        Self::AttributeParseError {
+            attribute: attribute.into(),
+            value: value.into(),
+            reason: reason.into(),
+            context: Some(context),
+        }
+    }
+
+    /// Create an XML parse error with context
+    pub fn xml_parse_error_with_context(
+        message: impl Into<String>,
+        context: ParseContext,
+    ) -> Self {
+        Self::ParseErrorWithContext {
+            message: format!("XML parse error: {}", message.into()),
+            context,
         }
     }
 }

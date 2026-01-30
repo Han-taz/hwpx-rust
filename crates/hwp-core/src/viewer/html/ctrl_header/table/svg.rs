@@ -32,7 +32,7 @@ pub(crate) fn render_svg(
     if let Some(&last_col) = cols.last() {
         if (last_col - content.width).abs() > 0.01 {
             cols.push(content.width);
-            cols.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            cols.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         }
     } else {
         cols.push(content.width);

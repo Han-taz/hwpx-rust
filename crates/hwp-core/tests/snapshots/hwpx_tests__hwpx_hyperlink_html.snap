@@ -1,0 +1,610 @@
+---
+source: crates/hwp-core/tests/hwpx_tests.rs
+assertion_line: 124
+expression: html
+---
+<!DOCTYPE html>
+<html>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+<head>
+  <title></title>
+  <meta http_quiv="content-type" content="text/html; charset=utf-8">
+  <style>
+body {margin:0;padding-left:0;padding-right:0;padding-bottom:0;padding-top:2mm;}
+.hce {margin:0;padding:0;position:absolute;overflow:hidden;}
+.hme {margin:0;padding:0;position:absolute;}
+.hhe {margin:0;padding:0;position:relative;}
+.hhi {display:inline-block;margin:0;padding:0;position:relative;background-size:contain;}
+.hls {margin:0;padding:0;position:absolute;}
+.hfS {margin:0;padding:0;position:absolute;}
+.hcD {margin:0;padding:0;position:absolute;}
+.hcI {margin:0;padding:0;position:absolute;}
+.hcS {margin:0;padding:0;position:absolute;}
+.hfN {margin:0;padding:0;position:relative;}
+.hmB {margin:0;padding:0;position:absolute;}
+.hmO {margin:0;padding:0;position:absolute;}
+.hmT {margin:0;padding:0;position:absolute;}
+.hpN {display:inline-block;margin:0;padding:0;position:relative;white-space:nowrap;}
+.htC {display:inline-block;margin:0;padding:0;position:relative;vertical-align:top;overflow:hidden;}
+.haN {display:inline-block;margin:0;padding:0;position:relative;}
+.hdu {margin:0;padding:0;position:relative;}
+.hdS {margin:0;padding:0;position:absolute;}
+.hsC {margin:0;padding:0;position:absolute;}
+.hsR {margin:0;padding:0;position:absolute;}
+.hsG {margin:0;padding:0;position:absolute;}
+.hsL {margin:0;padding:0;position:absolute;}
+.hsT {margin:0;padding:0;position:absolute;overflow:hidden;}
+.hsE {margin:0;padding:0;position:absolute;overflow:hidden;}
+.hsA {margin:0;padding:0;position:absolute;overflow:hidden;}
+.hsP {margin:0;padding:0;position:absolute;overflow:hidden;}
+.hsV {margin:0;padding:0;position:absolute;overflow:hidden;}
+.hsO {margin:0;padding:0;position:absolute;}
+.hsU {margin:0;padding:0;position:absolute;overflow:hidden;}
+.hpi {margin:0;padding:0;position:absolute;}
+.hch {margin:0;padding:0;position:absolute;}
+.hcG {margin:0;padding:0;position:absolute;}
+.heq {margin:0;padding:0;position:absolute;}
+.heG {margin:0;padding:0;position:absolute;}
+.htA {margin:0;padding:0;position:absolute;}
+.hvi {margin:0;padding:0;position:absolute;}
+.htb {margin:0;padding:0;position:absolute;}
+.htG {margin:0;padding:0;position:absolute;}
+.hfJ {margin:0;padding:0;position:absolute;}
+.hfG {margin:0;padding:0;position:absolute;}
+.hfB {margin:0;padding:0;position:absolute;}
+.hfR {margin:0;padding:0;position:absolute;}
+.hfC {margin:0;padding:0;position:absolute;}
+.hfO {margin:0;padding:0;position:absolute;}
+.hfL {margin:0;padding:0;position:absolute;}
+.hfM {margin:0;padding:0;position:absolute;}
+.hfE {margin:0;padding:0;position:absolute;}
+.hpl {margin:0;padding:0;position:absolute;}
+.hs {margin:0;padding:0;position:absolute;overflow:visible;}
+.hpa {position:relative;padding:0;overflow:hidden;margin-left:2mm;margin-right:0mm;margin-bottom:2mm;margin-top:0mm;border:1px black solid;box-shadow:1mm 1mm 0 #AAAAAA;}
+.hpa::after {content:'';position:absolute;margin:0;padding:0;left:0;right:0;top:0;bottom:0;background-color:white;z-index:-2;}
+.hrt {display:inline-block;margin:0;padding:0;position:relative;white-space:inherit;vertical-align:middle;line-height:1.1;}
+.hco {display:inline-block;margin:0;padding:0;position:relative;white-space:inherit;}
+.hcc {margin:0;padding:0;position:absolute;}
+.hls {clear:both;}
+[onclick] {cursor:pointer;}
+.cs0 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs1 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs2 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs3 {
+  font-size:9pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs4 {
+  font-size:9pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs5 {
+  font-size:9pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs6 {
+  font-size:16pt;color:rgb(46,116,181);font-family:"함초롬바탕";
+}
+.cs7 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs8 {
+  font-size:15pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs9 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs10 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs11 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs12 {
+  font-size:12pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs13 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs14 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs15 {
+  font-size:6pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs16 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs17 {
+  font-size:6pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs18 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs19 {
+  font-size:12pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs20 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs21 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs22 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs23 {
+  font-size:6pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs24 {
+  font-size:1pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs25 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs26 {
+  font-size:1pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs27 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs28 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs29 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs30 {
+  font-size:12pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs31 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs32 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs33 {
+  font-size:3pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs34 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs35 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs36 {
+  font-size:18pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs37 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs38 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs39 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs40 {
+  font-size:12pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs41 {
+  font-size:16pt;color:rgb(255,255,255);font-family:"함초롬바탕";
+}
+.cs42 {
+  font-size:15.5pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs43 {
+  font-size:16pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs44 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs45 {
+  font-size:16pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs46 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs47 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs48 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs49 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs50 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs51 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs52 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs53 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs54 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs55 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs56 {
+  font-size:6pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs57 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs58 {
+  font-size:16pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs59 {
+  font-size:10.48pt;color:rgb(0,0,255);font-family:"함초롬바탕";
+}
+.cs60 {
+  font-size:10pt;color:rgb(0,0,255);font-family:"함초롬바탕";font-style:italic;
+}
+.cs61 {
+  font-size:10pt;color:rgb(255,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs62 {
+  font-size:10.48pt;color:rgb(0,128,0);font-family:"함초롬바탕";
+}
+.cs63 {
+  font-size:10.48pt;color:rgb(0,0,255);font-family:"함초롬바탕";
+}
+.cs64 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs65 {
+  font-size:10pt;color:rgb(0,0,255);font-family:"함초롬바탕";font-style:italic;
+}
+.cs66 {
+  font-size:13pt;color:rgb(128,0,128);font-family:"함초롬바탕";
+}
+.cs67 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs68 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs69 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs70 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs71 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs72 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs73 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs74 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs75 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs76 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs77 {
+  font-size:12pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs78 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs79 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs80 {
+  font-size:13pt;color:rgb(0,0,255);font-family:"함초롬바탕";
+}
+.cs81 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs82 {
+  font-size:10pt;color:rgb(166,166,166);font-family:"함초롬바탕";
+}
+.cs83 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.cs84 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs85 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs86 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs87 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs88 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs89 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs90 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs91 {
+  font-size:11pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs92 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-style:italic;
+}
+.cs93 {
+  font-size:10pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs94 {
+  font-size:6pt;color:rgb(0,0,255);font-family:"함초롬바탕";
+}
+.cs95 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs96 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";
+}
+.cs97 {
+  font-size:13pt;color:rgb(0,0,0);font-family:"함초롬바탕";font-weight:bold;
+}
+.ps0 {
+  text-align:justify;
+}
+.ps1 {
+  text-align:justify;text-indent:-4.61mm;
+}
+.ps2 {
+  text-align:justify;padding-left:2.65mm;
+}
+.ps3 {
+  text-align:justify;padding-left:1.76mm;
+}
+.ps4 {
+  text-align:justify;padding-left:3.53mm;
+}
+.ps5 {
+  text-align:justify;padding-left:5.29mm;
+}
+.ps6 {
+  text-align:justify;padding-left:7.06mm;
+}
+.ps7 {
+  text-align:justify;padding-left:8.82mm;
+}
+.ps8 {
+  text-align:justify;padding-left:10.58mm;
+}
+.ps9 {
+  text-align:justify;padding-left:12.35mm;
+}
+.ps10 {
+  text-align:justify;padding-left:14.11mm;
+}
+.ps11 {
+  text-align:justify;padding-left:15.88mm;
+}
+.ps12 {
+  text-align:justify;padding-left:17.64mm;
+}
+.ps13 {
+  text-align:justify;
+}
+.ps14 {
+  text-align:justify;text-indent:-2.31mm;
+}
+.ps15 {
+  text-align:left;
+}
+.ps16 {
+  text-align:left;
+}
+.ps17 {
+  text-align:left;
+}
+.ps18 {
+  text-align:left;padding-left:1.94mm;
+}
+.ps19 {
+  text-align:left;padding-left:3.88mm;
+}
+.ps20 {
+  text-align:justify;
+}
+.ps21 {
+  text-align:justify;text-indent:-5.10mm;
+}
+.ps22 {
+  text-align:center;
+}
+.ps23 {
+  text-align:justify;
+}
+.ps24 {
+  text-align:center;text-indent:-15.58mm;
+}
+.ps25 {
+  text-align:right;
+}
+.ps26 {
+  text-align:justify;
+}
+.ps27 {
+  text-align:justify;text-indent:-3.61mm;
+}
+.ps28 {
+  text-align:justify;text-indent:-3.49mm;
+}
+.ps29 {
+  text-align:justify;text-indent:-1.59mm;padding-left:5.93mm;
+}
+.ps30 {
+  text-align:center;
+}
+.ps31 {
+  text-align:center;
+}
+.ps32 {
+  text-align:center;text-indent:-6.31mm;
+}
+.ps33 {
+  text-align:justify;padding-left:0.88mm;padding-right:0.88mm;
+}
+.ps34 {
+  text-align:justify;text-indent:-3.70mm;
+}
+.ps35 {
+  text-align:justify;text-indent:-3.47mm;
+}
+.ps36 {
+  text-align:justify;text-indent:-3.45mm;
+}
+.ps37 {
+  text-align:justify;text-indent:-3.73mm;
+}
+.ps38 {
+  text-align:justify;text-indent:-3.44mm;
+}
+.ps39 {
+  text-align:center;text-indent:-4.11mm;
+}
+.ps40 {
+  text-align:justify;
+}
+.ps41 {
+  text-align:left;
+}
+.ps42 {
+  text-align:center;
+}
+.ps43 {
+  text-align:center;
+}
+.ps44 {
+  text-align:justify;
+}
+.ps45 {
+  text-align:justify;padding-left:0.90mm;padding-right:0.39mm;
+}
+.ps46 {
+  text-align:justify;padding-left:1.76mm;padding-right:1.76mm;
+}
+.ps47 {
+  text-align:center;
+}
+.ps48 {
+  text-align:right;padding-left:0.88mm;padding-right:0.88mm;
+}
+.ps49 {
+  text-align:center;
+}
+.ps50 {
+  text-align:justify;text-indent:-3.93mm;padding-right:0.53mm;
+}
+.ps51 {
+  text-align:justify;text-indent:-3.58mm;padding-right:0.53mm;
+}
+.ps52 {
+  text-align:justify;text-indent:-1.61mm;
+}
+.ps53 {
+  text-align:justify;text-indent:-3.39mm;
+}
+.ps54 {
+  text-align:justify;text-indent:-3.13mm;
+}
+.ps55 {
+  text-align:justify;text-indent:-3.51mm;
+}
+.ps56 {
+  text-align:center;text-indent:-3.17mm;
+}
+.ps57 {
+  text-align:center;
+}
+.ps58 {
+  text-align:center;
+}
+.ps59 {
+  text-align:justify;
+}
+.ps60 {
+  text-align:justify;
+}
+.ps61 {
+  text-align:justify;
+}
+.ps62 {
+  text-align:justify;
+}
+.ps63 {
+  text-align:center;
+}
+.ps64 {
+  text-align:justify;text-indent:-3.71mm;
+}
+.ps65 {
+  text-align:justify;text-indent:-3.60mm;
+}
+.ps66 {
+  text-align:justify;text-indent:-3.61mm;
+}
+.ps67 {
+  text-align:justify;text-indent:-3.46mm;
+}
+.ps68 {
+  text-align:justify;text-indent:-3.49mm;
+}
+.ps69 {
+  text-align:justify;text-indent:-4.24mm;
+}
+.ps70 {
+  text-align:justify;text-indent:-3.44mm;
+}
+.ps71 {
+  text-align:justify;text-indent:-3.57mm;
+}
+.ps72 {
+  text-align:justify;text-indent:-3.50mm;
+}
+.ps73 {
+  text-align:left;
+}
+.ps74 {
+  text-align:justify;text-indent:-3.02mm;
+}
+.ps75 {
+  text-align:justify;text-indent:-2.64mm;
+}
+.ps76 {
+  text-align:justify;text-indent:-2.33mm;
+}
+.ps77 {
+  text-align:justify;text-indent:-6.34mm;
+}
+@media print {
+.hpa {margin:0;border:0 black none;box-shadow:none;}
+body {padding:0;}
+}
+  </style>
+</head>
+
+
+<body>
+<div class="hpa" style="width:210mm;height:297mm;"><div class="hcD" style="left:20mm;top:24.99mm;"><div class="hcI"><div class="hls ps0"><span class="hrt cs9" style="font-size:10pt;font-weight:bold;"><s>과학기술정보통신부 제2025-1068호</s></span></div><div class="hls ps0"><span class="hrt cs1" style="font-size:13pt;"><s>과학기술정보통신부와 정보통신산업진흥원은 국가 AI 경쟁력 강화를 위해 구축중인 첨단 GPU 자원의 안정적이고 효율적인 배분·운영을 목적으로「</s></span><span class="hrt cs35" style="font-size:13pt;font-weight:bold;"><s>첨단 GPU 활용 지원 사업」</s></span><span class="hrt cs1" style="font-size:13pt;"><s>의</s></span><span class="hrt cs35" style="font-size:13pt;font-weight:bold;"><s>베타서비스 참여자를 모집</s></span><span class="hrt cs1" style="font-size:13pt;"><s>하오니 많은 관심과 참여를 바랍니다.</s></span></div><div class="hls ps0"><span class="hrt cs12" style="font-size:12pt;font-weight:bold;"><s>2025년 12월 22일</s></span></div><div class="hls ps0"><span class="hrt cs12" style="font-size:12pt;font-weight:bold;"><s>과학기술정보통신부장관</s></span></div><div class="hls ps0"><span class="hrt cs12" style="font-size:12pt;font-weight:bold;"><s>정보통신산업진흥원장</s></span></div><div class="hls ps0"><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>1. 사업목적</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs69" style="font-size:13pt;font-weight:bold;"><s>(목적)</s></span><span class="hrt cs84" style="font-size:13pt;"><s>‘25년 추경으로 확보한 차세대 GPU(B200)의 베타서비스를 통해</s></span><span class="hrt cs85" style="font-size:13pt;"><s>「</s></span><span class="hrt cs83" style="font-size:13pt;font-weight:bold;"><s>첨단</s></span><span class="hrt cs35" style="font-size:13pt;font-weight:bold;"><s>GPU</s></span><span class="hrt cs97" style="font-size:13pt;font-weight:bold;"><s>활용 지원 사업」</s></span><span class="hrt cs96" style="font-size:13pt;"><s>수요자 대상 GPU 서비스의 사전체험 및 서비스 완성도 제고</s></span></div><div class="hls ps0"><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>2. 지원규모 및 베타 기간</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(지원규모)</s></span><span class="hrt cs18" style="font-size:13pt;"><s>’25년 추경 정부 구매분 중 B200 서버 64대(512장)</s></span></div><div class="hls ps0"><span class="hrt cs28" style="font-size:11pt;"><s>※ 베타 전체 물량 범위 내에서 평가를 통해 서버 2대~16대 단위로 배분</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(베타기간)</s></span><span class="hrt cs29" style="font-size:13pt;"><s>’26. 1. 2.(금) ~ ’26. 2. 6.(금) (총 36일)</s></span></div><div class="hls ps0"><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>3. 지원대상(신청자격) 및 비용</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(지원대상)</s></span><span class="hrt cs13" style="font-size:13pt;"><s>아래 조건에 부합하는 산업계, 학계, 연구계</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(비용)</s></span><span class="hrt cs13" style="font-size:13pt;"><s>자부담금 전액 면제(무상 지원)</s></span></div><div class="hls ps0"><span class="hrt cs28" style="font-size:11pt;"><s>※</s></span><span class="hrt cs32" style="font-size:11pt;"><s>단, 참여기관은 전담기관 및 GPU 운영 클라우드 기업의 수시 조사(서면, 유선 등)에 응해야 함</s></span></div><div class="hls ps0"><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>4. 평가 및 선정</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(선정절차)</s></span><span class="hrt cs13" style="font-size:13pt;"><s>온라인 플랫폼 신청·접수 → 전문가 평가 → 선정</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(평가방법)</s></span><span class="hrt cs20" style="font-size:13pt;"><s>서면평가</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(선정방식)</s></span><span class="hrt cs20" style="font-size:13pt;"><s>평가결과 70점 이상인 과제 중 고득점 순 GPU 자원 배정</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs69" style="font-size:13pt;font-weight:bold;"><s>(평가기준)</s></span><span class="hrt cs29" style="font-size:13pt;"><s>제출한 과제 요약서를 기반으로</s></span><span class="hrt cs81" style="font-size:13pt;"><s>①</s></span><span class="hrt cs29" style="font-size:13pt;"><s>과제 내용의 혁신성(40점),</s></span><span class="hrt cs81" style="font-size:13pt;"><s>②</s></span><span class="hrt cs29" style="font-size:13pt;"><s>GPU 자원 활용 계획(30점),</s></span><span class="hrt cs81" style="font-size:13pt;"><s>③</s></span><span class="hrt cs29" style="font-size:13pt;"><s>기대효과(30점) 등 전문가 평가</s></span></div><div class="hls ps0"><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>5. 추진 절차</s></span></div><div class="hls ps0"><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>5. 공고기간 및 제출방법</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(공고기간) ’25. 12. 22.(월) ~ ’25. 12. 26.(금) 15:00까지(5일)</s></span></div><div class="hls ps0"><span class="hrt cs28" style="font-size:11pt;"><s>※</s></span><span class="hrt cs39" style="font-size:11pt;"><s>마감일 15:00까지 제출 완료 신청과제만 접수 가능</s></span></div><div class="hls ps0"><span class="hrt cs28" style="font-size:11pt;"><s>※ 이메일 등 기타 방법으로 제출된 과제는 인정되지 않음</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>(제출방법)</s></span><span class="hrt cs31" style="font-size:13pt;"><s>국가 AI컴퓨팅자원 지원포털(</s></span><a href="https://aiinfrahub.kr)에서" class="hwp-link" style="font-size:13pt;">https://aiinfrahub.kr)에서</a><span class="hrt cs31" style="font-size:13pt;"><s>접수</s></span></div><div class="hls ps0"><span class="hrt cs28" style="font-size:11pt;"><s>※ 사업공고 확인하여 신청서 다운로드 및 작성 후 ‘신청하기’를 통해 접수</s></span></div><div class="hls ps0"><span class="hrt cs28" style="font-size:11pt;"><s>※ 총괄 책임자 이메일로 신청하며, 추후 해당 이메일을 통해 선정결과 통보 예정</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs22" style="font-size:13pt;font-weight:bold;"><s>(제출자료)</s></span><span class="hrt cs31" style="font-size:13pt;"><s>과제 요약서[붙임1] 1부</s></span></div><div class="hls ps0"><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>6. 유의사항</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs95" style="font-size:13pt;"><s>과제 신청서(요약서)에 작성한 활용 목적·범위·조건을 위반한 목적 외 사용 등 부당행위를 엄격히 금지하며, 적발 즉시 사용 중단 및 이후 과제 선정에서도 제외될 수 있음</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○ 이 사업은 베타서비스로 베타 기간 종료시에는 즉시 자원을 회수하게 되며, 자원 회수 이후 발생하는 데이터 손실에 대해서는 책임을 지지 않음</s></span></div><div class="hls ps0"><span class="hrt cs28" style="font-size:11pt;"><s>※ 베타서비스 기간 중 생성·저장된 데이터 및 산출물은 이용기관이 별도로 백업·보관 필수</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○</s></span><span class="hrt cs67" style="font-size:13pt;"><s>베타서비스 공고는</s></span><span class="hrt cs68" style="font-size:13pt;"><s>「첨단 GPU 활용 지원 사업」본 공고와 별도로 운영·모집되며, 베타서비스 참여 여부는 본 서비스 선정과 관련이 없음</s></span></div><div class="hls ps0"><span class="hrt cs13" style="font-size:13pt;"><s>○ 이 사업은 GPU 서비스의 사전체험 및 안정성 제고를 위한 무료 베타서비스이므로, 서비스 제공기간 중 서비스 장애 발생가능성이 있으며 이에 대하여 서비스 제공자가 보상하거나 책임지지 않음</s></span></div><div class="hls ps0"><span class="hrt cs14" style="font-size:13pt;font-weight:bold;"><s>7. 담당자 및 문의처</s></span></div><div class="hls ps0"><span class="hrt cs58" style="font-size:16pt;font-weight:bold;"><s>요 약 서</s></span></div></div></div></div></body>
+
+</html>

@@ -1,5 +1,6 @@
 ---
 source: crates/hwp-core/tests/snapshot_tests.rs
+assertion_line: 622
 expression: html
 ---
 <!DOCTYPE html>
@@ -71,76 +72,76 @@ body {margin:0;padding-left:0;padding-right:0;padding-bottom:0;padding-top:2mm;}
   font-size:10pt;color:rgb(0,0,0);font-family:"바탕";
 }
 .ps0 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;
 }
 .ps1 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;
 }
 .ps2 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:1966.08;
 }
 .ps3 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:655.36;
 }
 .ps4 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:9830.40;
 }
 .ps5 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:1310.72;
 }
 .ps6 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:2621.44;
 }
 .ps7 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:3276.80;
 }
 .ps8 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:3932.16;
 }
 .ps9 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:4587.52;
 }
 .ps10 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:5242.88;
 }
 .ps11 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:5898.24;
 }
 .ps12 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:6553.60;
 }
 .ps13 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:7208.96;
 }
 .ps14 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:7864.32;
 }
 .ps15 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:8519.68;
 }
 .ps16 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:9175.04;
 }
 .ps17 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:10485.76;
 }
 .ps18 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:11141.12;
 }
 .ps19 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:11796.48;
 }
 .ps20 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:12451.84;
 }
 .ps21 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:13107.20;
 }
 .ps22 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:13762.56;
 }
 .ps23 {
-  text-align:justify;
+  text-align:justify;margin-bottom:0.56mm;line-height:14417.92;
 }
 @media print {
 .hpa {margin:0;border:0 black none;box-shadow:none;}

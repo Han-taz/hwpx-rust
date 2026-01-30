@@ -81,3 +81,30 @@ pub fn find_fixture_file(filename: &str) -> Option<String> {
     }
     None
 }
+
+/// Helper function to get all HWPX files in fixtures directory
+#[allow(dead_code)]
+pub fn find_all_hwpx_files() -> Vec<String> {
+    if let Some(dir) = find_fixtures_dir() {
+        let mut files = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("hwpx") {
+                    if let Some(path_str) = path.to_str() {
+                        files.push(path_str.to_string());
+                    }
+                }
+            }
+        }
+        files.sort();
+        return files;
+    }
+    Vec::new()
+}
+
+/// Helper function to find a specific HWPX file in fixtures directory
+#[allow(dead_code)]
+pub fn find_hwpx_fixture_file(filename: &str) -> Option<String> {
+    find_fixture_file(filename)
+}

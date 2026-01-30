@@ -3,8 +3,18 @@
 ///
 /// 스펙 문서 매핑: 표 57 - 본문의 데이터 레코드, PARA_TEXT (HWPTAG_BEGIN + 51)
 /// Spec mapping: Table 57 - BodyText data records, PARA_TEXT (HWPTAG_BEGIN + 51)
-use crate::document::bodytext::{CharShapeInfo, ControlChar, ControlCharPosition};
-use crate::document::CharShape;
+use crate::document::bodytext::{CharShapeInfo, ControlChar, ControlCharPosition, ParaTextRun};
+use crate::document::{CharShape, HwpDocument};
+
+/// 하이퍼링크 영역 정보 / Hyperlink region information
+#[derive(Debug, Clone)]
+pub struct HyperlinkRegion {
+    /// URL
+    pub url: String,
+}
+
+/// RESERVED_3 (code 3) - 필드 콘텐츠 시작 / Field content start
+const FIELD_CONTENT_START: u8 = 3;
 
 /// 의미 있는 텍스트인지 확인합니다. / Check if text is meaningful.
 ///
@@ -216,6 +226,89 @@ fn apply_markdown_styles(text: &str, bold: bool, italic: bool, strikethrough: bo
     result
 }
 
+/// HWPX runs를 마크다운으로 변환 (char_shape_id 사용)
+/// Convert HWPX runs to markdown (using char_shape_id)
+pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) -> Option<String> {
+    let mut result = String::new();
+
+    for run in runs {
+        match run {
+            ParaTextRun::Text { text, char_shape_id } => {
+                if text.is_empty() {
+                    continue;
+                }
+
+                let trimmed = text.trim();
+                if trimmed.is_empty() {
+                    // 공백만 있으면 공백 유지
+                    if !text.is_empty() {
+                        result.push(' ');
+                    }
+                    continue;
+                }
+
+                // CharShape 가져오기
+                let char_shape = char_shape_id
+                    .and_then(|id| document.doc_info.char_shapes.get(id as usize));
+
+                if let Some(shape) = char_shape {
+                    let styled = apply_markdown_styles(
+                        trimmed,
+                        shape.attributes.bold,
+                        shape.attributes.italic,
+                        shape.attributes.strikethrough != 0,
+                    );
+                    result.push_str(&styled);
+                } else {
+                    result.push_str(trimmed);
+                }
+            }
+            ParaTextRun::Control { display_text, .. } => {
+                if let Some(text) = display_text {
+                    result.push_str(text);
+                }
+            }
+            ParaTextRun::Hyperlink { text, url, char_shape_id } => {
+                if text.is_empty() {
+                    continue;
+                }
+
+                // CharShape 스타일 적용 / Apply CharShape styles
+                let char_shape = char_shape_id
+                    .and_then(|id| document.doc_info.char_shapes.get(id as usize));
+
+                let styled_text = if let Some(shape) = char_shape {
+                    apply_markdown_styles(
+                        text.trim(),
+                        shape.attributes.bold,
+                        shape.attributes.italic,
+                        shape.attributes.strikethrough != 0,
+                    )
+                } else {
+                    text.trim().to_string()
+                };
+
+                // 마크다운 하이퍼링크 형식 / Markdown hyperlink format
+                result.push_str(&format!("[{}]({})", styled_text, url));
+            }
+        }
+    }
+
+    let trimmed_result = result.trim();
+    if !trimmed_result.is_empty() {
+        Some(trimmed_result.to_string())
+    } else {
+        None
+    }
+}
+
+/// runs에 char_shape_id가 있는지 확인 / Check if runs have char_shape_id
+pub fn runs_have_char_shape_id(runs: &[ParaTextRun]) -> bool {
+    runs.iter().any(|run| {
+        matches!(run, ParaTextRun::Text { char_shape_id: Some(_), .. })
+    })
+}
+
 pub fn convert_para_text_to_markdown(
     text: &str,
     control_positions: &[ControlCharPosition],
@@ -241,13 +334,15 @@ pub fn convert_para_text_to_markdown_with_char_shapes<'a>(
     get_char_shape: Option<&'a dyn Fn(u32) -> Option<&'a CharShape>>,
 ) -> Option<String> {
     // CharShape 정보가 있으면 텍스트를 구간별로 나누어 스타일 적용 / If CharShape info exists, divide text into segments and apply styles
-    if !char_shapes.is_empty() && get_char_shape.is_some() {
-        return convert_text_with_char_shapes(
-            text,
-            control_positions,
-            char_shapes,
-            get_char_shape.unwrap(),
-        );
+    if !char_shapes.is_empty() {
+        if let Some(char_shape_fn) = get_char_shape {
+            return convert_text_with_char_shapes(
+                text,
+                control_positions,
+                char_shapes,
+                char_shape_fn,
+            );
+        }
     }
 
     // PARA_BREAK나 LINE_BREAK가 있는지 확인 / Check for PARA_BREAK or LINE_BREAK
@@ -325,5 +420,347 @@ pub fn convert_para_text_to_markdown_with_char_shapes<'a>(
         Some(trimmed_result.to_string())
     } else {
         None
+    }
+}
+
+/// 제어 문자 크기 (WCHAR 단위) / Control character size (in WCHAR units)
+/// CHAR 타입: 1 WCHAR, INLINE/EXTENDED 타입: 8 WCHAR
+fn get_control_char_size(code: u8) -> usize {
+    // CHAR 타입: NULL(0), LINE_BREAK(10), PARA_BREAK(13), HYPHEN(24), BOUND_SPACE(30), FIXED_SPACE(31)
+    if matches!(code, 0 | 10 | 13 | 24 | 30 | 31) {
+        1
+    } else {
+        // INLINE 및 EXTENDED 타입: 8 WCHAR
+        8
+    }
+}
+
+/// 원본 스트림 위치를 실제 텍스트 위치로 변환
+/// Convert original stream position to actual text position
+///
+/// 제어 문자는 파서에서 제거되므로, control_positions의 position을 실제 텍스트 인덱스로 변환
+/// Control characters are removed by parser, so convert control_positions position to actual text index
+fn convert_stream_position_to_text_position(
+    stream_position: usize,
+    control_positions: &[ControlCharPosition],
+) -> usize {
+    // 해당 position 이전의 모든 제어 문자 크기 합을 계산
+    // Calculate sum of all control character sizes before this position
+    let mut offset = 0;
+    for pos in control_positions {
+        if pos.position < stream_position {
+            offset += get_control_char_size(pos.code);
+        }
+    }
+    // 실제 텍스트 위치 = 원본 position - 제어 문자 오프셋
+    stream_position.saturating_sub(offset)
+}
+
+/// 하이퍼링크 정보를 사용하여 ParaText를 마크다운으로 변환
+/// Convert ParaText to markdown using hyperlink information
+///
+/// # Arguments / 매개변수
+/// * `text` - 텍스트 내용 / Text content
+/// * `control_positions` - 제어 문자 위치 정보 / Control character positions
+/// * `hyperlinks` - 하이퍼링크 정보 리스트 (순서대로) / Hyperlink information list (in order)
+///
+/// # Returns / 반환값
+/// 마크다운 문자열 / Markdown string
+pub fn convert_para_text_to_markdown_with_hyperlinks(
+    text: &str,
+    control_positions: &[ControlCharPosition],
+    hyperlinks: &[HyperlinkRegion],
+) -> Option<String> {
+    if text.trim().is_empty() || hyperlinks.is_empty() {
+        // 하이퍼링크가 없으면 기본 변환 사용 / Use default conversion if no hyperlinks
+        return convert_para_text_to_markdown(text, control_positions);
+    }
+
+    // 필드 영역 찾기 (FIELD_CONTENT_START ~ FIELD_END) / Find field regions (FIELD_CONTENT_START ~ FIELD_END)
+    // control_positions에서 code 3 (FIELD_CONTENT_START)과 code 4 (FIELD_END) 위치 수집
+    let mut field_regions: Vec<(usize, usize)> = Vec::new(); // (stream_start, stream_end)
+
+    // control_positions를 정렬하여 순서대로 처리 / Sort control_positions to process in order
+    let mut sorted_positions: Vec<_> = control_positions.iter().collect();
+    sorted_positions.sort_by_key(|p| p.position);
+
+    let mut current_field_start: Option<usize> = None;
+    for pos in &sorted_positions {
+        if pos.code == FIELD_CONTENT_START {
+            // 필드 콘텐츠 시작 - FIELD_CONTENT_START 제어 문자 다음 위치
+            current_field_start = Some(pos.position + get_control_char_size(pos.code));
+        } else if pos.code == ControlChar::FIELD_END {
+            if let Some(start) = current_field_start.take() {
+                // 필드 끝 - FIELD_END 제어 문자 위치까지
+                field_regions.push((start, pos.position));
+            }
+        }
+    }
+
+    // 필드 영역 수와 하이퍼링크 수가 다르면 기본 변환 사용 / Use default conversion if counts don't match
+    if field_regions.len() != hyperlinks.len() {
+        return convert_para_text_to_markdown(text, control_positions);
+    }
+
+    let text_chars: Vec<char> = text.chars().collect();
+    let text_len = text_chars.len();
+
+    let mut result = String::new();
+    let mut current_text_pos = 0;
+
+    // 각 필드 영역 처리 / Process each field region
+    for (i, (stream_start, stream_end)) in field_regions.iter().enumerate() {
+        // 스트림 위치를 텍스트 위치로 변환 / Convert stream positions to text positions
+        let text_start = convert_stream_position_to_text_position(*stream_start, control_positions);
+        let text_end = convert_stream_position_to_text_position(*stream_end, control_positions);
+
+        // 필드 이전 텍스트 추가 / Add text before field
+        if current_text_pos < text_start && text_start <= text_len {
+            let before_text: String = text_chars[current_text_pos..text_start].iter().collect();
+            let trimmed = before_text.trim();
+            if !trimmed.is_empty() {
+                result.push_str(trimmed);
+            }
+        }
+
+        // 필드 내부 텍스트 (하이퍼링크) / Field content (hyperlink)
+        if text_start < text_end && text_end <= text_len {
+            let link_text: String = text_chars[text_start..text_end].iter().collect();
+            let trimmed_link = link_text.trim();
+            if !trimmed_link.is_empty() {
+                if let Some(hyperlink) = hyperlinks.get(i) {
+                    // [text](url) 형식으로 마크다운 링크 생성 / Create markdown link as [text](url)
+                    result.push_str(&format!("[{}]({})", trimmed_link, hyperlink.url));
+                } else {
+                    result.push_str(trimmed_link);
+                }
+            }
+        }
+
+        current_text_pos = text_end;
+    }
+
+    // 마지막 필드 이후 텍스트 추가 / Add text after last field
+    if current_text_pos < text_len {
+        let after_text: String = text_chars[current_text_pos..].iter().collect();
+        let trimmed = after_text.trim();
+        if !trimmed.is_empty() {
+            result.push_str(trimmed);
+        }
+    }
+
+    let trimmed_result = result.trim();
+    if !trimmed_result.is_empty() {
+        Some(trimmed_result.to_string())
+    } else {
+        None
+    }
+}
+
+/// 문단 경계를 넘는 하이퍼링크 상태
+/// Hyperlink state for cross-paragraph hyperlinks
+#[derive(Debug, Clone)]
+pub struct CrossingHyperlinkState {
+    /// 열린 하이퍼링크의 URL / URL of open hyperlink
+    pub url: String,
+}
+
+/// 문단 경계 하이퍼링크 결과
+/// Result of cross-paragraph hyperlink conversion
+pub struct CrossingHyperlinkResult {
+    /// 마크다운 결과 / Markdown result
+    pub markdown: Option<String>,
+    /// 새로운 열린 하이퍼링크 상태 (문단 끝에서 하이퍼링크가 열려있으면) / New open hyperlink state (if hyperlink is open at end of paragraph)
+    pub new_open_state: Option<CrossingHyperlinkState>,
+}
+
+/// 문단 경계를 넘는 하이퍼링크를 처리하여 ParaText를 마크다운으로 변환
+/// Convert ParaText to markdown handling cross-paragraph hyperlinks
+///
+/// # Arguments / 매개변수
+/// * `text` - 텍스트 내용 / Text content
+/// * `control_positions` - 제어 문자 위치 정보 / Control character positions
+/// * `hyperlinks` - 하이퍼링크 정보 리스트 (순서대로) / Hyperlink information list (in order)
+/// * `open_hyperlink` - 이전 문단에서 열린 하이퍼링크 상태 / Open hyperlink state from previous paragraph
+///
+/// # Returns / 반환값
+/// 마크다운 문자열과 새로운 열린 하이퍼링크 상태 / Markdown string and new open hyperlink state
+pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
+    text: &str,
+    control_positions: &[ControlCharPosition],
+    hyperlinks: &[HyperlinkRegion],
+    open_hyperlink: Option<&CrossingHyperlinkState>,
+) -> CrossingHyperlinkResult {
+    let text_chars: Vec<char> = text.chars().collect();
+    let text_len = text_chars.len();
+
+    // 텍스트가 비어있으면 빈 결과 반환 / Return empty result if text is empty
+    if text.trim().is_empty() {
+        return CrossingHyperlinkResult {
+            markdown: None,
+            new_open_state: open_hyperlink.cloned(),
+        };
+    }
+
+    // control_positions를 정렬 / Sort control_positions
+    let mut sorted_positions: Vec<_> = control_positions.iter().collect();
+    sorted_positions.sort_by_key(|p| p.position);
+
+    // FIELD_CONTENT_START와 FIELD_END 위치 수집 / Collect FIELD_CONTENT_START and FIELD_END positions
+    let mut field_starts: Vec<usize> = Vec::new(); // stream position
+    let mut field_ends: Vec<usize> = Vec::new(); // stream position
+
+    for pos in &sorted_positions {
+        if pos.code == FIELD_CONTENT_START {
+            field_starts.push(pos.position + get_control_char_size(pos.code));
+        } else if pos.code == ControlChar::FIELD_END {
+            field_ends.push(pos.position);
+        }
+    }
+
+    let mut result = String::new();
+    let mut current_text_pos = 0;
+    let mut hyperlink_index = 0;
+    let mut new_open_state: Option<CrossingHyperlinkState> = None;
+
+    // 열린 하이퍼링크가 있는 경우 처리 / Handle open hyperlink from previous paragraph
+    if let Some(open_state) = open_hyperlink {
+        if !field_ends.is_empty() {
+            // FIELD_END가 있으면 문단 시작부터 첫 FIELD_END까지 하이퍼링크
+            // If FIELD_END exists, hyperlink from paragraph start to first FIELD_END
+            let stream_end = field_ends[0];
+            let text_end = convert_stream_position_to_text_position(stream_end, control_positions);
+            let clamped_end = text_end.min(text_len);
+
+            if clamped_end > 0 {
+                let link_text: String = text_chars[0..clamped_end].iter().collect();
+                let trimmed_link = link_text.trim();
+                if !trimmed_link.is_empty() {
+                    result.push_str(&format!("[{}]({})", trimmed_link, open_state.url));
+                }
+            }
+            current_text_pos = clamped_end;
+            // 첫 FIELD_END 제거 (이미 처리됨) / Remove first FIELD_END (already processed)
+            field_ends.remove(0);
+        } else {
+            // FIELD_END가 없으면 문단 전체를 하이퍼링크로 처리하고 열린 상태 유지
+            // If no FIELD_END, treat entire paragraph as hyperlink and keep open state
+            let link_text: String = text_chars.iter().collect();
+            let trimmed_link = link_text.trim();
+            if !trimmed_link.is_empty() {
+                result.push_str(&format!("[{}]({})", trimmed_link, open_state.url));
+            }
+            return CrossingHyperlinkResult {
+                markdown: if result.is_empty() {
+                    None
+                } else {
+                    Some(result)
+                },
+                new_open_state: Some(open_state.clone()),
+            };
+        }
+    }
+
+    // 이 문단 내의 완전한 필드 영역 처리 (FIELD_CONTENT_START ~ FIELD_END 쌍)
+    // Process complete field regions in this paragraph (FIELD_CONTENT_START ~ FIELD_END pairs)
+    let mut start_idx = 0;
+    let mut end_idx = 0;
+
+    while start_idx < field_starts.len() && end_idx < field_ends.len() {
+        let stream_start = field_starts[start_idx];
+        let stream_end = field_ends[end_idx];
+
+        // FIELD_END가 FIELD_CONTENT_START보다 앞에 있으면 건너뜀 (이미 처리된 열린 하이퍼링크)
+        // Skip if FIELD_END is before FIELD_CONTENT_START (already processed open hyperlink)
+        if stream_end < stream_start {
+            end_idx += 1;
+            continue;
+        }
+
+        let text_start = convert_stream_position_to_text_position(stream_start, control_positions);
+        let text_end = convert_stream_position_to_text_position(stream_end, control_positions);
+        let clamped_start = text_start.min(text_len);
+        let clamped_end = text_end.min(text_len);
+
+        // 필드 이전 텍스트 추가 / Add text before field
+        if current_text_pos < clamped_start {
+            let before_text: String = text_chars[current_text_pos..clamped_start].iter().collect();
+            let trimmed = before_text.trim();
+            if !trimmed.is_empty() {
+                result.push_str(trimmed);
+            }
+        }
+
+        // 필드 내부 텍스트 (하이퍼링크) / Field content (hyperlink)
+        if clamped_start < clamped_end {
+            let link_text: String = text_chars[clamped_start..clamped_end].iter().collect();
+            let trimmed_link = link_text.trim();
+            if !trimmed_link.is_empty() {
+                if let Some(hyperlink) = hyperlinks.get(hyperlink_index) {
+                    result.push_str(&format!("[{}]({})", trimmed_link, hyperlink.url));
+                } else {
+                    result.push_str(trimmed_link);
+                }
+            }
+        }
+
+        current_text_pos = clamped_end;
+        start_idx += 1;
+        end_idx += 1;
+        hyperlink_index += 1;
+    }
+
+    // 남은 FIELD_CONTENT_START 처리 (FIELD_END 없이 문단이 끝나는 경우)
+    // Process remaining FIELD_CONTENT_START (paragraph ends without FIELD_END)
+    if start_idx < field_starts.len() {
+        let stream_start = field_starts[start_idx];
+        let text_start = convert_stream_position_to_text_position(stream_start, control_positions);
+        let clamped_start = text_start.min(text_len);
+
+        // 필드 이전 텍스트 추가 / Add text before field
+        if current_text_pos < clamped_start {
+            let before_text: String = text_chars[current_text_pos..clamped_start].iter().collect();
+            let trimmed = before_text.trim();
+            if !trimmed.is_empty() {
+                result.push_str(trimmed);
+            }
+        }
+
+        // 필드 시작부터 문단 끝까지 하이퍼링크 / Hyperlink from field start to paragraph end
+        if clamped_start < text_len {
+            let link_text: String = text_chars[clamped_start..].iter().collect();
+            let trimmed_link = link_text.trim();
+            if !trimmed_link.is_empty() {
+                if let Some(hyperlink) = hyperlinks.get(hyperlink_index) {
+                    result.push_str(&format!("[{}]({})", trimmed_link, hyperlink.url));
+                    // 열린 하이퍼링크 상태 설정 / Set open hyperlink state
+                    new_open_state = Some(CrossingHyperlinkState {
+                        url: hyperlink.url.clone(),
+                    });
+                } else {
+                    result.push_str(trimmed_link);
+                }
+            }
+        }
+        current_text_pos = text_len;
+    }
+
+    // 마지막 필드 이후 텍스트 추가 / Add text after last field
+    if current_text_pos < text_len {
+        let after_text: String = text_chars[current_text_pos..].iter().collect();
+        let trimmed = after_text.trim();
+        if !trimmed.is_empty() {
+            result.push_str(trimmed);
+        }
+    }
+
+    let trimmed_result = result.trim();
+    CrossingHyperlinkResult {
+        markdown: if trimmed_result.is_empty() {
+            None
+        } else {
+            Some(trimmed_result.to_string())
+        },
+        new_open_state,
     }
 }

@@ -330,6 +330,7 @@ dependencies = [
  "encoding_rs",
  "flate2",
  "insta",
+ "log",
  "pathdiff",
  "quick-xml",
  "serde",

@@ -1,7 +1,8 @@
 use super::common;
 use super::ctrl_header;
 use super::line_segment::{
-    DocumentRenderState, ImageInfo, LineSegmentContent, LineSegmentRenderContext, TableInfo,
+    DocumentRenderState, HyperlinkInfo, ImageInfo, LineSegmentContent, LineSegmentRenderContext,
+    TableInfo,
 };
 use super::pagination::{self, PaginationContext, PaginationResult};
 use super::text;
@@ -318,6 +319,32 @@ pub fn render_paragraph(
         // 테이블 번호 시작값: 현재 table_counter 사용 (문서 레벨에서 관리) / Table number start value: use current table_counter (managed at document level)
         let table_counter_start = *state.table_counter;
 
+        // 하이퍼링크 CtrlHeader에서 URL 수집 / Collect URLs from hyperlink CtrlHeaders
+        let mut hyperlinks: Vec<HyperlinkInfo> = Vec::new();
+        for record in &paragraph.records {
+            if let ParagraphRecord::CtrlHeader { header, .. } = record {
+                if let CtrlHeaderData::Field {
+                    field_type,
+                    command,
+                    ..
+                } = &header.data
+                {
+                    // 하이퍼링크 필드 체크 / Check hyperlink field
+                    if field_type == "hlk" || field_type == "%hlk" {
+                        if !command.is_empty() {
+                            // URL 형식: "url;extra;params;" - 첫 번째 부분만 추출 / URL format: "url;extra;params;" - extract first part only
+                            let url = command.split(';').next().unwrap_or(command);
+                            if !url.is_empty() {
+                                hyperlinks.push(HyperlinkInfo {
+                                    url: url.to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let content = LineSegmentContent {
             segments: &line_segments,
             text: &text,
@@ -326,6 +353,7 @@ pub fn render_paragraph(
             original_text_len: paragraph.para_header.text_char_count as usize,
             images: &inline_images, // like_letters=true인 이미지만 line_segment에 포함 / Include only images with like_letters=true in line_segment
             tables: inline_table_infos.as_slice(), // like_letters=true인 테이블 포함 / Include tables with like_letters=true
+            hyperlinks,
         };
 
         let context = LineSegmentRenderContext {
@@ -485,8 +513,13 @@ pub fn render_paragraph(
         }
     } else if !text.is_empty() {
         // LineSegment가 없으면 텍스트만 렌더링 / Render text only if no LineSegment
-        let rendered_text =
-            text::render_text(&text, &char_shapes, document, &options.css_class_prefix);
+        // HWPX char_shape_id가 있으면 runs 기반 렌더링 사용 / Use runs-based rendering if HWPX char_shape_id exists
+        let runs = text::extract_runs(paragraph);
+        let rendered_text = if text::runs_have_char_shape_id(&runs) {
+            text::render_text_runs(&runs, document)
+        } else {
+            text::render_text(&text, &char_shapes, document, &options.css_class_prefix)
+        };
         result.push_str(&format!(
             r#"<div class="hls {para_shape_class}">{rendered_text}</div>"#
         ));

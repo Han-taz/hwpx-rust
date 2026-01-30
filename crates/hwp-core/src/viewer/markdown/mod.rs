@@ -130,13 +130,13 @@ pub fn to_markdown(document: &HwpDocument, options: &MarkdownOptions) -> String 
     }
     lines.extend(parts.body_lines.clone());
     if !parts.footers.is_empty() {
-        if !lines.is_empty() && !lines.last().unwrap().is_empty() {
+        if lines.last().map_or(false, |last| !last.is_empty()) {
             lines.push(String::new());
         }
         lines.extend(parts.footers.clone());
     }
     if !parts.footnotes.is_empty() {
-        if !lines.is_empty() && !lines.last().unwrap().is_empty() {
+        if lines.last().map_or(false, |last| !last.is_empty()) {
             lines.push(String::new());
         }
         // 각주 섹션 헤더 추가 / Add footnote section header
@@ -145,7 +145,7 @@ pub fn to_markdown(document: &HwpDocument, options: &MarkdownOptions) -> String 
         lines.extend(parts.footnotes.clone());
     }
     if !parts.endnotes.is_empty() {
-        if !lines.is_empty() && !lines.last().unwrap().is_empty() {
+        if lines.last().map_or(false, |last| !last.is_empty()) {
             lines.push(String::new());
         }
         // 미주 섹션 헤더 추가 / Add endnote section header
