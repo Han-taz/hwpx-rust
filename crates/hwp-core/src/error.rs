@@ -369,20 +369,28 @@ pub enum HwpError {
 
     // ===== Errors with context =====
     /// Parsing error with context information
-    #[error("{message} ({context})")]
-    ParseErrorWithContext {
-        message: String,
-        context: ParseContext,
-    },
+    #[error("{} ({})", .0.message, .0.context)]
+    ParseErrorWithContext(Box<ParseErrorWithContextData>),
 
     /// Attribute parsing error (recoverable)
-    #[error("Failed to parse attribute '{attribute}' with value '{value}': {reason}")]
-    AttributeParseError {
-        attribute: String,
-        value: String,
-        reason: String,
-        context: Option<ParseContext>,
-    },
+    #[error("Failed to parse attribute '{}' with value '{}': {}", .0.attribute, .0.value, .0.reason)]
+    AttributeParseError(Box<AttributeParseErrorData>),
+}
+
+/// Data for [`HwpError::ParseErrorWithContext`]
+#[derive(Debug)]
+pub struct ParseErrorWithContextData {
+    pub message: String,
+    pub context: ParseContext,
+}
+
+/// Data for [`HwpError::AttributeParseError`]
+#[derive(Debug)]
+pub struct AttributeParseErrorData {
+    pub attribute: String,
+    pub value: String,
+    pub reason: String,
+    pub context: Option<ParseContext>,
 }
 
 /// Compression format type
@@ -451,10 +459,10 @@ impl HwpError {
 
     /// Create a parsing error with context
     pub fn parse_error_with_context(message: impl Into<String>, context: ParseContext) -> Self {
-        Self::ParseErrorWithContext {
+        Self::ParseErrorWithContext(Box::new(ParseErrorWithContextData {
             message: message.into(),
             context,
-        }
+        }))
     }
 
     /// Create an attribute parse error
@@ -463,12 +471,12 @@ impl HwpError {
         value: impl Into<String>,
         reason: impl Into<String>,
     ) -> Self {
-        Self::AttributeParseError {
+        Self::AttributeParseError(Box::new(AttributeParseErrorData {
             attribute: attribute.into(),
             value: value.into(),
             reason: reason.into(),
             context: None,
-        }
+        }))
     }
 
     /// Create an attribute parse error with context
@@ -478,20 +486,20 @@ impl HwpError {
         reason: impl Into<String>,
         context: ParseContext,
     ) -> Self {
-        Self::AttributeParseError {
+        Self::AttributeParseError(Box::new(AttributeParseErrorData {
             attribute: attribute.into(),
             value: value.into(),
             reason: reason.into(),
             context: Some(context),
-        }
+        }))
     }
 
     /// Create an XML parse error with context
     pub fn xml_parse_error_with_context(message: impl Into<String>, context: ParseContext) -> Self {
-        Self::ParseErrorWithContext {
+        Self::ParseErrorWithContext(Box::new(ParseErrorWithContextData {
             message: format!("XML parse error: {}", message.into()),
             context,
-        }
+        }))
     }
 }
 
