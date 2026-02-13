@@ -17,7 +17,7 @@ pipeline {
             steps {
                 sh '''
                     # Install GCC from Debian packages (no root required)
-                    if ! [ -f "$HOME/.gcc-root/.setup-done" ]; then
+                    if ! [ -f "$HOME/.gcc-root/.setup-v2-done" ]; then
                         rm -rf "$HOME/.gcc-root"
                         echo "Installing GCC toolchain from Debian packages..."
                         MIRROR="http://deb.debian.org/debian"
@@ -28,7 +28,8 @@ pipeline {
 
                         for pkg in gcc-12 cpp-12 binutils-aarch64-linux-gnu binutils-common \
                                    libbinutils libctf-nobfd0 libctf0 libgprofng0 libjansson4 \
-                                   libc6-dev linux-libc-dev libgcc-12-dev libcc1-0; do
+                                   libc6-dev linux-libc-dev libgcc-12-dev libcc1-0 \
+                                   libisl23 libmpc3 libmpfr6; do
                             FILE=$(sed -n "/^Package: ${pkg}$/,/^$/s/^Filename: //p" "$TMP/Packages" | head -1)
                             if [ -n "$FILE" ]; then
                                 curl -sL "$MIRROR/$FILE" -o "$TMP/pkg.deb"
@@ -44,7 +45,7 @@ pipeline {
                                 sed -i "s|/usr/lib/aarch64-linux-gnu|$HOME/.gcc-root/usr/lib/aarch64-linux-gnu|g" "$f"
                             fi
                         done
-                        touch "$HOME/.gcc-root/.setup-done"
+                        touch "$HOME/.gcc-root/.setup-v2-done"
                     fi
 
                     mkdir -p "$HOME/.local/bin"
