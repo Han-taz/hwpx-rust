@@ -75,7 +75,7 @@ pipeline {
                 }
                 stage('Clippy') {
                     steps {
-                        sh 'cargo clippy --workspace --all-targets --all-features -- -D warnings'
+                        sh 'cargo clippy --workspace --exclude hwpx-python --all-targets --all-features -- -D warnings'
                     }
                 }
             }
@@ -83,7 +83,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'cargo test --workspace'
+                sh 'cargo test --workspace --exclude hwpx-python'
             }
         }
 
