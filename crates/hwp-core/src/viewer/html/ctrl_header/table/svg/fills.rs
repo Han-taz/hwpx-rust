@@ -62,7 +62,10 @@ pub(crate) fn render_fills(
                             id
                         } else {
                             // Should always exist since we just checked !contains_key
-                            color_to_pattern.get(&color_value).cloned().unwrap_or_default()
+                            color_to_pattern
+                                .get(&color_value)
+                                .cloned()
+                                .unwrap_or_default()
                         };
 
                         svg_paths.push_str(&format!(

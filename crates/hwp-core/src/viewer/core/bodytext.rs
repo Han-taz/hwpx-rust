@@ -124,16 +124,16 @@ impl TrackerRef for Tracker {
             Tracker::Html(_) => {
                 // 새로운 HTML 뷰어는 tracker를 사용하지 않음
                 // New HTML viewer does not use tracker
-                std::hint::unreachable_unchecked()
+                unreachable!("HTML tracker should never be accessed")
             }
-            _ => std::hint::unreachable_unchecked(),
+            _ => unreachable!("as_html_tracker_mut called on non-Html variant"),
         }
     }
 
     unsafe fn as_markdown_tracker_mut(&mut self) -> &mut OutlineNumberTracker {
         match self {
             Tracker::Markdown(tracker) => tracker,
-            _ => std::hint::unreachable_unchecked(),
+            _ => unreachable!("as_markdown_tracker_mut called on non-Markdown variant"),
         }
     }
 }

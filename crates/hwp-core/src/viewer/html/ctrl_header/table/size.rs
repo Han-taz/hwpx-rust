@@ -81,8 +81,7 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
                                 ParagraphRecord::ShapeComponentPicture { .. } => {
                                     let height_hwpunit = shape_component_height as i32;
                                     let height_mm = round_to_2dp(int32_to_mm(height_hwpunit));
-                                    if max_height_mm.map_or(true, |h| height_mm > h)
-                                    {
+                                    if max_height_mm.map_or(true, |h| height_mm > h) {
                                         max_height_mm = Some(height_mm);
                                     }
                                 }
@@ -96,8 +95,7 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
                                         nested_children,
                                         shape_component.height,
                                     ) {
-                                        if max_height_mm.map_or(true, |h| height > h)
-                                        {
+                                        if max_height_mm.map_or(true, |h| height > h) {
                                             max_height_mm = Some(height);
                                         }
                                     }
@@ -117,8 +115,7 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
                                     // shape_component.height 사용 / Use shape_component.height
                                     let height_mm =
                                         round_to_2dp(int32_to_mm(shape_component_height as i32));
-                                    if max_height_mm.map_or(true, |h| height_mm > h)
-                                    {
+                                    if max_height_mm.map_or(true, |h| height_mm > h) {
                                         max_height_mm = Some(height_mm);
                                     }
                                 }
@@ -128,8 +125,7 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
                                     let total_height_hwpunit: i32 =
                                         segments.iter().map(|seg| seg.line_height).sum();
                                     let height_mm = round_to_2dp(int32_to_mm(total_height_hwpunit));
-                                    if max_height_mm.map_or(true, |h| height_mm > h)
-                                    {
+                                    if max_height_mm.map_or(true, |h| height_mm > h) {
                                         max_height_mm = Some(height_mm);
                                     }
                                 }
@@ -154,7 +150,8 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
                                         shape_component.height,
                                     ) {
                                         if max_shape_height_mm.is_none()
-                                            || max_shape_height_mm.map_or(true, |h| shape_height_mm > h)
+                                            || max_shape_height_mm
+                                                .map_or(true, |h| shape_height_mm > h)
                                         {
                                             max_shape_height_mm = Some(shape_height_mm);
                                         }

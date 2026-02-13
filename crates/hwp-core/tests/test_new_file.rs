@@ -49,6 +49,7 @@ fn test_parse_new_hwpx_file() {
                 use_html: Some(true),
                 include_version: None,
                 include_page_info: None,
+                image_alt_text: None,
             };
             let md = hwp_core::viewer::markdown::to_markdown(&doc, &options);
             println!("\n=== Full Markdown Output ===");

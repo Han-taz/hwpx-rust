@@ -13,8 +13,11 @@ pub mod table;
 use crate::document::{ColumnDivideType, HwpDocument, ParagraphRecord};
 use crate::viewer::markdown::MarkdownOptions;
 
-pub use paragraph::{convert_paragraph_to_markdown, convert_paragraph_to_markdown_with_state, ParagraphConversionResult};
 pub use para_text::CrossingHyperlinkState;
+pub use paragraph::{
+    convert_paragraph_to_markdown, convert_paragraph_to_markdown_with_state,
+    ParagraphConversionResult,
+};
 pub use table::convert_table_to_markdown;
 
 /// Convert body text to markdown

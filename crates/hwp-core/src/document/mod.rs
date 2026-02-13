@@ -53,6 +53,9 @@ pub struct HwpDocument {
     pub xml_template: Option<XmlTemplate>,
     /// Summary Information (\005HwpSummaryInformation stream)
     pub summary_information: Option<SummaryInformation>,
+    /// 파싱 경고 모음 / Collection of parsing warnings
+    #[serde(default)]
+    pub warnings: crate::error::ParseWarnings,
 }
 
 impl HwpDocument {
@@ -68,6 +71,7 @@ impl HwpDocument {
             scripts: None,
             xml_template: None,
             summary_information: None,
+            warnings: crate::error::ParseWarnings::new(),
         }
     }
 
@@ -98,6 +102,7 @@ impl HwpDocument {
             use_html: Some(true),
             include_version: Some(true),
             include_page_info: Some(true),
+            image_alt_text: None,
         };
         crate::viewer::to_markdown(self, &options)
     }

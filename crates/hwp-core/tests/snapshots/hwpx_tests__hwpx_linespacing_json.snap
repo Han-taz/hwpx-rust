@@ -1,6 +1,5 @@
 ---
 source: crates/hwp-core/tests/hwpx_tests.rs
-assertion_line: 150
 expression: json
 ---
 {
@@ -2397,5 +2396,8 @@ expression: json
   "preview_image": null,
   "scripts": null,
   "xml_template": null,
-  "summary_information": null
+  "summary_information": null,
+  "warnings": {
+    "warnings": []
+  }
 }

@@ -10,8 +10,8 @@ use crate::document::docinfo::char_shape::{
     LanguageFontInfo,
 };
 use crate::document::docinfo::para_shape::{
-    HeaderShapeType, LineDivideUnit, LineSpacingTypeOld, ParagraphAlignment, ParaShape,
-    ParaShapeAttributes1, VerticalAlignment,
+    HeaderShapeType, LineDivideUnit, LineSpacingTypeOld, ParaShape, ParaShapeAttributes1,
+    ParagraphAlignment, VerticalAlignment,
 };
 use crate::document::{DocInfo, FileHeader};
 use crate::error::HwpError;
@@ -237,9 +237,8 @@ fn parse_header_xml_content(
                         if let Some(ref mut cs) = current_char_shape {
                             for attr in e.attributes().flatten() {
                                 let key = String::from_utf8_lossy(attr.key.as_ref());
-                                let value: u16 = String::from_utf8_lossy(&attr.value)
-                                    .parse()
-                                    .unwrap_or(0);
+                                let value: u16 =
+                                    String::from_utf8_lossy(&attr.value).parse().unwrap_or(0);
                                 match key.as_ref() {
                                     "hangul" => cs.font_ids.korean = value,
                                     "latin" => cs.font_ids.english = value,

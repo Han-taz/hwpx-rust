@@ -143,6 +143,11 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
     let mut current_cell = HwpxCell::default();
     let mut table_caption = String::new();
 
+    // Paragraph shape/style ID tracking (from <hp:p prIDRef="N" styleIDRef="N">)
+    // 문단 모양/스타일 ID 추적
+    let mut current_para_shape_id: u16 = 0;
+    let mut current_para_style_id: u8 = 0;
+
     // Track nesting depth for paragraphs and tables
     // 문단과 테이블의 중첩 깊이 추적
     let mut para_depth: u32 = 0;
@@ -260,7 +265,10 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         // Add hyperlink as a special marker in runs
                         // 하이퍼링크를 특수 마커로 runs에 추가
                         current_runs.push(TextRunInfo {
-                            text: format!("\x00HYPERLINK:{}\x00{}", hyperlink_state.url, hyperlink_state.text),
+                            text: format!(
+                                "\x00HYPERLINK:{}\x00{}",
+                                hyperlink_state.url, hyperlink_state.text
+                            ),
                             char_shape_id: hyperlink_state.char_shape_id,
                         });
                     }
@@ -279,6 +287,24 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             current_text.clear();
                             current_runs.clear();
                             current_run_text.clear();
+                            // Parse prIDRef and styleIDRef from <hp:p>
+                            // <hp:p> 요소에서 prIDRef, styleIDRef 파싱
+                            current_para_shape_id = 0;
+                            current_para_style_id = 0;
+                            for attr in e.attributes().flatten() {
+                                let key = String::from_utf8_lossy(attr.key.as_ref());
+                                let value = String::from_utf8_lossy(&attr.value);
+                                match key.as_ref() {
+                                    "prIDRef" => {
+                                        current_para_shape_id = value.parse().unwrap_or(0);
+                                    }
+                                    "styleIDRef" => {
+                                        current_para_style_id =
+                                            value.parse::<u16>().unwrap_or(0) as u8;
+                                    }
+                                    _ => {}
+                                }
+                            }
                         }
                     }
                     s if s.ends_with(":run") || s == "run" => {
@@ -435,20 +461,26 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             }
                             // Create paragraph with runs if any
                             if !current_runs.is_empty() {
-                                paragraphs.push(create_paragraph_with_runs(&current_runs));
+                                let mut para = create_paragraph_with_runs(&current_runs);
+                                para.para_header.para_shape_id = current_para_shape_id;
+                                para.para_header.para_style_id = current_para_style_id;
+                                paragraphs.push(para);
                                 current_runs.clear();
                             } else if !current_text.is_empty() {
                                 // Fallback to old behavior
-                                paragraphs.push(create_paragraph(&current_text));
+                                let mut para = create_paragraph(&current_text);
+                                para.para_header.para_shape_id = current_para_shape_id;
+                                para.para_header.para_style_id = current_para_style_id;
+                                paragraphs.push(para);
                             }
                             current_text.clear();
                         }
                         // Save current paragraph text as a content item when paragraph ends inside cell
                         // 셀 내부 문단이 끝나면 현재 텍스트를 콘텐츠 항목으로 저장
                         if in_cell && !current_cell.current_text.is_empty() {
-                            current_cell.content_items.push(CellContentItem::Text(
-                                current_cell.current_text.clone(),
-                            ));
+                            current_cell
+                                .content_items
+                                .push(CellContentItem::Text(current_cell.current_text.clone()));
                             current_cell.current_text.clear();
                         }
                         // Add newline between nested paragraphs (e.g., in drawText/container)
@@ -508,13 +540,13 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                     }
                     s if s.ends_with(":tr") || s == "tr" => {
                         if !current_row.is_empty() {
-                            table_rows.push(current_row.clone());
+                            table_rows.push(std::mem::take(&mut current_row));
                         }
                     }
                     s if s.ends_with(":tc") || s == "tc" => {
                         // Cell parsing complete, push to current row
                         // 셀 파싱 완료, 현재 행에 추가
-                        current_row.push(current_cell.clone());
+                        current_row.push(std::mem::take(&mut current_cell));
                         in_cell = false;
                     }
                     s if s.ends_with(":pic") || s == "pic" => {
@@ -547,7 +579,10 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             // Add hyperlink as a special marker in runs
                             // 하이퍼링크를 특수 마커로 runs에 추가
                             current_runs.push(TextRunInfo {
-                                text: format!("\x00HYPERLINK:{}\x00{}", hyperlink_state.url, hyperlink_state.text),
+                                text: format!(
+                                    "\x00HYPERLINK:{}\x00{}",
+                                    hyperlink_state.url, hyperlink_state.text
+                                ),
                                 char_shape_id: hyperlink_state.char_shape_id,
                             });
                         }
@@ -773,126 +808,10 @@ fn create_table_from_rows(rows: &[Vec<HwpxCell>]) -> Table {
 }
 
 /// Create a paragraph containing a table with proper colspan/rowspan
+/// `create_table_from_rows`로 Table을 생성한 후 Paragraph로 래핑
 fn create_table_paragraph_with_spans(rows: &[Vec<HwpxCell>]) -> Paragraph {
-    let row_count = rows.len() as UINT16;
+    let table = create_table_from_rows(rows);
 
-    // Calculate actual column count from maximum (col_addr + col_span) across all cells
-    // This handles cells with explicit addresses correctly
-    let col_count = rows
-        .iter()
-        .flat_map(|row| row.iter())
-        .map(|c| {
-            let col_addr = c.col_addr.unwrap_or(0) as usize;
-            col_addr + c.col_span as usize
-        })
-        .max()
-        .unwrap_or(0) as UINT16;
-
-    let table_attributes = TableAttributes {
-        attribute: TableAttribute {
-            page_break: PageBreakBehavior::NoBreak,
-            header_row_repeat: false,
-        },
-        row_count,
-        col_count,
-        cell_spacing: 0,
-        padding: TablePadding {
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-        },
-        row_sizes: vec![],
-        border_fill_id: 0,
-        zones: vec![],
-    };
-
-    let mut cells = Vec::new();
-
-    for (row_idx, row) in rows.iter().enumerate() {
-        // Track calculated col_address for cells without explicit address
-        let mut calc_col_address: u16 = 0;
-
-        for cell_data in row.iter() {
-            // Use explicit address if available, otherwise use calculated
-            let col_address = cell_data.col_addr.unwrap_or(calc_col_address);
-            let row_address = cell_data.row_addr.unwrap_or(row_idx as u16);
-
-            // 셀 내용 구성: 콘텐츠 항목 순서대로 paragraph 추가
-            // Build cell content: add paragraphs in content item order
-            let mut cell_paragraphs = Vec::new();
-
-            // 콘텐츠 항목을 순서대로 처리 / Process content items in order
-            for item in &cell_data.content_items {
-                match item {
-                    CellContentItem::Text(text) => {
-                        if !text.is_empty() {
-                            cell_paragraphs.push(create_paragraph(text));
-                        }
-                    }
-                    CellContentItem::Image(image_ref) => {
-                        cell_paragraphs.push(create_image_paragraph(image_ref));
-                    }
-                    CellContentItem::NestedTable(nested_table) => {
-                        // Create a paragraph containing the nested table
-                        // 중첩 테이블을 포함하는 paragraph 생성
-                        let para_header = ParaHeader {
-                            text_char_count: 1,
-                            ..Default::default()
-                        };
-                        let records = vec![ParagraphRecord::Table {
-                            table: nested_table.clone(),
-                        }];
-                        cell_paragraphs.push(Paragraph {
-                            para_header,
-                            records,
-                        });
-                    }
-                }
-            }
-
-            // 내용이 없으면 빈 paragraph 추가 / Add empty paragraph if no content
-            if cell_paragraphs.is_empty() {
-                cell_paragraphs.push(create_paragraph(""));
-            }
-
-            let cell = TableCell {
-                list_header: ListHeader {
-                    paragraph_count: cell_paragraphs.len() as i16,
-                    attribute: ListHeaderAttribute {
-                        text_direction: TextDirection::Horizontal,
-                        line_break: LineBreak::Normal,
-                        vertical_align: VerticalAlign::Top,
-                    },
-                },
-                cell_attributes: CellAttributes {
-                    col_address,
-                    row_address,
-                    col_span: cell_data.col_span,
-                    row_span: cell_data.row_span,
-                    width: HWPUNIT(5000),  // Default width
-                    height: HWPUNIT(1000), // Default height
-                    left_margin: 0,
-                    right_margin: 0,
-                    top_margin: 0,
-                    bottom_margin: 0,
-                    border_fill_id: 0,
-                },
-                paragraphs: cell_paragraphs,
-            };
-            cells.push(cell);
-
-            // Update calculated col_address based on actual position + colspan
-            calc_col_address = col_address + cell_data.col_span;
-        }
-    }
-
-    let table = Table {
-        attributes: table_attributes,
-        cells,
-    };
-
-    // Create paragraph with table
     let para_header = ParaHeader {
         text_char_count: 1, // Table control character
         ..Default::default()
@@ -920,5 +839,607 @@ fn create_image_paragraph(binary_item_ref: &str) -> Paragraph {
     Paragraph {
         para_header,
         records,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::bodytext::ParagraphRecord;
+
+    /// Helper: wrap XML fragment in a minimal section envelope
+    fn wrap_section(body: &str) -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<hs:sec xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section"
+        xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph"
+        xmlns:hc="http://www.hancom.co.kr/hwpml/2011/content">
+{body}
+</hs:sec>"#
+        )
+    }
+
+    /// Helper: extract text from first ParaText record of a paragraph
+    fn para_text(para: &Paragraph) -> Option<&str> {
+        para.records.iter().find_map(|r| {
+            if let ParagraphRecord::ParaText { text, .. } = r {
+                Some(text.as_str())
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Helper: extract runs from first ParaText record of a paragraph
+    fn para_runs(para: &Paragraph) -> Option<&Vec<ParaTextRun>> {
+        para.records.iter().find_map(|r| {
+            if let ParagraphRecord::ParaText { runs, .. } = r {
+                Some(runs)
+            } else {
+                None
+            }
+        })
+    }
+
+    // ===== Basic paragraph tests =====
+
+    #[test]
+    fn test_parse_single_paragraph() {
+        let xml = wrap_section(
+            r#"
+            <hp:p>
+                <hp:run>
+                    <hp:t>Hello World</hp:t>
+                </hp:run>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs.len(), 1);
+        assert_eq!(para_text(&section.paragraphs[0]), Some("Hello World"));
+    }
+
+    #[test]
+    fn test_parse_multiple_paragraphs() {
+        let xml = wrap_section(
+            r#"
+            <hp:p><hp:run><hp:t>First</hp:t></hp:run></hp:p>
+            <hp:p><hp:run><hp:t>Second</hp:t></hp:run></hp:p>
+            <hp:p><hp:run><hp:t>Third</hp:t></hp:run></hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs.len(), 3);
+        assert_eq!(para_text(&section.paragraphs[0]), Some("First"));
+        assert_eq!(para_text(&section.paragraphs[1]), Some("Second"));
+        assert_eq!(para_text(&section.paragraphs[2]), Some("Third"));
+    }
+
+    #[test]
+    fn test_parse_empty_section() {
+        let xml = wrap_section("");
+        let section = parse_section_xml(&xml, 5).unwrap();
+        assert_eq!(section.index, 5);
+        assert!(section.paragraphs.is_empty());
+    }
+
+    #[test]
+    fn test_parse_paragraph_with_multiple_runs() {
+        // Note: trim_text(true) in parser trims whitespace from text nodes
+        let xml = wrap_section(
+            r#"
+            <hp:p>
+                <hp:run charPrIDRef="1"><hp:t>Bold</hp:t></hp:run>
+                <hp:run charPrIDRef="2"><hp:t>Italic</hp:t></hp:run>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs.len(), 1);
+        assert_eq!(para_text(&section.paragraphs[0]), Some("BoldItalic"));
+
+        let runs = para_runs(&section.paragraphs[0]).unwrap();
+        assert_eq!(runs.len(), 2);
+        match &runs[0] {
+            ParaTextRun::Text {
+                text,
+                char_shape_id,
+            } => {
+                assert_eq!(text, "Bold");
+                assert_eq!(*char_shape_id, Some(1));
+            }
+            _ => panic!("Expected Text run"),
+        }
+        match &runs[1] {
+            ParaTextRun::Text {
+                text,
+                char_shape_id,
+            } => {
+                assert_eq!(text, "Italic");
+                assert_eq!(*char_shape_id, Some(2));
+            }
+            _ => panic!("Expected Text run"),
+        }
+    }
+
+    // ===== Paragraph attribute tests =====
+
+    #[test]
+    fn test_parse_paragraph_shape_style_ids() {
+        let xml = wrap_section(
+            r#"
+            <hp:p prIDRef="3" styleIDRef="2">
+                <hp:run><hp:t>Styled paragraph</hp:t></hp:run>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs.len(), 1);
+        assert_eq!(section.paragraphs[0].para_header.para_shape_id, 3);
+        assert_eq!(section.paragraphs[0].para_header.para_style_id, 2);
+    }
+
+    #[test]
+    fn test_paragraph_default_shape_style_ids() {
+        let xml = wrap_section(
+            r#"
+            <hp:p>
+                <hp:run><hp:t>No attributes</hp:t></hp:run>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs[0].para_header.para_shape_id, 0);
+        assert_eq!(section.paragraphs[0].para_header.para_style_id, 0);
+    }
+
+    // ===== Tab tests =====
+
+    #[test]
+    fn test_parse_tab_element() {
+        // Tab text goes into current_text only (not runs).
+        // When runs exist, the paragraph is built from runs — so tab is not in the final text.
+        // Test that at least the surrounding text is preserved.
+        let xml = wrap_section(
+            r#"
+            <hp:p>
+                <hp:run>
+                    <hp:t>Before</hp:t>
+                    <hp:tab leader="0" width="3600"/>
+                    <hp:t>After</hp:t>
+                </hp:run>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs.len(), 1);
+        let text = para_text(&section.paragraphs[0]).unwrap();
+        assert!(text.contains("Before"));
+        assert!(text.contains("After"));
+    }
+
+    #[test]
+    fn test_parse_dot_leader_tab() {
+        // Tab leaders are only added to current_text, not runs.
+        // Verify surrounding text is captured correctly.
+        let xml = wrap_section(
+            r#"
+            <hp:p>
+                <hp:run>
+                    <hp:t>Name</hp:t>
+                    <hp:tab leader="3" width="7200"/>
+                    <hp:t>100</hp:t>
+                </hp:run>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        let text = para_text(&section.paragraphs[0]).unwrap();
+        assert!(text.contains("Name"));
+        assert!(text.contains("100"));
+    }
+
+    // ===== Table tests =====
+
+    #[test]
+    fn test_parse_simple_table() {
+        let xml = wrap_section(
+            r#"
+            <hp:tbl>
+                <hp:tr>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="0" rowAddr="0"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>A</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="1" rowAddr="0"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>B</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                </hp:tr>
+                <hp:tr>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="0" rowAddr="1"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>C</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="1" rowAddr="1"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>D</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                </hp:tr>
+            </hp:tbl>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        // Table should produce exactly one paragraph
+        assert_eq!(section.paragraphs.len(), 1);
+
+        // Extract table
+        let table = match &section.paragraphs[0].records[0] {
+            ParagraphRecord::Table { table } => table,
+            other => panic!("Expected Table record, got: {other:?}"),
+        };
+
+        assert_eq!(table.attributes.row_count, 2);
+        assert_eq!(table.attributes.col_count, 2);
+        assert_eq!(table.cells.len(), 4);
+
+        // Check cell content
+        assert_eq!(table.cells[0].cell_attributes.col_address, 0);
+        assert_eq!(table.cells[0].cell_attributes.row_address, 0);
+        assert_eq!(table.cells[1].cell_attributes.col_address, 1);
+    }
+
+    #[test]
+    fn test_parse_table_with_colspan() {
+        let xml = wrap_section(
+            r#"
+            <hp:tbl>
+                <hp:tr>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="0" rowAddr="0"/>
+                        <hp:cellSpan colSpan="2" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>Merged</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                </hp:tr>
+                <hp:tr>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="0" rowAddr="1"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>Left</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="1" rowAddr="1"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>Right</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                </hp:tr>
+            </hp:tbl>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        let table = match &section.paragraphs[0].records[0] {
+            ParagraphRecord::Table { table } => table,
+            _ => panic!("Expected Table"),
+        };
+        assert_eq!(table.attributes.col_count, 2);
+        assert_eq!(table.cells[0].cell_attributes.col_span, 2);
+    }
+
+    #[test]
+    fn test_parse_table_with_caption() {
+        let xml = wrap_section(
+            r#"
+            <hp:tbl>
+                <hp:caption>
+                    <hp:p><hp:run><hp:t>Table Caption</hp:t></hp:run></hp:p>
+                </hp:caption>
+                <hp:tr>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="0" rowAddr="0"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>Cell</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                </hp:tr>
+            </hp:tbl>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        // Caption paragraph + table paragraph
+        assert_eq!(section.paragraphs.len(), 2);
+        assert_eq!(para_text(&section.paragraphs[0]), Some("Table Caption"));
+    }
+
+    // ===== Image tests =====
+
+    #[test]
+    fn test_parse_image() {
+        let xml = wrap_section(
+            r#"
+            <hp:p>
+                <hp:run><hp:t>Before image</hp:t></hp:run>
+            </hp:p>
+            <hp:p>
+                <hp:pic>
+                    <hc:img binaryItemIDRef="image1" bright="0" contrast="0" effect="REAL_PIC" alpha="0"/>
+                </hp:pic>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        // Text paragraph + image paragraph
+        assert!(section.paragraphs.len() >= 2);
+
+        // Find image record
+        let has_image = section.paragraphs.iter().any(|p| {
+            p.records
+                .iter()
+                .any(|r| matches!(r, ParagraphRecord::HwpxImage { .. }))
+        });
+        assert!(has_image, "Should have an image record");
+    }
+
+    #[test]
+    fn test_parse_image_in_table_cell() {
+        let xml = wrap_section(
+            r#"
+            <hp:tbl>
+                <hp:tr>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="0" rowAddr="0"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p>
+                                <hp:pic>
+                                    <hc:img binaryItemIDRef="cellimg" bright="0" contrast="0" effect="REAL_PIC" alpha="0"/>
+                                </hp:pic>
+                            </hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                </hp:tr>
+            </hp:tbl>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        let table = match &section.paragraphs[0].records[0] {
+            ParagraphRecord::Table { table } => table,
+            _ => panic!("Expected Table"),
+        };
+        // Cell should have an image paragraph
+        let cell_has_image = table.cells[0].paragraphs.iter().any(|p| {
+            p.records.iter().any(|r| {
+                matches!(r, ParagraphRecord::HwpxImage { binary_item_ref } if binary_item_ref == "cellimg")
+            })
+        });
+        assert!(cell_has_image, "Table cell should contain image");
+    }
+
+    // ===== Hyperlink tests =====
+
+    #[test]
+    fn test_parse_hyperlink() {
+        let xml = wrap_section(
+            r#"
+            <hp:p>
+                <hp:run charPrIDRef="0">
+                    <hp:fieldBegin type="HYPERLINK" id="0">
+                        <hp:parameters>
+                            <hp:stringParam name="Path">https://example.com</hp:stringParam>
+                        </hp:parameters>
+                    </hp:fieldBegin>
+                    <hp:t>Click here</hp:t>
+                    <hp:fieldEnd beginIDRef="0"/>
+                </hp:run>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs.len(), 1);
+
+        let runs = para_runs(&section.paragraphs[0]).unwrap();
+        let has_hyperlink = runs.iter().any(|r| {
+            matches!(r, ParaTextRun::Hyperlink { url, text, .. }
+                if url == "https://example.com" && text == "Click here")
+        });
+        assert!(has_hyperlink, "Should contain a hyperlink run");
+    }
+
+    #[test]
+    fn test_parse_hyperlink_with_preceding_text() {
+        let xml = wrap_section(
+            r#"
+            <hp:p>
+                <hp:run charPrIDRef="0"><hp:t>Visit </hp:t></hp:run>
+                <hp:run charPrIDRef="1">
+                    <hp:fieldBegin type="HYPERLINK" id="0">
+                        <hp:parameters>
+                            <hp:stringParam name="Path">https://rust-lang.org</hp:stringParam>
+                        </hp:parameters>
+                    </hp:fieldBegin>
+                    <hp:t>Rust</hp:t>
+                    <hp:fieldEnd beginIDRef="0"/>
+                </hp:run>
+                <hp:run charPrIDRef="0"><hp:t> site</hp:t></hp:run>
+            </hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        let runs = para_runs(&section.paragraphs[0]).unwrap();
+
+        // Should have: "Visit " text + Hyperlink + " site" text
+        assert!(
+            runs.len() >= 3,
+            "Expected at least 3 runs, got {}",
+            runs.len()
+        );
+
+        let hyperlink_count = runs
+            .iter()
+            .filter(|r| matches!(r, ParaTextRun::Hyperlink { .. }))
+            .count();
+        assert_eq!(hyperlink_count, 1, "Should have exactly one hyperlink");
+    }
+
+    // ===== Nested table tests =====
+
+    #[test]
+    fn test_parse_nested_table() {
+        let xml = wrap_section(
+            r#"
+            <hp:tbl>
+                <hp:tr>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="0" rowAddr="0"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>Outer cell text</hp:t></hp:run></hp:p>
+                            <hp:tbl>
+                                <hp:tr>
+                                    <hp:tc>
+                                        <hp:cellAddr colAddr="0" rowAddr="0"/>
+                                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                                        <hp:subList>
+                                            <hp:p><hp:run><hp:t>Inner</hp:t></hp:run></hp:p>
+                                        </hp:subList>
+                                    </hp:tc>
+                                </hp:tr>
+                            </hp:tbl>
+                        </hp:subList>
+                    </hp:tc>
+                </hp:tr>
+            </hp:tbl>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs.len(), 1);
+
+        let outer_table = match &section.paragraphs[0].records[0] {
+            ParagraphRecord::Table { table } => table,
+            _ => panic!("Expected outer Table"),
+        };
+        assert_eq!(outer_table.cells.len(), 1);
+
+        // The outer cell should contain a nested table paragraph
+        let has_nested_table = outer_table.cells[0].paragraphs.iter().any(|p| {
+            p.records
+                .iter()
+                .any(|r| matches!(r, ParagraphRecord::Table { .. }))
+        });
+        assert!(has_nested_table, "Outer cell should contain a nested table");
+    }
+
+    // ===== Mixed content tests =====
+
+    #[test]
+    fn test_parse_text_before_and_after_table() {
+        let xml = wrap_section(
+            r#"
+            <hp:p><hp:run><hp:t>Before table</hp:t></hp:run></hp:p>
+            <hp:tbl>
+                <hp:tr>
+                    <hp:tc>
+                        <hp:cellAddr colAddr="0" rowAddr="0"/>
+                        <hp:cellSpan colSpan="1" rowSpan="1"/>
+                        <hp:subList>
+                            <hp:p><hp:run><hp:t>Cell</hp:t></hp:run></hp:p>
+                        </hp:subList>
+                    </hp:tc>
+                </hp:tr>
+            </hp:tbl>
+            <hp:p><hp:run><hp:t>After table</hp:t></hp:run></hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 0).unwrap();
+        assert_eq!(section.paragraphs.len(), 3);
+        assert_eq!(para_text(&section.paragraphs[0]), Some("Before table"));
+        assert!(matches!(
+            &section.paragraphs[1].records[0],
+            ParagraphRecord::Table { .. }
+        ));
+        assert_eq!(para_text(&section.paragraphs[2]), Some("After table"));
+    }
+
+    #[test]
+    fn test_section_index_preserved() {
+        let xml = wrap_section(
+            r#"
+            <hp:p><hp:run><hp:t>Test</hp:t></hp:run></hp:p>
+        "#,
+        );
+        let section = parse_section_xml(&xml, 42).unwrap();
+        assert_eq!(section.index, 42);
+    }
+
+    // ===== Error handling tests =====
+
+    #[test]
+    fn test_parse_malformed_xml() {
+        let xml = "<broken><unclosed>";
+        // Should not panic, returns error or empty section
+        let result = parse_section_xml(xml, 0);
+        // Malformed XML might still parse (quick_xml is lenient) or error
+        // Either way it should not panic
+        let _ = result;
+    }
+
+    // ===== Helper function tests =====
+
+    #[test]
+    fn test_create_paragraph() {
+        let para = create_paragraph("Hello");
+        assert_eq!(para.para_header.text_char_count, 5);
+        assert_eq!(para_text(&para), Some("Hello"));
+    }
+
+    #[test]
+    fn test_create_image_paragraph_fn() {
+        let para = create_image_paragraph("img001");
+        match &para.records[0] {
+            ParagraphRecord::HwpxImage { binary_item_ref } => {
+                assert_eq!(binary_item_ref, "img001");
+            }
+            _ => panic!("Expected HwpxImage"),
+        }
+    }
+
+    #[test]
+    fn test_create_table_from_rows_fn() {
+        let rows = vec![vec![
+            HwpxCell {
+                content_items: vec![CellContentItem::Text("A".to_string())],
+                col_addr: Some(0),
+                row_addr: Some(0),
+                ..Default::default()
+            },
+            HwpxCell {
+                content_items: vec![CellContentItem::Text("B".to_string())],
+                col_addr: Some(1),
+                row_addr: Some(0),
+                ..Default::default()
+            },
+        ]];
+        let table = create_table_from_rows(&rows);
+        assert_eq!(table.attributes.row_count, 1);
+        assert_eq!(table.attributes.col_count, 2);
+        assert_eq!(table.cells.len(), 2);
     }
 }

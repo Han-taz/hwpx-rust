@@ -6,12 +6,9 @@
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::wrong_self_convention)]
 #![allow(clippy::doc_lazy_continuation)]
-#![allow(clippy::if_same_then_else)]
-#![allow(clippy::collapsible_match)]
 #![allow(clippy::manual_clamp)]
 #![allow(clippy::manual_strip)]
 #![allow(clippy::format_in_format_args)]
-#![allow(clippy::unnecessary_unwrap)]
 #![allow(clippy::unused_enumerate_index)]
 // Rustc lint - internal API uses pub(crate) types
 #![allow(private_interfaces)]

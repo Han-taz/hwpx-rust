@@ -8,7 +8,7 @@
 ## 지원 형식
 
 - **HWP 5.0**: 바이너리 형식 (Compound File Binary Format)
-- **HWPX**: XML 기반 형식 (OWPML 표준)
+- **HWPX**: XML 기반 형식 (OWPML 표준, KS X 6101)
 
 ## 프로젝트 구조
 
@@ -20,13 +20,16 @@ hwp-rs/
 │       │   ├── lib.rs           # 라이브러리 진입점, HwpParser 정의
 │       │   ├── cfb.rs           # Compound File Binary 파서 (HWP 5.0)
 │       │   ├── decompress.rs    # zlib 압축 해제
-│       │   ├── error.rs         # 에러 타입 정의
+│       │   ├── error.rs         # 에러 타입 및 ParseWarnings
 │       │   ├── types.rs         # 공통 타입 (HWPUNIT, Color 등)
 │       │   │
 │       │   ├── parser/          # 파일 형식별 파서
 │       │   │   ├── mod.rs       # 파서 통합 (HWP/HWPX 자동 감지)
 │       │   │   ├── detect.rs    # 파일 형식 감지
 │       │   │   └── hwpx/        # HWPX (XML) 파서
+│       │   │       ├── section.rs  # 섹션 파싱 (문단, 테이블, 이미지, 하이퍼링크)
+│       │   │       ├── header.rs   # 문서 정보 파싱 (폰트, 스타일, 문단 모양)
+│       │   │       └── bindata.rs  # 바이너리 데이터 파싱
 │       │   │
 │       │   ├── document/        # 문서 구조체 정의
 │       │   │   ├── fileheader/  # 파일 헤더 (버전, 플래그)
@@ -38,13 +41,12 @@ hwp-rs/
 │       │   │   └── scripts/     # 문서 스크립트
 │       │   │
 │       │   └── viewer/          # 출력 변환기
+│       │       ├── shared.rs    # 공통 유틸리티 (MIME 감지, 이미지 저장)
 │       │       ├── markdown/    # Markdown 변환
-│       │       ├── html/        # HTML 변환 (페이지 레이아웃, SVG 테이블)
-│       │       ├── pdf/         # PDF 변환 (예정)
-│       │       └── canvas/      # Canvas 렌더링 (예정)
+│       │       └── html/        # HTML 변환 (페이지 레이아웃, SVG 테이블)
 │       │
 │       └── tests/
-│           ├── fixtures/        # 테스트용 HWP 파일
+│           ├── fixtures/        # 테스트용 HWP/HWPX 파일
 │           └── snapshots/       # 스냅샷 테스트 결과
 │
 └── packages/
@@ -62,10 +64,16 @@ hwp-rs/
   - 중첩 테이블(Nested Table) 지원
   - 테이블 셀 내 이미지 렌더링
   - 이미지 추출 (base64 또는 파일 저장)
+  - 하이퍼링크 렌더링
+  - 밑줄(underline) 렌더링
+  - 이미지 alt text 커스터마이징
 - HTML 변환
+  - XSS 방지 (텍스트 이스케이프)
+  - 올바른 charset 선언
 - JSON 변환
 - 텍스트 추출
-- 이미지 추출
+- 이미지 추출 (PNG, JPEG, BMP, GIF, WebP, TIFF 지원)
+- 파싱 경고 시스템 (`ParseWarnings`)
 
 ## Python 사용법
 
@@ -90,6 +98,7 @@ with open("document.hwp", "rb") as f:
 # 문서 정보
 print(doc.version)        # 예: "5.1.0.1"
 print(doc.section_count)  # 섹션 수
+print(doc.warnings)       # 파싱 경고 목록
 
 # Markdown 변환
 markdown = doc.to_markdown()
@@ -125,6 +134,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let markdown = to_markdown(&doc, &options);
     println!("{}", markdown);
 
+    // 파싱 경고 확인
+    for warning in doc.warnings.warnings() {
+        eprintln!("Warning: {}", warning);
+    }
+
     Ok(())
 }
 ```
@@ -146,7 +160,14 @@ maturin build --release
 ### 테스트
 
 ```bash
-cargo test
+# 전체 테스트
+cargo test --workspace
+
+# 스냅샷 테스트 업데이트
+cargo insta accept --workspace
+
+# Clippy 린트
+cargo clippy --all-targets --all-features
 ```
 
 ## 참고 프로젝트

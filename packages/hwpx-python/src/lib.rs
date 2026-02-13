@@ -57,6 +57,7 @@ impl Document {
             use_html: Some(use_html),
             include_version: Some(include_version),
             include_page_info: None,
+            image_alt_text: None,
         };
         to_markdown(&self.inner, &options)
     }
@@ -87,6 +88,20 @@ impl Document {
     fn to_json(&self) -> PyResult<String> {
         serde_json::to_string_pretty(&self.inner)
             .map_err(|e| PyValueError::new_err(format!("JSON serialization error: {e}")))
+    }
+
+    /// Get parsing warnings
+    ///
+    /// Returns:
+    ///     List of warning strings from parsing
+    #[getter]
+    fn warnings(&self) -> Vec<String> {
+        self.inner
+            .warnings
+            .warnings()
+            .iter()
+            .map(|w| w.to_string())
+            .collect()
     }
 
     /// Get plain text content from the document

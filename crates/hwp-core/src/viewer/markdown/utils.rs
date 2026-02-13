@@ -92,7 +92,7 @@ pub(crate) fn is_text_part(part: &str) -> bool {
 /// Check if a part is a block element (image, table, etc.)
 /// part가 블록 요소인지 확인 (이미지, 표 등)
 pub(crate) fn is_block_element(part: &str) -> bool {
-    part.starts_with("![이미지]")
+    part.starts_with("![") // 이미지 (모든 alt text) / image (any alt text)
         || part.starts_with("|") // 테이블 / table
         || part.starts_with("---") // 페이지 구분선 / page break
                                    // 개요 번호는 블록 요소가 아님 / Outline numbers are not block elements

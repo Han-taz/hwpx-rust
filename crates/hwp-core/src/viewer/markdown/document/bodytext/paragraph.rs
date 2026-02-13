@@ -56,7 +56,10 @@ pub fn convert_paragraph_to_markdown(
     let mut para_table_cell_image_ids: std::collections::HashSet<u16> =
         std::collections::HashSet::new();
     for record in &paragraph.records {
-        if let ParagraphRecord::CtrlHeader { header, children, .. } = record {
+        if let ParagraphRecord::CtrlHeader {
+            header, children, ..
+        } = record
+        {
             if header.ctrl_id == crate::document::CtrlId::TABLE {
                 // TABLE 컨트롤의 children에서 모든 이미지 ID 수집 (셀 내용 + children 직접)
                 // Collect all image IDs from TABLE control's children (cell content + direct children)
@@ -75,17 +78,27 @@ pub fn convert_paragraph_to_markdown(
                                 }
                             }
                         }
-                        ParagraphRecord::ShapeComponent { children: shape_children, .. } => {
+                        ParagraphRecord::ShapeComponent {
+                            children: shape_children,
+                            ..
+                        } => {
                             // CtrlHeader.children의 ShapeComponent에서 이미지 ID 수집
                             for shape_child in shape_children {
-                                if let ParagraphRecord::ShapeComponentPicture { shape_component_picture } = shape_child {
-                                    para_table_cell_image_ids.insert(shape_component_picture.picture_info.bindata_id);
+                                if let ParagraphRecord::ShapeComponentPicture {
+                                    shape_component_picture,
+                                } = shape_child
+                                {
+                                    para_table_cell_image_ids
+                                        .insert(shape_component_picture.picture_info.bindata_id);
                                 }
                             }
                         }
-                        ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
+                        ParagraphRecord::ShapeComponentPicture {
+                            shape_component_picture,
+                        } => {
                             // CtrlHeader.children의 직접 ShapeComponentPicture에서 이미지 ID 수집
-                            para_table_cell_image_ids.insert(shape_component_picture.picture_info.bindata_id);
+                            para_table_cell_image_ids
+                                .insert(shape_component_picture.picture_info.bindata_id);
                         }
                         _ => {}
                     }
@@ -157,8 +170,12 @@ pub fn convert_paragraph_to_markdown(
                 // Skip images inside table cells as they are already included in table conversion
                 for child in children {
                     match child {
-                        ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
-                            if para_table_cell_image_ids.contains(&shape_component_picture.picture_info.bindata_id) {
+                        ParagraphRecord::ShapeComponentPicture {
+                            shape_component_picture,
+                        } => {
+                            if para_table_cell_image_ids
+                                .contains(&shape_component_picture.picture_info.bindata_id)
+                            {
                                 continue; // 테이블 셀 내부 이미지는 건너뜀
                             }
                             if let Some(image_md) = convert_shape_component_picture_to_markdown(
@@ -187,7 +204,9 @@ pub fn convert_paragraph_to_markdown(
             } => {
                 // ShapeComponentPicture 변환 / Convert ShapeComponentPicture
                 // 테이블 셀 내부의 이미지는 테이블 변환 시 이미 포함되므로 건너뜀
-                if para_table_cell_image_ids.contains(&shape_component_picture.picture_info.bindata_id) {
+                if para_table_cell_image_ids
+                    .contains(&shape_component_picture.picture_info.bindata_id)
+                {
                     continue; // 테이블 셀 내부 이미지는 건너뜀
                 }
                 if let Some(image_md) = convert_shape_component_picture_to_markdown(
@@ -351,8 +370,7 @@ pub fn convert_paragraph_to_markdown(
                 // First process Table (prevent images inside table from being placed before table)
                 if let Some(table_idx) = table_index {
                     if let ParagraphRecord::Table { table } = &children_slice[table_idx] {
-                        let table_md =
-                            convert_table_to_markdown(table, document, options, tracker);
+                        let table_md = convert_table_to_markdown(table, document, options, tracker);
                         if !table_md.is_empty() {
                             parts.push(table_md);
                             has_table = true;
@@ -674,7 +692,10 @@ pub fn convert_paragraph_to_markdown_with_state(
     let mut para_table_cell_image_ids: std::collections::HashSet<u16> =
         std::collections::HashSet::new();
     for record in &paragraph.records {
-        if let ParagraphRecord::CtrlHeader { header, children, .. } = record {
+        if let ParagraphRecord::CtrlHeader {
+            header, children, ..
+        } = record
+        {
             if header.ctrl_id == crate::document::CtrlId::TABLE {
                 for child in children {
                     match child {
@@ -690,15 +711,25 @@ pub fn convert_paragraph_to_markdown_with_state(
                                 }
                             }
                         }
-                        ParagraphRecord::ShapeComponent { children: shape_children, .. } => {
+                        ParagraphRecord::ShapeComponent {
+                            children: shape_children,
+                            ..
+                        } => {
                             for shape_child in shape_children {
-                                if let ParagraphRecord::ShapeComponentPicture { shape_component_picture } = shape_child {
-                                    para_table_cell_image_ids.insert(shape_component_picture.picture_info.bindata_id);
+                                if let ParagraphRecord::ShapeComponentPicture {
+                                    shape_component_picture,
+                                } = shape_child
+                                {
+                                    para_table_cell_image_ids
+                                        .insert(shape_component_picture.picture_info.bindata_id);
                                 }
                             }
                         }
-                        ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
-                            para_table_cell_image_ids.insert(shape_component_picture.picture_info.bindata_id);
+                        ParagraphRecord::ShapeComponentPicture {
+                            shape_component_picture,
+                        } => {
+                            para_table_cell_image_ids
+                                .insert(shape_component_picture.picture_info.bindata_id);
                         }
                         _ => {}
                     }
@@ -777,8 +808,12 @@ pub fn convert_paragraph_to_markdown_with_state(
             } => {
                 for child in children {
                     match child {
-                        ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
-                            if para_table_cell_image_ids.contains(&shape_component_picture.picture_info.bindata_id) {
+                        ParagraphRecord::ShapeComponentPicture {
+                            shape_component_picture,
+                        } => {
+                            if para_table_cell_image_ids
+                                .contains(&shape_component_picture.picture_info.bindata_id)
+                            {
                                 continue;
                             }
                             if let Some(image_md) = convert_shape_component_picture_to_markdown(
@@ -801,8 +836,12 @@ pub fn convert_paragraph_to_markdown_with_state(
                     }
                 }
             }
-            ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
-                if para_table_cell_image_ids.contains(&shape_component_picture.picture_info.bindata_id) {
+            ParagraphRecord::ShapeComponentPicture {
+                shape_component_picture,
+            } => {
+                if para_table_cell_image_ids
+                    .contains(&shape_component_picture.picture_info.bindata_id)
+                {
                     continue;
                 }
                 if let Some(image_md) = convert_shape_component_picture_to_markdown(
@@ -874,7 +913,10 @@ pub fn convert_paragraph_to_markdown_with_state(
                         }
                     }
                     for child in children {
-                        if let ParagraphRecord::ShapeComponentPicture { shape_component_picture } = child {
+                        if let ParagraphRecord::ShapeComponentPicture {
+                            shape_component_picture,
+                        } = child
+                        {
                             if let Some(image_md) = convert_shape_component_picture_to_markdown(
                                 shape_component_picture,
                                 document,
@@ -915,15 +957,16 @@ pub fn convert_paragraph_to_markdown_with_state(
                     match child {
                         ParagraphRecord::ListHeader { paragraphs, .. } => {
                             for para in paragraphs {
-                                let para_md = convert_paragraph_to_markdown(
-                                    para, document, options, tracker,
-                                );
+                                let para_md =
+                                    convert_paragraph_to_markdown(para, document, options, tracker);
                                 if !para_md.is_empty() {
                                     parts.push(para_md);
                                 }
                             }
                         }
-                        ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
+                        ParagraphRecord::ShapeComponentPicture {
+                            shape_component_picture,
+                        } => {
                             if let Some(image_md) = convert_shape_component_picture_to_markdown(
                                 shape_component_picture,
                                 document,
@@ -937,15 +980,18 @@ pub fn convert_paragraph_to_markdown_with_state(
                 }
 
                 // 표 셀 외부 문단 처리 / Handle paragraphs outside table cells
-                let table_cell_para_ids: std::collections::HashSet<u32> = if let Some(table) = table_opt {
-                    table.cells.iter()
-                        .flat_map(|cell| cell.paragraphs.iter())
-                        .filter(|p| p.para_header.instance_id != 0)
-                        .map(|p| p.para_header.instance_id)
-                        .collect()
-                } else {
-                    std::collections::HashSet::new()
-                };
+                let table_cell_para_ids: std::collections::HashSet<u32> =
+                    if let Some(table) = table_opt {
+                        table
+                            .cells
+                            .iter()
+                            .flat_map(|cell| cell.paragraphs.iter())
+                            .filter(|p| p.para_header.instance_id != 0)
+                            .map(|p| p.para_header.instance_id)
+                            .collect()
+                    } else {
+                        std::collections::HashSet::new()
+                    };
 
                 for para in ctrl_paragraphs {
                     let is_table_cell = !table_cell_para_ids.is_empty()

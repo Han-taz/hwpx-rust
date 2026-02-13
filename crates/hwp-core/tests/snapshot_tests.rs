@@ -324,6 +324,7 @@ fn test_document_markdown_snapshot() {
             use_html: Some(true),
             include_version: Some(true),
             include_page_info: Some(true),
+            image_alt_text: None,
         };
         let markdown = document.to_markdown(&options);
         assert_snapshot_with_path!(snapshot_name_md.as_str(), markdown);
@@ -375,6 +376,7 @@ fn test_headerfooter_markdown() {
                         use_html: Some(true),
                         include_version: Some(true),
                         include_page_info: Some(true),
+                        image_alt_text: None,
                     };
 
                     let markdown = document.to_markdown(&options);
@@ -440,6 +442,7 @@ fn test_all_fixtures_markdown_snapshots() {
                             use_html: Some(true),
                             include_version: Some(true),
                             include_page_info: Some(true),
+                            image_alt_text: None,
                         };
                         let markdown = document.to_markdown(&options);
 
@@ -1020,6 +1023,7 @@ fn test_document_markdown_with_image_files() {
             use_html: Some(true),
             include_version: Some(true),
             include_page_info: Some(true),
+            image_alt_text: None,
         };
         let markdown = document.to_markdown(&options);
 
