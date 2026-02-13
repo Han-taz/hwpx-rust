@@ -1,11 +1,13 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'rust:1.93'
+            args '-v jenkins-cargo-cache:/usr/local/cargo/registry'
+        }
+    }
 
     environment {
         CARGO_TERM_COLOR = 'always'
-        RUSTUP_HOME = '/var/jenkins_home/.rustup'
-        CARGO_HOME = '/var/jenkins_home/.cargo'
-        PATH = "/var/jenkins_home/.cargo/bin:${env.PATH}"
     }
 
     triggers {
@@ -13,33 +15,9 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Setup Build Tools') {
+        stage('Setup') {
             steps {
                 sh '''
-                    if ! command -v cc &> /dev/null; then
-                        apt-get update && apt-get install -y --no-install-recommends \
-                            build-essential \
-                            pkg-config \
-                            libssl-dev \
-                            curl
-                    fi
-                '''
-            }
-        }
-
-        stage('Setup Rust') {
-            steps {
-                sh '''
-                    if ! command -v rustup &> /dev/null; then
-                        curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-                    fi
-                    rustup update stable
                     rustup component add clippy rustfmt
                     rustc --version
                     cargo --version
