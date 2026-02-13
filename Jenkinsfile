@@ -16,7 +16,7 @@ pipeline {
             steps {
                 sh '''
                     # Install GCC from Debian packages (no root required)
-                    if ! [ -f "$HOME/.gcc-root/usr/lib/aarch64-linux-gnu/crti.o" ]; then
+                    if ! [ -f "$HOME/.gcc-root/.setup-done" ]; then
                         rm -rf "$HOME/.gcc-root"
                         echo "Installing GCC toolchain from Debian packages..."
                         MIRROR="http://deb.debian.org/debian"
@@ -43,6 +43,7 @@ pipeline {
                                 sed -i "s|/usr/lib/aarch64-linux-gnu|$HOME/.gcc-root/usr/lib/aarch64-linux-gnu|g" "$f"
                             fi
                         done
+                        touch "$HOME/.gcc-root/.setup-done"
                     fi
 
                     mkdir -p "$HOME/.local/bin"
