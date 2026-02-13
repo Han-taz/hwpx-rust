@@ -36,6 +36,13 @@ pipeline {
                         done
 
                         rm -rf "$TMP"
+
+                        # Fix absolute paths in linker scripts
+                        for f in "$HOME/.gcc-root/usr/lib/aarch64-linux-gnu/"*.so; do
+                            if [ -f "$f" ] && grep -q "GNU ld script" "$f" 2>/dev/null; then
+                                sed -i "s|/usr/lib/aarch64-linux-gnu|$HOME/.gcc-root/usr/lib/aarch64-linux-gnu|g" "$f"
+                            fi
+                        done
                     fi
 
                     mkdir -p "$HOME/.local/bin"
