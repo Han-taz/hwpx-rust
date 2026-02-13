@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         CARGO_TERM_COLOR = 'always'
-        PATH = "${HOME}/.cargo/bin:${env.PATH}"
+        PATH = "${HOME}/.local/bin:${HOME}/.cargo/bin:${env.PATH}"
     }
 
     triggers {
@@ -15,7 +15,14 @@ pipeline {
             steps {
                 sh '''
                     if ! command -v cc > /dev/null 2>&1; then
-                        sudo apt-get update && sudo apt-get install -y build-essential pkg-config
+                        if ! [ -d "$HOME/aarch64-linux-musl-native" ]; then
+                            echo "Installing C toolchain (musl-gcc)..."
+                            curl -sL https://musl.cc/aarch64-linux-musl-native.tgz | tar xz -C "$HOME"
+                        fi
+                        mkdir -p "$HOME/.local/bin"
+                        ln -sf "$HOME/aarch64-linux-musl-native/bin/aarch64-linux-musl-gcc" "$HOME/.local/bin/cc"
+                        ln -sf "$HOME/aarch64-linux-musl-native/bin/aarch64-linux-musl-gcc" "$HOME/.local/bin/gcc"
+                        ln -sf "$HOME/aarch64-linux-musl-native/bin/aarch64-linux-musl-ar" "$HOME/.local/bin/ar"
                     fi
                     if ! command -v rustup > /dev/null 2>&1; then
                         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -24,6 +31,7 @@ pipeline {
                     rustup component add clippy rustfmt
                     rustc --version
                     cargo --version
+                    cc --version
                 '''
             }
         }
