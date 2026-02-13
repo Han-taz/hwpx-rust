@@ -28,7 +28,7 @@ pub use document::bodytext::convert_table_to_markdown;
 pub use renderer::MarkdownRenderer;
 
 /// Markdown 변환 옵션 / Markdown conversion options
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MarkdownOptions {
     /// 이미지를 파일로 저장할 디렉토리 경로 (None이면 base64 데이터 URI로 임베드)
     /// Optional directory path to save images as files. If None, images are embedded as base64 data URIs.
@@ -46,18 +46,6 @@ pub struct MarkdownOptions {
 
     /// 이미지 alt text (기본값: "image") / Image alt text (default: "image")
     pub image_alt_text: Option<String>,
-}
-
-impl Default for MarkdownOptions {
-    fn default() -> Self {
-        Self {
-            image_output_dir: None,
-            use_html: None,
-            include_version: None,
-            include_page_info: None,
-            image_alt_text: None,
-        }
-    }
 }
 
 impl MarkdownOptions {
@@ -144,13 +132,13 @@ pub fn to_markdown(document: &HwpDocument, options: &MarkdownOptions) -> String 
     }
     lines.extend(body_lines_vec);
     if !footers_vec.is_empty() {
-        if lines.last().map_or(false, |last| !last.is_empty()) {
+        if lines.last().is_some_and(|last| !last.is_empty()) {
             lines.push(String::new());
         }
         lines.extend(footers_vec);
     }
     if !footnotes_vec.is_empty() {
-        if lines.last().map_or(false, |last| !last.is_empty()) {
+        if lines.last().is_some_and(|last| !last.is_empty()) {
             lines.push(String::new());
         }
         // 각주 섹션 헤더 추가 / Add footnote section header
@@ -159,7 +147,7 @@ pub fn to_markdown(document: &HwpDocument, options: &MarkdownOptions) -> String 
         lines.extend(footnotes_vec);
     }
     if !endnotes_vec.is_empty() {
-        if lines.last().map_or(false, |last| !last.is_empty()) {
+        if lines.last().is_some_and(|last| !last.is_empty()) {
             lines.push(String::new());
         }
         // 미주 섹션 헤더 추가 / Add endnote section header

@@ -189,7 +189,7 @@ pub fn convert_paragraph_to_markdown(
                         _ => {
                             // 다른 타입은 기존 방식으로 처리
                             let shape_parts = convert_shape_component_children_to_markdown(
-                                &[child.clone()],
+                                std::slice::from_ref(child),
                                 document,
                                 options.image_output_dir.as_deref(),
                                 tracker,
@@ -826,7 +826,7 @@ pub fn convert_paragraph_to_markdown_with_state(
                         }
                         _ => {
                             let shape_parts = convert_shape_component_children_to_markdown(
-                                &[child.clone()],
+                                std::slice::from_ref(child),
                                 document,
                                 options.image_output_dir.as_deref(),
                                 tracker,

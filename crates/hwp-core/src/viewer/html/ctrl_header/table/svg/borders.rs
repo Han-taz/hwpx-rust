@@ -66,11 +66,7 @@ fn render_border_paths(
     // 따라서 line_type에 따른 2중/3중선(다중 스트로크) 표현은 여기서는 하지 않는다.
     let stroke = borderline_stroke_color(line);
     let w = round_to_2dp(borderline_base_width_mm(line));
-    let (ax1, ay1, ax2, ay2) = if is_vertical {
-        (x1, y1, x2, y2)
-    } else {
-        (x1, y1, x2, y2)
-    };
+    let (ax1, ay1, ax2, ay2) = (x1, y1, x2, y2);
     format!(
         r#"<path d="M{},{} L{},{}" style="stroke:{};stroke-linecap:butt;stroke-width:{};"></path>"#,
         round_to_2dp(ax1),
@@ -213,8 +209,6 @@ fn vertical_segment_borderline(
 
     if is_left_edge {
         from_right_cell_left.or(from_left_cell_right)
-    } else if is_right_edge {
-        from_left_cell_right.or(from_right_cell_left)
     } else {
         from_left_cell_right.or(from_right_cell_left)
     }
@@ -303,8 +297,6 @@ fn horizontal_segment_borderline(
 
     if is_top_edge {
         from_lower_cell_top.or(from_upper_cell_bottom)
-    } else if is_bottom_edge {
-        from_upper_cell_bottom.or(from_lower_cell_top)
     } else {
         from_upper_cell_bottom.or(from_lower_cell_top)
     }

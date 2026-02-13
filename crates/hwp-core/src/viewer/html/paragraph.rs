@@ -330,15 +330,15 @@ pub fn render_paragraph(
                 } = &header.data
                 {
                     // 하이퍼링크 필드 체크 / Check hyperlink field
-                    if field_type == "hlk" || field_type == "%hlk" {
-                        if !command.is_empty() {
-                            // URL 형식: "url;extra;params;" - 첫 번째 부분만 추출 / URL format: "url;extra;params;" - extract first part only
-                            let url = command.split(';').next().unwrap_or(command);
-                            if !url.is_empty() {
-                                hyperlinks.push(HyperlinkInfo {
-                                    url: url.to_string(),
-                                });
-                            }
+                    if (field_type == "hlk" || field_type == "%hlk")
+                        && !command.is_empty()
+                    {
+                        // URL 형식: "url;extra;params;" - 첫 번째 부분만 추출 / URL format: "url;extra;params;" - extract first part only
+                        let url = command.split(';').next().unwrap_or(command);
+                        if !url.is_empty() {
+                            hyperlinks.push(HyperlinkInfo {
+                                url: url.to_string(),
+                            });
                         }
                     }
                 }
