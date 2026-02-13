@@ -1,13 +1,9 @@
 pipeline {
-    agent {
-        docker {
-            image 'rust:1.93'
-            args '-v jenkins-cargo-cache:/usr/local/cargo/registry'
-        }
-    }
+    agent any
 
     environment {
         CARGO_TERM_COLOR = 'always'
+        PATH = "${HOME}/.cargo/bin:${env.PATH}"
     }
 
     triggers {
@@ -18,6 +14,10 @@ pipeline {
         stage('Setup') {
             steps {
                 sh '''
+                    if ! command -v rustup &> /dev/null; then
+                        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+                        . "$HOME/.cargo/env"
+                    fi
                     rustup component add clippy rustfmt
                     rustc --version
                     cargo --version
