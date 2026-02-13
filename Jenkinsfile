@@ -3,9 +3,9 @@ pipeline {
 
     environment {
         CARGO_TERM_COLOR = 'always'
-        RUSTUP_HOME = "${WORKSPACE}/.rustup"
-        CARGO_HOME = "${WORKSPACE}/.cargo"
-        PATH = "${WORKSPACE}/.cargo/bin:${env.PATH}"
+        RUSTUP_HOME = '/var/jenkins_home/.rustup'
+        CARGO_HOME = '/var/jenkins_home/.cargo'
+        PATH = "/var/jenkins_home/.cargo/bin:${env.PATH}"
     }
 
     triggers {
@@ -16,6 +16,20 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Setup Build Tools') {
+            steps {
+                sh '''
+                    if ! command -v cc &> /dev/null; then
+                        apt-get update && apt-get install -y --no-install-recommends \
+                            build-essential \
+                            pkg-config \
+                            libssl-dev \
+                            curl
+                    fi
+                '''
             }
         }
 
@@ -69,10 +83,10 @@ pipeline {
             cleanWs()
         }
         failure {
-            echo "CI pipeline failed on branch: ${env.BRANCH_NAME}"
+            echo "CI pipeline failed on branch: ${env.GIT_BRANCH}"
         }
         success {
-            echo "CI pipeline passed on branch: ${env.BRANCH_NAME}"
+            echo "CI pipeline passed on branch: ${env.GIT_BRANCH}"
         }
     }
 }
