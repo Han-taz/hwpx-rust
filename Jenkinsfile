@@ -92,7 +92,11 @@ pipeline {
             steps {
                 sh '''
                     cargo install cargo-audit --quiet || true
-                    cargo audit
+                    if cargo audit --version > /dev/null 2>&1; then
+                        cargo audit
+                    else
+                        echo "cargo-audit not available, skipping security audit"
+                    fi
                 '''
             }
         }
