@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         CARGO_TERM_COLOR = 'always'
+        RUSTUP_TOOLCHAIN = 'stable-aarch64-unknown-linux-musl'
         PATH = "${HOME}/.local/bin:${HOME}/.cargo/bin:${env.PATH}"
     }
 
@@ -29,8 +30,7 @@ pipeline {
                         . "$HOME/.cargo/env"
                     fi
                     rustup toolchain install stable-aarch64-unknown-linux-musl --force-non-host
-                    rustup default stable-aarch64-unknown-linux-musl
-                    rustup component add clippy rustfmt
+                    rustup component add clippy rustfmt --toolchain stable-aarch64-unknown-linux-musl
                     rustc --version
                     cargo --version
                     cc --version
