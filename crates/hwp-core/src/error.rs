@@ -378,14 +378,14 @@ pub enum HwpError {
 }
 
 /// Data for [`HwpError::ParseErrorWithContext`]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseErrorWithContextData {
     pub message: String,
     pub context: ParseContext,
 }
 
 /// Data for [`HwpError::AttributeParseError`]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AttributeParseErrorData {
     pub attribute: String,
     pub value: String,
