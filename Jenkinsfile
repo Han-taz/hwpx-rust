@@ -27,7 +27,7 @@ pipeline {
                         for pkg in gcc-12 cpp-12 binutils-aarch64-linux-gnu binutils-common \
                                    libbinutils libctf-nobfd0 libctf0 libgprofng0 libjansson4 \
                                    libc6-dev linux-libc-dev libgcc-12-dev libcc1-0; do
-                            FILE=$(awk "/^Package: ${pkg}$/{found=1} found && /^Filename:/{print \$2; exit}" "$TMP/Packages")
+                            FILE=$(grep -A20 "^Package: ${pkg}$" "$TMP/Packages" | grep "^Filename: " | head -1 | cut -d' ' -f2)
                             if [ -n "$FILE" ]; then
                                 curl -sL "$MIRROR/$FILE" -o "$TMP/pkg.deb"
                                 dpkg-deb -x "$TMP/pkg.deb" "$HOME/.gcc-root"
