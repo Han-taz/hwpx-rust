@@ -25,9 +25,11 @@ pipeline {
                         ln -sf "$HOME/aarch64-linux-musl-native/bin/aarch64-linux-musl-ar" "$HOME/.local/bin/ar"
                     fi
                     if ! command -v rustup > /dev/null 2>&1; then
-                        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+                        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-host aarch64-unknown-linux-musl
                         . "$HOME/.cargo/env"
                     fi
+                    rustup toolchain install stable-aarch64-unknown-linux-musl
+                    rustup default stable-aarch64-unknown-linux-musl
                     rustup component add clippy rustfmt
                     rustc --version
                     cargo --version
