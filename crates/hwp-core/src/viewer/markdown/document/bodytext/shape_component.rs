@@ -32,6 +32,7 @@ pub(crate) fn convert_shape_component_children_to_markdown(
         use_html: None,
         include_version: None,
         include_page_info: None,
+        image_alt_text: None,
     };
 
     // SHAPE_COMPONENT의 children을 재귀적으로 처리 / Recursively process SHAPE_COMPONENT's children

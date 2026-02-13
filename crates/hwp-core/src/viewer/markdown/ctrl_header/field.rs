@@ -3,7 +3,6 @@
 ///
 /// Handles hyperlinks and other field types
 /// 하이퍼링크 및 기타 필드 타입 처리
-
 use crate::document::{CtrlHeader, CtrlHeaderData, CtrlId};
 
 /// Convert field control to markdown
@@ -24,7 +23,9 @@ pub fn convert_field_ctrl_to_markdown(header: &CtrlHeader, text: Option<&str>) -
     {
         match field_type.as_str() {
             // Hyperlink field - %hlk
-            hlk if hlk == CtrlId::FIELD_HYPERLINK.trim_start_matches('%') || field_type == "%hlk" => {
+            hlk if hlk == CtrlId::FIELD_HYPERLINK.trim_start_matches('%')
+                || field_type == "%hlk" =>
+            {
                 convert_hyperlink_to_markdown(command, text)
             }
             // Date field

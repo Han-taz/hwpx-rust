@@ -139,6 +139,7 @@ fn convert_text_with_char_shapes<'a>(
                             shape.attributes.bold,
                             shape.attributes.italic,
                             shape.attributes.strikethrough != 0,
+                            shape.attributes.underline_type != 0,
                         );
                         result.push_str(&styled);
                     } else {
@@ -163,6 +164,7 @@ fn convert_text_with_char_shapes<'a>(
                                     shape.attributes.bold,
                                     shape.attributes.italic,
                                     shape.attributes.strikethrough != 0,
+                                    shape.attributes.underline_type != 0,
                                 );
                                 result.push_str(&styled);
                             } else {
@@ -198,15 +200,21 @@ fn convert_text_with_char_shapes<'a>(
 ///
 /// # Returns / 반환값
 /// 마크다운 스타일이 적용된 텍스트 / Text with markdown styles applied
-fn apply_markdown_styles(text: &str, bold: bool, italic: bool, strikethrough: bool) -> String {
+fn apply_markdown_styles(
+    text: &str,
+    bold: bool,
+    italic: bool,
+    strikethrough: bool,
+    underline: bool,
+) -> String {
     if text.is_empty() {
         return String::new();
     }
 
     let mut result = String::from(text);
 
-    // 마크다운 스타일 적용 순서: strikethrough (가장 바깥) -> bold -> italic (가장 안쪽)
-    // Markdown style application order: strikethrough (outermost) -> bold -> italic (innermost)
+    // 마크다운 스타일 적용 순서: underline (가장 바깥) -> strikethrough -> bold -> italic (가장 안쪽)
+    // Markdown style application order: underline (outermost) -> strikethrough -> bold -> italic (innermost)
 
     // 기울임 적용 (가장 안쪽) / Apply italic (innermost)
     if italic {
@@ -218,9 +226,14 @@ fn apply_markdown_styles(text: &str, bold: bool, italic: bool, strikethrough: bo
         result = format!("**{result}**");
     }
 
-    // 가운뎃줄 적용 (가장 바깥쪽) / Apply strikethrough (outermost)
+    // 가운뎃줄 적용 / Apply strikethrough
     if strikethrough {
         result = format!("~~{result}~~");
+    }
+
+    // 밑줄 적용 (가장 바깥쪽, HTML 태그) / Apply underline (outermost, HTML tag)
+    if underline {
+        result = format!("<u>{result}</u>");
     }
 
     result
@@ -233,7 +246,10 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
 
     for run in runs {
         match run {
-            ParaTextRun::Text { text, char_shape_id } => {
+            ParaTextRun::Text {
+                text,
+                char_shape_id,
+            } => {
                 if text.is_empty() {
                     continue;
                 }
@@ -248,8 +264,8 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
                 }
 
                 // CharShape 가져오기
-                let char_shape = char_shape_id
-                    .and_then(|id| document.doc_info.char_shapes.get(id as usize));
+                let char_shape =
+                    char_shape_id.and_then(|id| document.doc_info.char_shapes.get(id as usize));
 
                 if let Some(shape) = char_shape {
                     let styled = apply_markdown_styles(
@@ -257,6 +273,7 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
                         shape.attributes.bold,
                         shape.attributes.italic,
                         shape.attributes.strikethrough != 0,
+                        shape.attributes.underline_type != 0,
                     );
                     result.push_str(&styled);
                 } else {
@@ -268,14 +285,18 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
                     result.push_str(text);
                 }
             }
-            ParaTextRun::Hyperlink { text, url, char_shape_id } => {
+            ParaTextRun::Hyperlink {
+                text,
+                url,
+                char_shape_id,
+            } => {
                 if text.is_empty() {
                     continue;
                 }
 
                 // CharShape 스타일 적용 / Apply CharShape styles
-                let char_shape = char_shape_id
-                    .and_then(|id| document.doc_info.char_shapes.get(id as usize));
+                let char_shape =
+                    char_shape_id.and_then(|id| document.doc_info.char_shapes.get(id as usize));
 
                 let styled_text = if let Some(shape) = char_shape {
                     apply_markdown_styles(
@@ -283,6 +304,7 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
                         shape.attributes.bold,
                         shape.attributes.italic,
                         shape.attributes.strikethrough != 0,
+                        shape.attributes.underline_type != 0,
                     )
                 } else {
                     text.trim().to_string()
@@ -305,7 +327,13 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
 /// runs에 char_shape_id가 있는지 확인 / Check if runs have char_shape_id
 pub fn runs_have_char_shape_id(runs: &[ParaTextRun]) -> bool {
     runs.iter().any(|run| {
-        matches!(run, ParaTextRun::Text { char_shape_id: Some(_), .. })
+        matches!(
+            run,
+            ParaTextRun::Text {
+                char_shape_id: Some(_),
+                ..
+            }
+        )
     })
 }
 

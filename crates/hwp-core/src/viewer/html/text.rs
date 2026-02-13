@@ -1,8 +1,7 @@
 /// 텍스트 렌더링 모듈 / Text rendering module
 use crate::document::{
     bodytext::{
-        control_char::ControlChar, CharShapeInfo, ControlCharPosition, ParaTextRun,
-        ParagraphRecord,
+        control_char::ControlChar, CharShapeInfo, ControlCharPosition, ParaTextRun, ParagraphRecord,
     },
     HwpDocument,
 };
@@ -92,8 +91,8 @@ pub fn render_text(
         });
 
         // 텍스트 스타일 적용 / Apply text styles
-        // 첫 공백과 마지막 공백을 &nbsp;로 변환 (HTML 태그 적용 전에 처리) / Convert leading and trailing spaces to &nbsp; (process before applying HTML tags)
-        let mut text_for_styling = segment_text.to_string();
+        // HTML 특수 문자 이스케이프 (XSS 방지) / Escape HTML special characters (prevent XSS)
+        let mut text_for_styling = html_escape(&segment_text);
         // 첫 공백을 &nbsp;로 변환 / Convert leading space to &nbsp;
         if text_for_styling.starts_with(' ') {
             text_for_styling = text_for_styling.replacen(' ', "&nbsp;", 1);
@@ -170,15 +169,17 @@ pub fn render_text_runs(runs: &[ParaTextRun], document: &HwpDocument) -> String 
 
     for run in runs {
         match run {
-            ParaTextRun::Text { text, char_shape_id } => {
+            ParaTextRun::Text {
+                text,
+                char_shape_id,
+            } => {
                 if text.is_empty() {
                     continue;
                 }
 
                 // CharShape 가져오기 / Get CharShape
-                let char_shape_opt = char_shape_id.and_then(|id| {
-                    document.doc_info.char_shapes.get(id as usize)
-                });
+                let char_shape_opt =
+                    char_shape_id.and_then(|id| document.doc_info.char_shapes.get(id as usize));
 
                 // 텍스트 스타일 적용 / Apply text styles
                 let mut text_for_styling = html_escape(text);
@@ -257,7 +258,11 @@ pub fn render_text_runs(runs: &[ParaTextRun], document: &HwpDocument) -> String 
                     result.push_str(&html_escape(text));
                 }
             }
-            ParaTextRun::Hyperlink { text, url, char_shape_id } => {
+            ParaTextRun::Hyperlink {
+                text,
+                url,
+                char_shape_id,
+            } => {
                 // 하이퍼링크 렌더링 / Render hyperlink
                 if text.is_empty() {
                     continue;
@@ -267,9 +272,8 @@ pub fn render_text_runs(runs: &[ParaTextRun], document: &HwpDocument) -> String 
                 let mut link_text = html_escape(text);
 
                 // CharShape 스타일 적용 / Apply CharShape styles
-                let char_shape_opt = char_shape_id.and_then(|id| {
-                    document.doc_info.char_shapes.get(id as usize)
-                });
+                let char_shape_opt =
+                    char_shape_id.and_then(|id| document.doc_info.char_shapes.get(id as usize));
 
                 let mut inline_style = String::new();
                 if let Some(char_shape) = char_shape_opt {
@@ -362,7 +366,13 @@ pub fn extract_runs(paragraph: &crate::document::bodytext::Paragraph) -> Vec<Par
 /// runs에 char_shape_id가 있는지 확인 / Check if runs have char_shape_id
 pub fn runs_have_char_shape_id(runs: &[ParaTextRun]) -> bool {
     runs.iter().any(|run| {
-        matches!(run, ParaTextRun::Text { char_shape_id: Some(_), .. })
+        matches!(
+            run,
+            ParaTextRun::Text {
+                char_shape_id: Some(_),
+                ..
+            }
+        )
     })
 }
 
@@ -473,7 +483,12 @@ pub fn render_text_with_hyperlinks(
                     .filter(|s| (s.position as usize) < text_start)
                     .cloned()
                     .collect();
-                result.push_str(&render_text(&before_text, &filtered_shapes, document, css_prefix));
+                result.push_str(&render_text(
+                    &before_text,
+                    &filtered_shapes,
+                    document,
+                    css_prefix,
+                ));
             }
         }
 
@@ -492,7 +507,8 @@ pub fn render_text_with_hyperlinks(
                         })
                         .cloned()
                         .collect();
-                    let inner_html = render_text(&link_text, &filtered_shapes, document, css_prefix);
+                    let inner_html =
+                        render_text(&link_text, &filtered_shapes, document, css_prefix);
                     result.push_str(&format!(
                         r#"<a href="{}" class="hwp-link">{}</a>"#,
                         escaped_url, inner_html
@@ -506,7 +522,12 @@ pub fn render_text_with_hyperlinks(
                         })
                         .cloned()
                         .collect();
-                    result.push_str(&render_text(&link_text, &filtered_shapes, document, css_prefix));
+                    result.push_str(&render_text(
+                        &link_text,
+                        &filtered_shapes,
+                        document,
+                        css_prefix,
+                    ));
                 }
             }
         }
@@ -523,7 +544,12 @@ pub fn render_text_with_hyperlinks(
                 .filter(|s| (s.position as usize) >= current_text_pos)
                 .cloned()
                 .collect();
-            result.push_str(&render_text(&after_text, &filtered_shapes, document, css_prefix));
+            result.push_str(&render_text(
+                &after_text,
+                &filtered_shapes,
+                document,
+                css_prefix,
+            ));
         }
     }
 

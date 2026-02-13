@@ -622,7 +622,7 @@ fn fill_cell_content(
                                 tracker,
                             );
                         for shape_part in shape_parts {
-                            if shape_part.contains("![이미지]") {
+                            if shape_part.contains("![") {
                                 has_image = true;
                             }
                             cell_parts.push(shape_part);

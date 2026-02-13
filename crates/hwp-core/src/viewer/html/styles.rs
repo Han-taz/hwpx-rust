@@ -261,7 +261,9 @@ pub fn generate_css_styles(document: &HwpDocument) -> String {
         // 줄 간격 / Line spacing
         // 5.0.2.5 이상: line_spacing 사용, 이전 버전: line_spacing_old 사용
         // 5.0.2.5+: use line_spacing, older versions: use line_spacing_old
-        let line_spacing_value = para_shape.line_spacing.unwrap_or(para_shape.line_spacing_old);
+        let line_spacing_value = para_shape
+            .line_spacing
+            .unwrap_or(para_shape.line_spacing_old);
         if line_spacing_value > 0 {
             // 줄 간격 타입에 따라 다르게 처리 / Process differently based on line spacing type
             // 타입 정보가 있으면 사용, 없으면 기본(ByCharacter) 가정

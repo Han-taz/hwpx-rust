@@ -157,8 +157,7 @@ pub(crate) fn render_cells(
                         let total_height_hwpunit: i32 =
                             segments.iter().map(|seg| seg.line_height).sum();
                         let height_mm = round_to_2dp(int32_to_mm(total_height_hwpunit));
-                        if max_shape_height_mm.map_or(true, |h| height_mm > h)
-                        {
+                        if max_shape_height_mm.map_or(true, |h| height_mm > h) {
                             max_shape_height_mm = Some(height_mm);
                         }
                     }

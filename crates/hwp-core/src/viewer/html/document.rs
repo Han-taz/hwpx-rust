@@ -70,11 +70,10 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
     // HTML 문서 시작 / Start HTML document
     html.push_str("<!DOCTYPE html>\n");
     html.push_str("<html>\n");
-    html.push_str("<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n");
-    html.push('\n');
     html.push_str("<head>\n");
+    html.push_str("  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n");
     html.push_str("  <title></title>\n");
-    html.push_str("  <meta http_quiv=\"content-type\" content=\"text/html; charset=utf-8\">\n");
+    html.push_str("  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">\n");
 
     // CSS 스타일 생성 / Generate CSS styles
     html.push_str("  <style>\n");

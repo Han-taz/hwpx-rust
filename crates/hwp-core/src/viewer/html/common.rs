@@ -1,78 +1,13 @@
 /// HTML 뷰어 공통 유틸리티 함수 / HTML viewer common utility functions
-use crate::document::{BinDataRecord, HwpDocument};
-use crate::{HwpError, WORD};
-use base64::{engine::general_purpose::STANDARD, Engine as _};
-use std::fs;
+///
+/// 공통 BinData 함수는 `viewer::shared`에서 재사용합니다.
+/// Common BinData functions are re-exported from `viewer::shared`.
+use crate::document::HwpDocument;
+use crate::WORD;
 use std::path::Path;
 
-/// Get file extension from BinData ID
-/// BinData ID에서 파일 확장자 가져오기
-pub fn get_extension_from_bindata_id(document: &HwpDocument, bindata_id: WORD) -> String {
-    for record in &document.doc_info.bin_data {
-        if let BinDataRecord::Embedding { embedding, .. } = record {
-            if embedding.binary_data_id == bindata_id {
-                return embedding.extension.clone();
-            }
-        }
-    }
-    "jpg".to_string()
-}
-
-/// Get MIME type from BinData ID
-/// BinData ID에서 MIME 타입 가져오기
-pub fn get_mime_type_from_bindata_id(document: &HwpDocument, bindata_id: WORD) -> String {
-    for record in &document.doc_info.bin_data {
-        if let BinDataRecord::Embedding { embedding, .. } = record {
-            if embedding.binary_data_id == bindata_id {
-                return match embedding.extension.to_lowercase().as_str() {
-                    "jpg" | "jpeg" => "image/jpeg",
-                    "png" => "image/png",
-                    "gif" => "image/gif",
-                    "bmp" => "image/bmp",
-                    _ => "image/jpeg",
-                }
-                .to_string();
-            }
-        }
-    }
-    "image/jpeg".to_string()
-}
-
-/// Save image to file and return file path
-/// 이미지를 파일로 저장하고 파일 경로 반환
-pub fn save_image_to_file(
-    document: &HwpDocument,
-    bindata_id: crate::types::WORD,
-    base64_data: &str,
-    dir_path: &str,
-) -> Result<String, HwpError> {
-    // base64 디코딩 / Decode base64
-    let image_data = STANDARD
-        .decode(base64_data)
-        .map_err(|e| HwpError::InternalError {
-            message: format!("Failed to decode base64: {e}"),
-        })?;
-
-    // 파일명 생성 / Generate filename
-    let extension = get_extension_from_bindata_id(document, bindata_id);
-    let file_name = format!("BIN{bindata_id:04X}.{extension}");
-    let file_path = Path::new(dir_path).join(&file_name);
-
-    // 디렉토리 생성 / Create directory
-    fs::create_dir_all(dir_path)
-        .map_err(|e| HwpError::Io(format!("Failed to create directory '{dir_path}': {e}")))?;
-
-    // 파일 저장 / Save file
-    fs::write(&file_path, &image_data).map_err(|e| {
-        HwpError::Io(format!(
-            "Failed to write file '{}': {}",
-            file_path.display(),
-            e
-        ))
-    })?;
-
-    Ok(file_path.to_string_lossy().to_string())
-}
+// 공통 함수 재사용 / Re-use common functions from shared module
+use crate::viewer::shared::{get_mime_type_from_bindata_id, save_image_to_file};
 
 /// Get image URL (file path or base64 data URI)
 /// 이미지 URL 가져오기 (파일 경로 또는 base64 데이터 URI)

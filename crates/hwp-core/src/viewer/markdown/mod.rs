@@ -43,6 +43,21 @@ pub struct MarkdownOptions {
 
     /// 페이지 정보 포함 여부 / Whether to include page information
     pub include_page_info: Option<bool>,
+
+    /// 이미지 alt text (기본값: "image") / Image alt text (default: "image")
+    pub image_alt_text: Option<String>,
+}
+
+impl Default for MarkdownOptions {
+    fn default() -> Self {
+        Self {
+            image_output_dir: None,
+            use_html: None,
+            include_version: None,
+            include_page_info: None,
+            image_alt_text: None,
+        }
+    }
 }
 
 impl MarkdownOptions {
@@ -117,41 +132,40 @@ pub fn to_markdown(document: &HwpDocument, options: &MarkdownOptions) -> String 
         }
     }
 
-    // Convert body text to markdown using common logic / 공통 로직을 사용하여 본문 텍스트를 마크다운으로 변환
-    use crate::viewer::core::bodytext::process_bodytext;
-    use crate::viewer::markdown::renderer::MarkdownRenderer;
-    let renderer = MarkdownRenderer;
-    let parts = process_bodytext(document, &renderer, options);
+    // Convert body text to markdown directly (unsafe-free path)
+    // 본문 텍스트를 마크다운으로 직접 변환 (unsafe 없는 경로)
+    let (headers_vec, body_lines_vec, footers_vec, footnotes_vec, endnotes_vec) =
+        document::bodytext::convert_bodytext_to_markdown(document, options);
 
     // 머리말, 본문, 꼬리말, 각주, 미주 순서로 결합 / Combine in order: headers, body, footers, footnotes, endnotes
-    if !parts.headers.is_empty() {
-        lines.extend(parts.headers.clone());
+    if !headers_vec.is_empty() {
+        lines.extend(headers_vec);
         lines.push(String::new());
     }
-    lines.extend(parts.body_lines.clone());
-    if !parts.footers.is_empty() {
+    lines.extend(body_lines_vec);
+    if !footers_vec.is_empty() {
         if lines.last().map_or(false, |last| !last.is_empty()) {
             lines.push(String::new());
         }
-        lines.extend(parts.footers.clone());
+        lines.extend(footers_vec);
     }
-    if !parts.footnotes.is_empty() {
+    if !footnotes_vec.is_empty() {
         if lines.last().map_or(false, |last| !last.is_empty()) {
             lines.push(String::new());
         }
         // 각주 섹션 헤더 추가 / Add footnote section header
         lines.push("## 각주".to_string());
         lines.push(String::new());
-        lines.extend(parts.footnotes.clone());
+        lines.extend(footnotes_vec);
     }
-    if !parts.endnotes.is_empty() {
+    if !endnotes_vec.is_empty() {
         if lines.last().map_or(false, |last| !last.is_empty()) {
             lines.push(String::new());
         }
         // 미주 섹션 헤더 추가 / Add endnote section header
         lines.push("## 미주".to_string());
         lines.push(String::new());
-        lines.extend(parts.endnotes.clone());
+        lines.extend(endnotes_vec);
     }
 
     // 문단 사이에 빈 줄을 추가하여 마크다운에서 각 문단이 구분되도록 함

@@ -450,10 +450,7 @@ impl HwpError {
     }
 
     /// Create a parsing error with context
-    pub fn parse_error_with_context(
-        message: impl Into<String>,
-        context: ParseContext,
-    ) -> Self {
+    pub fn parse_error_with_context(message: impl Into<String>, context: ParseContext) -> Self {
         Self::ParseErrorWithContext {
             message: message.into(),
             context,
@@ -490,10 +487,7 @@ impl HwpError {
     }
 
     /// Create an XML parse error with context
-    pub fn xml_parse_error_with_context(
-        message: impl Into<String>,
-        context: ParseContext,
-    ) -> Self {
+    pub fn xml_parse_error_with_context(message: impl Into<String>, context: ParseContext) -> Self {
         Self::ParseErrorWithContext {
             message: format!("XML parse error: {}", message.into()),
             context,
