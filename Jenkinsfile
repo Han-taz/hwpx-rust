@@ -14,6 +14,9 @@ pipeline {
         stage('Setup') {
             steps {
                 sh '''
+                    if ! command -v cc &> /dev/null; then
+                        apt-get update && apt-get install -y build-essential pkg-config
+                    fi
                     if ! command -v rustup &> /dev/null; then
                         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
                         . "$HOME/.cargo/env"
