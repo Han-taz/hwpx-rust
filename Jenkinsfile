@@ -6,7 +6,6 @@ pipeline {
         PYO3_NO_PYTHON = '1'
         PATH = "${HOME}/.local/bin:${HOME}/.cargo/bin:${env.PATH}"
         LD_LIBRARY_PATH = "${HOME}/.gcc-root/usr/lib/aarch64-linux-gnu:${HOME}/.gcc-root/usr/lib"
-        CFLAGS = "--sysroot=${HOME}/.gcc-root"
     }
 
     triggers {
