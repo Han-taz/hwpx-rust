@@ -14,7 +14,7 @@ use crate::document::docinfo::para_shape::{
     ParagraphAlignment, VerticalAlignment,
 };
 use crate::document::{DocInfo, FileHeader};
-use crate::error::HwpError;
+use crate::error::{HwpError, ParseWarning, ParseWarnings};
 use crate::types::{COLORREF, DWORD};
 
 use super::container::HwpxContainer;
@@ -76,7 +76,7 @@ fn parse_version_xml(container: &mut HwpxContainer) -> Result<DWORD, HwpError> {
 }
 
 /// Parse header.xml and create DocInfo
-pub fn parse_doc_info(container: &mut HwpxContainer) -> Result<DocInfo, HwpError> {
+pub fn parse_doc_info(container: &mut HwpxContainer, warnings: &mut ParseWarnings) -> Result<DocInfo, HwpError> {
     let content = container.read_file_string("Contents/header.xml")?;
 
     let mut reader = Reader::from_str(&content);
@@ -88,7 +88,7 @@ pub fn parse_doc_info(container: &mut HwpxContainer) -> Result<DocInfo, HwpError
 
     // Parse the XML and extract relevant information
     // For now, we create a minimal DocInfo that allows the document to be processed
-    parse_header_xml_content(&mut reader, &mut doc_info)?;
+    parse_header_xml_content(&mut reader, &mut doc_info, warnings)?;
 
     Ok(doc_info)
 }
@@ -111,6 +111,7 @@ fn parse_color(color_str: &str) -> COLORREF {
 fn parse_header_xml_content(
     reader: &mut Reader<&[u8]>,
     doc_info: &mut DocInfo,
+    warnings: &mut ParseWarnings,
 ) -> Result<(), HwpError> {
     let mut in_char_properties = false;
     let mut in_para_shapes = false;
@@ -149,7 +150,14 @@ fn parse_header_xml_content(
                                     height = std::str::from_utf8(&attr.value)
                                         .ok()
                                         .and_then(|s| s.parse().ok())
-                                        .unwrap_or(1000);
+                                        .unwrap_or_else(|| {
+                                            if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid charPr height value: {s}"
+                                                )));
+                                            }
+                                            1000
+                                        });
                                 }
                                 b"textColor" => {
                                     if let Ok(s) = std::str::from_utf8(&attr.value) {
@@ -242,7 +250,14 @@ fn parse_header_xml_content(
                                 let value: u16 = std::str::from_utf8(&attr.value)
                                     .ok()
                                     .and_then(|s| s.parse().ok())
-                                    .unwrap_or(0);
+                                    .unwrap_or_else(|| {
+                                        if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                            warnings.push(ParseWarning::warning(format!(
+                                                "Invalid fontRef attribute value: {s}"
+                                            )));
+                                        }
+                                        0
+                                    });
                                 match attr.key.as_ref() {
                                     b"hangul" => cs.font_ids.korean = value,
                                     b"latin" => cs.font_ids.english = value,
@@ -383,7 +398,14 @@ fn parse_header_xml_content(
                                     let hwpunit_value: i32 = std::str::from_utf8(&attr.value)
                                         .ok()
                                         .and_then(|s| s.parse().ok())
-                                        .unwrap_or(0);
+                                        .unwrap_or_else(|| {
+                                            if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid margin intent value: {s}"
+                                                )));
+                                            }
+                                            0
+                                        });
                                     ps.indent = hwpunit_value / 4;
                                 }
                             }
@@ -397,7 +419,14 @@ fn parse_header_xml_content(
                                     let hwpunit_value: i32 = std::str::from_utf8(&attr.value)
                                         .ok()
                                         .and_then(|s| s.parse().ok())
-                                        .unwrap_or(0);
+                                        .unwrap_or_else(|| {
+                                            if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid margin left value: {s}"
+                                                )));
+                                            }
+                                            0
+                                        });
                                     ps.left_margin = hwpunit_value / 4;
                                 }
                             }
@@ -411,7 +440,14 @@ fn parse_header_xml_content(
                                     let hwpunit_value: i32 = std::str::from_utf8(&attr.value)
                                         .ok()
                                         .and_then(|s| s.parse().ok())
-                                        .unwrap_or(0);
+                                        .unwrap_or_else(|| {
+                                            if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid margin right value: {s}"
+                                                )));
+                                            }
+                                            0
+                                        });
                                     ps.right_margin = hwpunit_value / 4;
                                 }
                             }

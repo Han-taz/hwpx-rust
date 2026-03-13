@@ -4,13 +4,13 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 use crate::document::bindata::{BinData, BinaryDataItem};
-use crate::error::HwpError;
+use crate::error::{HwpError, ParseWarning, ParseWarnings};
 use crate::types::WORD;
 
 use super::container::HwpxContainer;
 
 /// Parse BinData folder and create BinData structure
-pub fn parse_bindata(container: &mut HwpxContainer) -> Result<BinData, HwpError> {
+pub fn parse_bindata(container: &mut HwpxContainer, warnings: &mut ParseWarnings) -> Result<BinData, HwpError> {
     let bindata_files = container.get_bindata_files();
 
     let mut items = Vec::new();
@@ -41,9 +41,9 @@ pub fn parse_bindata(container: &mut HwpxContainer) -> Result<BinData, HwpError>
                 });
             }
             Err(e) => {
-                // Log warning but continue parsing
-                #[cfg(debug_assertions)]
-                eprintln!("Warning: Failed to read BinData file {file_path}: {e}");
+                warnings.push(ParseWarning::recovered_error(format!(
+                    "Failed to read BinData file {file_path}: {e}"
+                )));
             }
         }
     }
