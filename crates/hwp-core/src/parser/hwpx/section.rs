@@ -161,23 +161,24 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
         match reader.read_event() {
             Ok(Event::Empty(ref e)) => {
                 // Handle self-closing tags like <hp:cellSpan ... />, <hp:cellAddr ... />, <hp:tab ... />
-                let name = e.name();
-                let local_name = String::from_utf8_lossy(name.as_ref());
+                let local_name = e.name();
+                let local_name = local_name.as_ref();
 
-                if local_name.ends_with(":tab") || local_name == "tab" {
+                if local_name.ends_with(b":tab") || local_name == b"tab" {
                     // Parse tab element and convert to appropriate text representation
                     // Tab attributes: width (HWPUNIT), leader (0=none, 1=solid, 2=dash, 3=dot), type
                     let mut leader: u8 = 0;
                     let mut width: u32 = 0;
 
                     for attr in e.attributes().flatten() {
-                        let key = String::from_utf8_lossy(attr.key.as_ref());
-                        let value = String::from_utf8_lossy(&attr.value);
-                        match key.as_ref() {
-                            "leader" => {
+                        let key = attr.key.as_ref();
+                        match key {
+                            b"leader" => {
+                                let value = String::from_utf8_lossy(&attr.value);
                                 leader = value.parse().unwrap_or(0);
                             }
-                            "width" => {
+                            b"width" => {
+                                let value = String::from_utf8_lossy(&attr.value);
                                 width = value.parse().unwrap_or(0);
                             }
                             _ => {}
@@ -218,47 +219,49 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                     } else if !in_table {
                         current_text.push_str(&tab_text);
                     }
-                } else if local_name.ends_with(":cellSpan") || local_name == "cellSpan" {
+                } else if local_name.ends_with(b":cellSpan") || local_name == b"cellSpan" {
                     // Parse colspan and rowspan attributes
                     for attr in e.attributes().flatten() {
-                        let key = String::from_utf8_lossy(attr.key.as_ref());
-                        let value = String::from_utf8_lossy(&attr.value);
-                        match key.as_ref() {
-                            "colSpan" => {
+                        let key = attr.key.as_ref();
+                        match key {
+                            b"colSpan" => {
+                                let value = String::from_utf8_lossy(&attr.value);
                                 current_cell.col_span = value.parse().unwrap_or(1);
                             }
-                            "rowSpan" => {
+                            b"rowSpan" => {
+                                let value = String::from_utf8_lossy(&attr.value);
                                 current_cell.row_span = value.parse().unwrap_or(1);
                             }
                             _ => {}
                         }
                     }
-                } else if local_name.ends_with(":cellAddr") || local_name == "cellAddr" {
+                } else if local_name.ends_with(b":cellAddr") || local_name == b"cellAddr" {
                     // Parse cell address (actual column and row position)
                     for attr in e.attributes().flatten() {
-                        let key = String::from_utf8_lossy(attr.key.as_ref());
-                        let value = String::from_utf8_lossy(&attr.value);
-                        match key.as_ref() {
-                            "colAddr" => {
+                        let key = attr.key.as_ref();
+                        match key {
+                            b"colAddr" => {
+                                let value = String::from_utf8_lossy(&attr.value);
                                 current_cell.col_addr = Some(value.parse().unwrap_or(0));
                             }
-                            "rowAddr" => {
+                            b"rowAddr" => {
+                                let value = String::from_utf8_lossy(&attr.value);
                                 current_cell.row_addr = Some(value.parse().unwrap_or(0));
                             }
                             _ => {}
                         }
                     }
-                } else if local_name.ends_with(":img") || local_name == "img" {
+                } else if local_name.ends_with(b":img") || local_name == b"img" {
                     // Parse image element - extract binaryItemIDRef
                     // <hc:img binaryItemIDRef="image1" bright="0" contrast="0" effect="REAL_PIC" alpha="0"/>
                     for attr in e.attributes().flatten() {
-                        let key = String::from_utf8_lossy(attr.key.as_ref());
-                        let value = String::from_utf8_lossy(&attr.value);
-                        if key == "binaryItemIDRef" {
+                        let key = attr.key.as_ref();
+                        if key == b"binaryItemIDRef" {
+                            let value = String::from_utf8_lossy(&attr.value);
                             current_image_ref = Some(value.to_string());
                         }
                     }
-                } else if local_name.ends_with(":fieldEnd") || local_name == "fieldEnd" {
+                } else if local_name.ends_with(b":fieldEnd") || local_name == b"fieldEnd" {
                     // Handle self-closing fieldEnd: <hp:fieldEnd beginIDRef="..." />
                     // Self-closing fieldEnd 처리: <hp:fieldEnd beginIDRef="..." />
                     if hyperlink_state.active && !hyperlink_state.url.is_empty() {
@@ -277,11 +280,11 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                 }
             }
             Ok(Event::Start(ref e)) => {
-                let name = e.name();
-                let local_name = String::from_utf8_lossy(name.as_ref());
+                let local_name = e.name();
+                let local_name = local_name.as_ref();
 
-                match local_name.as_ref() {
-                    s if s.ends_with(":p") || s == "p" => {
+                match local_name {
+                    s if s.ends_with(b":p") || s == b"p" => {
                         para_depth += 1;
                         if table_depth == 0 && para_depth == 1 {
                             current_text.clear();
@@ -292,13 +295,14 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             current_para_shape_id = 0;
                             current_para_style_id = 0;
                             for attr in e.attributes().flatten() {
-                                let key = String::from_utf8_lossy(attr.key.as_ref());
-                                let value = String::from_utf8_lossy(&attr.value);
-                                match key.as_ref() {
-                                    "prIDRef" => {
+                                let key = attr.key.as_ref();
+                                match key {
+                                    b"prIDRef" => {
+                                        let value = String::from_utf8_lossy(&attr.value);
                                         current_para_shape_id = value.parse().unwrap_or(0);
                                     }
-                                    "styleIDRef" => {
+                                    b"styleIDRef" => {
+                                        let value = String::from_utf8_lossy(&attr.value);
                                         current_para_style_id =
                                             value.parse::<u16>().unwrap_or(0) as u8;
                                     }
@@ -307,7 +311,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             }
                         }
                     }
-                    s if s.ends_with(":run") || s == "run" => {
+                    s if s.ends_with(b":run") || s == b"run" => {
                         // Save previous run if any text accumulated
                         // 이전 run의 텍스트가 있으면 저장
                         if !current_run_text.is_empty() {
@@ -319,17 +323,17 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         // Parse charPrIDRef from <hp:run charPrIDRef="N">
                         current_char_shape_id = None;
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref());
-                            if key == "charPrIDRef" {
+                            let key = attr.key.as_ref();
+                            if key == b"charPrIDRef" {
                                 let value = String::from_utf8_lossy(&attr.value);
                                 current_char_shape_id = value.parse().ok();
                             }
                         }
                     }
-                    s if s.ends_with(":t") || s == "t" => {
+                    s if s.ends_with(b":t") || s == b"t" => {
                         in_text = true;
                     }
-                    s if s.ends_with(":tbl") || s == "tbl" => {
+                    s if s.ends_with(b":tbl") || s == b"tbl" => {
                         // If already in a table (nested table), save current state
                         // 이미 테이블 안에 있으면 (중첩 테이블) 현재 상태 저장
                         if table_depth > 0 {
@@ -345,35 +349,34 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         table_rows.clear();
                         table_caption.clear();
                     }
-                    s if s.ends_with(":caption") || s == "caption" => {
+                    s if s.ends_with(b":caption") || s == b"caption" => {
                         in_caption = true;
                     }
-                    s if s.ends_with(":tr") || s == "tr" => {
+                    s if s.ends_with(b":tr") || s == b"tr" => {
                         current_row.clear();
                     }
-                    s if s.ends_with(":tc") || s == "tc" => {
+                    s if s.ends_with(b":tc") || s == b"tc" => {
                         in_cell = true;
                         current_cell = HwpxCell::default();
                     }
-                    s if s.ends_with(":pic") || s == "pic" => {
+                    s if s.ends_with(b":pic") || s == b"pic" => {
                         _in_picture = true;
                         current_image_ref = None;
                     }
-                    s if s.ends_with(":fieldBegin") || s == "fieldBegin" => {
+                    s if s.ends_with(b":fieldBegin") || s == b"fieldBegin" => {
                         // Parse fieldBegin for hyperlinks
                         // <hp:fieldBegin type="HYPERLINK" id="...">
                         in_field_begin = true;
-                        let mut field_type = String::new();
+                        let mut is_hyperlink = false;
 
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref());
-                            let value = String::from_utf8_lossy(&attr.value);
-                            if key == "type" {
-                                field_type = value.to_string();
+                            let key = attr.key.as_ref();
+                            if key == b"type" {
+                                is_hyperlink = attr.value.as_ref() == b"HYPERLINK";
                             }
                         }
 
-                        if field_type == "HYPERLINK" {
+                        if is_hyperlink {
                             // Start tracking hyperlink
                             hyperlink_state = HyperlinkState {
                                 active: true,
@@ -383,19 +386,19 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             };
                         }
                     }
-                    s if s.ends_with(":parameters") || s == "parameters" => {
+                    s if s.ends_with(b":parameters") || s == b"parameters" => {
                         if in_field_begin {
                             in_parameters = true;
                         }
                     }
-                    s if s.ends_with(":stringParam") || s == "stringParam" => {
+                    s if s.ends_with(b":stringParam") || s == b"stringParam" => {
                         // Parse stringParam for URL extraction
                         // <hp:stringParam name="Path">URL</hp:stringParam>
                         if in_parameters && hyperlink_state.active {
                             for attr in e.attributes().flatten() {
-                                let key = String::from_utf8_lossy(attr.key.as_ref());
-                                let value = String::from_utf8_lossy(&attr.value);
-                                if key == "name" {
+                                let key = attr.key.as_ref();
+                                if key == b"name" {
+                                    let value = String::from_utf8_lossy(&attr.value);
                                     current_param_name = value.to_string();
                                 }
                             }
@@ -435,11 +438,11 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                 }
             }
             Ok(Event::End(ref e)) => {
-                let name = e.name();
-                let local_name = String::from_utf8_lossy(name.as_ref());
+                let local_name = e.name();
+                let local_name = local_name.as_ref();
 
-                match local_name.as_ref() {
-                    s if s.ends_with(":run") || s == "run" => {
+                match local_name {
+                    s if s.ends_with(b":run") || s == b"run" => {
                         // Save current run when </hp:run> ends
                         // </hp:run>이 끝나면 현재 run 저장
                         if !current_run_text.is_empty() {
@@ -449,7 +452,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             });
                         }
                     }
-                    s if s.ends_with(":p") || s == "p" => {
+                    s if s.ends_with(b":p") || s == b"p" => {
                         let in_table = table_depth > 0;
                         if para_depth == 1 && !in_table {
                             // Save any remaining run text
@@ -490,13 +493,13 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         }
                         para_depth = para_depth.saturating_sub(1);
                     }
-                    s if s.ends_with(":t") || s == "t" => {
+                    s if s.ends_with(b":t") || s == b"t" => {
                         in_text = false;
                     }
-                    s if s.ends_with(":caption") || s == "caption" => {
+                    s if s.ends_with(b":caption") || s == b"caption" => {
                         in_caption = false;
                     }
-                    s if s.ends_with(":tbl") || s == "tbl" => {
+                    s if s.ends_with(b":tbl") || s == b"tbl" => {
                         table_depth = table_depth.saturating_sub(1);
 
                         if table_depth == 0 {
@@ -538,18 +541,18 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                             }
                         }
                     }
-                    s if s.ends_with(":tr") || s == "tr" => {
+                    s if s.ends_with(b":tr") || s == b"tr" => {
                         if !current_row.is_empty() {
                             table_rows.push(std::mem::take(&mut current_row));
                         }
                     }
-                    s if s.ends_with(":tc") || s == "tc" => {
+                    s if s.ends_with(b":tc") || s == b"tc" => {
                         // Cell parsing complete, push to current row
                         // 셀 파싱 완료, 현재 행에 추가
                         current_row.push(std::mem::take(&mut current_cell));
                         in_cell = false;
                     }
-                    s if s.ends_with(":pic") || s == "pic" => {
+                    s if s.ends_with(b":pic") || s == b"pic" => {
                         // Create image paragraph when picture element ends
                         // 테이블 셀 내부의 이미지는 셀에 저장하고, 그 외에는 별도 paragraph로 추가
                         // Store images inside table cells, otherwise add as separate paragraph
@@ -569,10 +572,10 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         _in_picture = false;
                         current_image_ref = None;
                     }
-                    s if s.ends_with(":fieldBegin") || s == "fieldBegin" => {
+                    s if s.ends_with(b":fieldBegin") || s == b"fieldBegin" => {
                         in_field_begin = false;
                     }
-                    s if s.ends_with(":fieldEnd") || s == "fieldEnd" => {
+                    s if s.ends_with(b":fieldEnd") || s == b"fieldEnd" => {
                         // Hyperlink complete - create hyperlink run
                         // 하이퍼링크 완료 - 하이퍼링크 run 생성
                         if hyperlink_state.active && !hyperlink_state.url.is_empty() {
@@ -590,10 +593,10 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         // Reset hyperlink state
                         hyperlink_state = HyperlinkState::default();
                     }
-                    s if s.ends_with(":parameters") || s == "parameters" => {
+                    s if s.ends_with(b":parameters") || s == b"parameters" => {
                         in_parameters = false;
                     }
-                    s if s.ends_with(":stringParam") || s == "stringParam" => {
+                    s if s.ends_with(b":stringParam") || s == b"stringParam" => {
                         current_param_name.clear();
                     }
                     _ => {}
