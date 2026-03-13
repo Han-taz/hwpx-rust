@@ -9,6 +9,7 @@ use crate::error::HwpError;
 /// HWPX container wrapper around ZIP archive
 pub struct HwpxContainer<'a> {
     archive: ZipArchive<Cursor<&'a [u8]>>,
+    file_list: Vec<String>, // cached at creation
 }
 
 impl<'a> HwpxContainer<'a> {
@@ -18,7 +19,9 @@ impl<'a> HwpxContainer<'a> {
         let archive =
             ZipArchive::new(cursor).map_err(|e| HwpError::ZipParseError(e.to_string()))?;
 
-        Ok(Self { archive })
+        let file_list: Vec<String> = archive.file_names().map(|s| s.to_string()).collect();
+
+        Ok(Self { archive, file_list })
     }
 
     /// Verify mimetype file contains "application/hwp+zip" or similar
@@ -72,25 +75,25 @@ impl<'a> HwpxContainer<'a> {
 
     /// List all files in a directory
     pub fn list_files(&self, prefix: &str) -> Vec<String> {
-        self.archive
-            .file_names()
+        self.file_list
+            .iter()
             .filter(|name| name.starts_with(prefix))
-            .map(|s| s.to_string())
+            .cloned()
             .collect()
     }
 
     /// Check if a file exists
     pub fn file_exists(&self, path: &str) -> bool {
-        self.archive.file_names().any(|name| name == path)
+        self.file_list.iter().any(|name| name == path)
     }
 
     /// Get the list of section files (section0.xml, section1.xml, etc.)
     pub fn get_section_files(&self) -> Vec<String> {
         let mut sections: Vec<String> = self
-            .archive
-            .file_names()
+            .file_list
+            .iter()
             .filter(|name| name.starts_with("Contents/section") && name.ends_with(".xml"))
-            .map(|s| s.to_string())
+            .cloned()
             .collect();
 
         // Sort by section number
@@ -105,10 +108,10 @@ impl<'a> HwpxContainer<'a> {
 
     /// Get the list of binary data files
     pub fn get_bindata_files(&self) -> Vec<String> {
-        self.archive
-            .file_names()
+        self.file_list
+            .iter()
             .filter(|name| name.starts_with("BinData/"))
-            .map(|s| s.to_string())
+            .cloned()
             .collect()
     }
 }
