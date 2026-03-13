@@ -6,6 +6,16 @@
 use crate::document::{bodytext::Table, HwpDocument, ParagraphRecord};
 use crate::viewer::shared::BinDataIndex;
 
+/// Sort table cells by (row_address, col_address) — shared helper to avoid duplication
+fn sort_cells(cells: &[crate::document::bodytext::TableCell]) -> Vec<&crate::document::bodytext::TableCell> {
+    let mut sorted: Vec<_> = cells.iter().collect();
+    sorted.sort_by_key(|cell| (
+        cell.cell_attributes.row_address,
+        cell.cell_attributes.col_address,
+    ));
+    sorted
+}
+
 /// Convert nested table to text with line breaks
 /// 중첩 테이블을 줄바꿈이 포함된 텍스트로 변환
 fn convert_nested_table_to_text(
@@ -31,13 +41,7 @@ fn convert_nested_table_to_text(
         .unwrap_or(0);
 
     // 셀을 row, col 순서로 정렬
-    let mut sorted_cells: Vec<_> = table.cells.iter().collect();
-    sorted_cells.sort_by_key(|cell| {
-        (
-            cell.cell_attributes.row_address,
-            cell.cell_attributes.col_address,
-        )
-    });
+    let sorted_cells = sort_cells(&table.cells);
 
     let mut row_contents = Vec::new();
 
@@ -175,13 +179,7 @@ fn convert_table_to_html(
 
     // 셀을 row, col 순서로 정렬
     // Sort cells by row, col order
-    let mut sorted_cells: Vec<_> = table.cells.iter().collect();
-    sorted_cells.sort_by_key(|cell| {
-        (
-            cell.cell_attributes.row_address,
-            cell.cell_attributes.col_address,
-        )
-    });
+    let sorted_cells = sort_cells(&table.cells);
 
     // HTML 테이블 생성
     let mut html = String::new();
@@ -313,19 +311,13 @@ fn convert_table_to_markdown_simple(
         .iter()
         .all(|c| c.cell_attributes.row_address == min_row);
 
-    let mut sorted_cells: Vec<_> = table.cells.iter().enumerate().collect();
-    sorted_cells.sort_by_key(|(_, cell)| {
-        (
-            cell.cell_attributes.row_address,
-            cell.cell_attributes.col_address,
-        )
-    });
+    let sorted_cells = sort_cells(&table.cells);
 
     if all_same_row {
         let mut row_index = 0;
         let mut last_col = u16::MAX;
 
-        for (_original_idx, cell) in sorted_cells {
+        for cell in sorted_cells {
             let col = (cell.cell_attributes.col_address.saturating_sub(min_col)) as usize;
 
             if cell.cell_attributes.col_address <= last_col && last_col != u16::MAX {
@@ -541,6 +533,14 @@ fn fill_cell_content(
 
                 let mut last_char_pos = 0;
 
+                // 바이트 오프셋 사전 계산 — chars().skip().take()의 O(T*B) 패턴을 O(T+B)로 개선
+                // Pre-compute byte offsets — improves O(T*B) chars().skip().take() to O(T+B)
+                let byte_offsets: Vec<usize> = text.char_indices()
+                    .map(|(i, _)| i)
+                    .chain(std::iter::once(text.len()))
+                    .collect();
+                let char_count = byte_offsets.len() - 1;
+
                 // control_positions를 정렬하여 순서대로 처리 / Sort control_positions to process in order
                 let mut sorted_positions: Vec<_> = control_char_positions
                     .iter()
@@ -552,18 +552,13 @@ fn fill_cell_content(
                 sorted_positions.sort_by_key(|pos| pos.position);
 
                 for pos in sorted_positions {
-                    // position은 문자 인덱스이므로, 그 위치까지의 텍스트를 문자 단위로 추가
-                    // position is character index, so add text up to that position by character
-                    let text_len = text.chars().count();
-                    if pos.position > last_char_pos && pos.position <= text_len {
-                        // 문자 단위로 텍스트 추출 / Extract text by character
-                        let text_before: String = text
-                            .chars()
-                            .skip(last_char_pos)
-                            .take(pos.position - last_char_pos)
-                            .collect();
+                    // position은 문자 인덱스이므로, 그 위치까지의 텍스트를 바이트 오프셋으로 추가
+                    // position is character index; use pre-computed byte offsets for O(1) slicing
+                    if pos.position > last_char_pos && pos.position <= char_count {
+                        // 바이트 오프셋으로 텍스트 슬라이싱 / Slice text using byte offsets
+                        let text_before = &text[byte_offsets[last_char_pos]..byte_offsets[pos.position]];
                         // trim() 없이 그대로 추가 (정확한 위치 유지) / Add as-is without trim (maintain exact position)
-                        para_text_result.push_str(&text_before);
+                        para_text_result.push_str(text_before);
                     }
 
                     // PARA_BREAK나 LINE_BREAK 위치에 <br> 추가 / Add <br> at PARA_BREAK or LINE_BREAK position
@@ -574,10 +569,10 @@ fn fill_cell_content(
                     }
 
                     // 제어 문자 다음 위치 / Position after control character
-                    // position이 텍스트 끝이면 더 이상 텍스트가 없으므로 text_len으로 설정
-                    // If position is at end of text, set to text_len as there's no more text
-                    last_char_pos = if pos.position >= text_len {
-                        text_len
+                    // position이 텍스트 끝이면 더 이상 텍스트가 없으므로 char_count로 설정
+                    // If position is at end of text, set to char_count as there's no more text
+                    last_char_pos = if pos.position >= char_count {
+                        char_count
                     } else {
                         pos.position + 1
                     };
@@ -585,11 +580,10 @@ fn fill_cell_content(
 
                 // 마지막 부분의 텍스트 추가 (last_char_pos가 텍스트 길이보다 작을 때만)
                 // Add remaining text (only if last_char_pos is less than text length)
-                let text_len = text.chars().count();
-                if last_char_pos < text_len {
-                    let text_after: String = text.chars().skip(last_char_pos).collect();
+                if last_char_pos < char_count {
+                    let text_after = &text[byte_offsets[last_char_pos]..];
                     // trim() 없이 그대로 추가 / Add as-is without trim
-                    para_text_result.push_str(&text_after);
+                    para_text_result.push_str(text_after);
                 }
             }
 
