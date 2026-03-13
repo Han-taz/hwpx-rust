@@ -12,47 +12,73 @@ use crate::document::HwpDocument;
 use crate::types::RoundTo2dp;
 use crate::INT32;
 
-/// 문서에서 첫 번째 PageDef 찾기 / Find first PageDef in document
-fn find_page_def(document: &HwpDocument) -> Option<&PageDef> {
-    for section in &document.body_text.sections {
-        for paragraph in &section.paragraphs {
-            for record in &paragraph.records {
-                // 직접 PageDef인 경우 / Direct PageDef
-                if let ParagraphRecord::PageDef { page_def } = record {
-                    return Some(page_def);
-                }
-                // CtrlHeader의 children에서 PageDef 찾기 / Find PageDef in CtrlHeader's children
-                if let ParagraphRecord::CtrlHeader { children, .. } = record {
-                    for child in children {
-                        if let ParagraphRecord::PageDef { page_def } = child {
-                            return Some(page_def);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
+/// 사전 스캔 결과 / Pre-scan result
+struct HtmlPreScanResult<'a> {
+    page_def: Option<&'a PageDef>,
+    page_number_position: Option<&'a CtrlHeaderData>,
+    para_vertical_positions: Vec<f64>,
 }
 
-/// 문서에서 첫 번째 PageNumberPosition 찾기 / Find first PageNumberPosition in document
-fn find_page_number_position(document: &HwpDocument) -> Option<&CtrlHeaderData> {
+/// 단일 순회로 세 가지 결과를 수집 / Collect three results in a single traversal
+fn pre_scan(document: &HwpDocument) -> HtmlPreScanResult<'_> {
+    let mut page_def: Option<&PageDef> = None;
+    let mut page_number_position: Option<&CtrlHeaderData> = None;
+    let mut para_vertical_positions: Vec<f64> = Vec::new();
+
     for section in &document.body_text.sections {
         for paragraph in &section.paragraphs {
+            let control_mask = &paragraph.para_header.control_mask;
+            let has_header_footer = control_mask.has_header_footer();
+            let has_footnote_endnote = control_mask.has_footnote_endnote();
+
             for record in &paragraph.records {
-                if let ParagraphRecord::CtrlHeader { header, .. } = record {
-                    if header.ctrl_id == CtrlId::PAGE_NUMBER
-                        || header.ctrl_id == CtrlId::PAGE_NUMBER_POS
+                // PageDef 수집 (첫 번째만) / Collect PageDef (first only)
+                if page_def.is_none() {
+                    if let ParagraphRecord::PageDef { page_def: pd } = record {
+                        page_def = Some(pd);
+                    }
+                }
+
+                if let ParagraphRecord::CtrlHeader { header, children, .. } = record {
+                    // PageDef in CtrlHeader children (첫 번째만) / PageDef in CtrlHeader children (first only)
+                    if page_def.is_none() {
+                        for child in children {
+                            if let ParagraphRecord::PageDef { page_def: pd } = child {
+                                page_def = Some(pd);
+                                break;
+                            }
+                        }
+                    }
+
+                    // PageNumberPosition 수집 (첫 번째만) / Collect PageNumberPosition (first only)
+                    if page_number_position.is_none()
+                        && (header.ctrl_id == CtrlId::PAGE_NUMBER
+                            || header.ctrl_id == CtrlId::PAGE_NUMBER_POS)
                     {
                         if let CtrlHeaderData::PageNumberPosition { .. } = &header.data {
-                            return Some(&header.data);
+                            page_number_position = Some(&header.data);
+                        }
+                    }
+                }
+
+                // vertical_position 수집 (header/footer·footnote/endnote 제외) / Collect vertical_position (exclude header/footer·footnote/endnote)
+                if !has_header_footer && !has_footnote_endnote {
+                    if let ParagraphRecord::ParaLineSeg { segments } = record {
+                        if let Some(seg) = segments.first() {
+                            para_vertical_positions
+                                .push(seg.vertical_position as f64 * 25.4 / 7200.0);
                         }
                     }
                 }
             }
         }
     }
-    None
+
+    HtmlPreScanResult {
+        page_def,
+        page_number_position,
+        para_vertical_positions,
+    }
 }
 
 /// Convert HWP document to HTML format
@@ -88,11 +114,12 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
     html.push('\n');
     html.push_str("<body>\n");
 
-    // PageDef 찾기 / Find PageDef
-    let page_def = find_page_def(document);
-
-    // PageNumberPosition 찾기 / Find PageNumberPosition
-    let page_number_position = find_page_number_position(document);
+    // 단일 사전 스캔으로 PageDef·PageNumberPosition·para_vertical_positions 수집
+    // Collect PageDef, PageNumberPosition, and para_vertical_positions in a single pre-scan
+    let pre_scan_result = pre_scan(document);
+    let page_def = pre_scan_result.page_def;
+    let page_number_position = pre_scan_result.page_number_position;
+    let para_vertical_positions = pre_scan_result.para_vertical_positions;
 
     // 페이지 시작 번호 가져오기 / Get page start number
     let page_start_number = document
@@ -146,30 +173,6 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
     // 이전 문단의 마지막 vertical_position (mm 단위) / Last vertical_position of previous paragraph (in mm)
     let mut prev_vertical_mm: Option<f64> = None;
     let mut first_para_vertical_mm: Option<f64> = None; // 첫 번째 문단의 vertical_position (가설 O) / First paragraph's vertical_position (Hypothesis O)
-                                                        // 각 문단의 vertical_position을 저장 (vert_rel_to: "para"일 때 참조 문단 찾기 위해) / Store each paragraph's vertical_position (to find reference paragraph when vert_rel_to: "para")
-                                                        // 먼저 모든 문단의 vertical_position을 수집 / First collect all paragraphs' vertical_positions
-    let mut para_vertical_positions: Vec<f64> = Vec::new();
-    for section in &document.body_text.sections {
-        for paragraph in &section.paragraphs {
-            let control_mask = &paragraph.para_header.control_mask;
-            let has_header_footer = control_mask.has_header_footer();
-            let has_footnote_endnote = control_mask.has_footnote_endnote();
-            if !has_header_footer && !has_footnote_endnote {
-                let vertical_mm = paragraph.records.iter().find_map(|record| {
-                    if let ParagraphRecord::ParaLineSeg { segments } = record {
-                        segments
-                            .first()
-                            .map(|seg| seg.vertical_position as f64 * 25.4 / 7200.0)
-                    } else {
-                        None
-                    }
-                });
-                if let Some(vertical_mm) = vertical_mm {
-                    para_vertical_positions.push(vertical_mm);
-                }
-            }
-        }
-    }
 
     // 문단 인덱스 추적 (vertical_position이 있는 문단만 카운트) / Track paragraph index (only count paragraphs with vertical_position)
     let mut para_index = 0;
