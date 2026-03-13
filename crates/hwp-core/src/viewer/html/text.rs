@@ -126,22 +126,28 @@ pub fn render_text(
             // 속성 / Attributes
             // bold는 CSS의 font-weight:bold로 처리되므로 <strong> 태그 사용하지 않음
             // Bold is handled by CSS font-weight:bold, so don't use <strong> tag
-            let mut styled_text = text_for_styling;
-            if char_shape.attributes.italic {
-                styled_text = format!("<em>{styled_text}</em>");
-            }
-            if char_shape.attributes.underline_type > 0 {
-                styled_text = format!("<u>{styled_text}</u>");
-            }
-            if char_shape.attributes.strikethrough > 0 {
-                styled_text = format!("<s>{styled_text}</s>");
-            }
-            if char_shape.attributes.superscript {
-                styled_text = format!("<sup>{styled_text}</sup>");
-            }
-            if char_shape.attributes.subscript {
-                styled_text = format!("<sub>{styled_text}</sub>");
-            }
+            let italic = char_shape.attributes.italic;
+            let underline = char_shape.attributes.underline_type > 0;
+            let strikethrough = char_shape.attributes.strikethrough > 0;
+            let superscript = char_shape.attributes.superscript;
+            let subscript = char_shape.attributes.subscript;
+            let styled_text = if italic || underline || strikethrough || superscript || subscript {
+                let mut buf = String::with_capacity(text_for_styling.len() + 40);
+                if italic { buf.push_str("<em>"); }
+                if underline { buf.push_str("<u>"); }
+                if strikethrough { buf.push_str("<s>"); }
+                if superscript { buf.push_str("<sup>"); }
+                if subscript { buf.push_str("<sub>"); }
+                buf.push_str(&text_for_styling);
+                if subscript { buf.push_str("</sub>"); }
+                if superscript { buf.push_str("</sup>"); }
+                if strikethrough { buf.push_str("</s>"); }
+                if underline { buf.push_str("</u>"); }
+                if italic { buf.push_str("</em>"); }
+                buf
+            } else {
+                text_for_styling
+            };
 
             // .hrt span으로 래핑 / Wrap with .hrt span
             if !inline_style.is_empty() {
@@ -220,22 +226,28 @@ pub fn render_text_runs(runs: &[ParaTextRun], document: &HwpDocument) -> String 
                     }
 
                     // 스타일 태그 적용 / Apply style tags
-                    let mut styled_text = text_for_styling;
-                    if char_shape.attributes.italic {
-                        styled_text = format!("<em>{styled_text}</em>");
-                    }
-                    if char_shape.attributes.underline_type > 0 {
-                        styled_text = format!("<u>{styled_text}</u>");
-                    }
-                    if char_shape.attributes.strikethrough > 0 {
-                        styled_text = format!("<s>{styled_text}</s>");
-                    }
-                    if char_shape.attributes.superscript {
-                        styled_text = format!("<sup>{styled_text}</sup>");
-                    }
-                    if char_shape.attributes.subscript {
-                        styled_text = format!("<sub>{styled_text}</sub>");
-                    }
+                    let italic = char_shape.attributes.italic;
+                    let underline = char_shape.attributes.underline_type > 0;
+                    let strikethrough = char_shape.attributes.strikethrough > 0;
+                    let superscript = char_shape.attributes.superscript;
+                    let subscript = char_shape.attributes.subscript;
+                    let styled_text = if italic || underline || strikethrough || superscript || subscript {
+                        let mut buf = String::with_capacity(text_for_styling.len() + 40);
+                        if italic { buf.push_str("<em>"); }
+                        if underline { buf.push_str("<u>"); }
+                        if strikethrough { buf.push_str("<s>"); }
+                        if superscript { buf.push_str("<sup>"); }
+                        if subscript { buf.push_str("<sub>"); }
+                        buf.push_str(&text_for_styling);
+                        if subscript { buf.push_str("</sub>"); }
+                        if superscript { buf.push_str("</sup>"); }
+                        if strikethrough { buf.push_str("</s>"); }
+                        if underline { buf.push_str("</u>"); }
+                        if italic { buf.push_str("</em>"); }
+                        buf
+                    } else {
+                        text_for_styling
+                    };
 
                     // span으로 래핑 / Wrap with span
                     if !inline_style.is_empty() {
