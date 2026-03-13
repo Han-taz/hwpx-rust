@@ -669,10 +669,12 @@ fn create_paragraph(text: &str) -> Paragraph {
     }];
 
     records.push(ParagraphRecord::ParaText {
-        text: text.to_string(),
-        runs,
-        control_char_positions: vec![],
-        inline_control_params: vec![],
+        data: Box::new(crate::document::bodytext::ParaTextData {
+            text: text.to_string(),
+            runs,
+            control_char_positions: vec![],
+            inline_control_params: vec![],
+        }),
     });
 
     Paragraph {
@@ -722,10 +724,12 @@ fn create_paragraph_with_runs(text_runs: &[TextRunInfo]) -> Paragraph {
     };
 
     let records = vec![ParagraphRecord::ParaText {
-        text: total_text,
-        runs,
-        control_char_positions: vec![],
-        inline_control_params: vec![],
+        data: Box::new(crate::document::bodytext::ParaTextData {
+            text: total_text,
+            runs,
+            control_char_positions: vec![],
+            inline_control_params: vec![],
+        }),
     }];
 
     Paragraph {
@@ -904,8 +908,8 @@ mod tests {
     /// Helper: extract text from first ParaText record of a paragraph
     fn para_text(para: &Paragraph) -> Option<&str> {
         para.records.iter().find_map(|r| {
-            if let ParagraphRecord::ParaText { text, .. } = r {
-                Some(text.as_str())
+            if let ParagraphRecord::ParaText { data } = r {
+                Some(data.text.as_str())
             } else {
                 None
             }
@@ -915,8 +919,8 @@ mod tests {
     /// Helper: extract runs from first ParaText record of a paragraph
     fn para_runs(para: &Paragraph) -> Option<&Vec<ParaTextRun>> {
         para.records.iter().find_map(|r| {
-            if let ParagraphRecord::ParaText { runs, .. } = r {
-                Some(runs)
+            if let ParagraphRecord::ParaText { data } = r {
+                Some(&data.runs)
             } else {
                 None
             }

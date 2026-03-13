@@ -39,10 +39,11 @@ fn pre_scan(document: &HwpDocument) -> HtmlPreScanResult<'_> {
                     }
                 }
 
-                if let ParagraphRecord::CtrlHeader { header, children, .. } = record {
+                if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
+                    let header = &ch_data.header;
                     // PageDef in CtrlHeader children (첫 번째만) / PageDef in CtrlHeader children (first only)
                     if page_def.is_none() {
-                        for child in children {
+                        for child in &ch_data.children {
                             if let ParagraphRecord::PageDef { page_def: pd } = child {
                                 page_def = Some(pd);
                                 break;
@@ -212,8 +213,8 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
                             current_page_def = Some(page_def);
                             break;
                         }
-                        if let ParagraphRecord::CtrlHeader { children, .. } = record {
-                            for child in children {
+                        if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
+                            for child in &ch_data.children {
                                 if let ParagraphRecord::PageDef { page_def } = child {
                                     current_page_def = Some(page_def);
                                     break;

@@ -26,19 +26,17 @@ fn test_issue144_crossing_hyperlink() {
         for record in &para.records {
             match record {
                 ParagraphRecord::ParaText {
-                    text,
-                    control_char_positions,
-                    ..
+                    data: pt_data,
                 } => {
-                    println!("ParaText: {:?}", text);
-                    println!("Control positions: {:?}", control_char_positions);
+                    println!("ParaText: {:?}", pt_data.text);
+                    println!("Control positions: {:?}", pt_data.control_char_positions);
                 }
-                ParagraphRecord::CtrlHeader { header, .. } => {
+                ParagraphRecord::CtrlHeader { data: ch_data } => {
                     if let CtrlHeaderData::Field {
                         field_type,
                         command,
                         ..
-                    } = &header.data
+                    } = &ch_data.header.data
                     {
                         if field_type == "%hlk" || field_type == "hlk" {
                             println!(
@@ -47,7 +45,7 @@ fn test_issue144_crossing_hyperlink() {
                             );
                         }
                     }
-                    println!("CtrlHeader ctrl_id: {:?}", header.ctrl_id);
+                    println!("CtrlHeader ctrl_id: {:?}", ch_data.header.ctrl_id);
                 }
                 _ => {}
             }

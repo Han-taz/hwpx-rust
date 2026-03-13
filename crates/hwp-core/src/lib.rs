@@ -1,7 +1,6 @@
 // Clippy lints - allow stylistic lints that would require significant refactoring
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::too_many_arguments)]
-#![allow(clippy::large_enum_variant)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::wrong_self_convention)]

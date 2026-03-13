@@ -87,7 +87,8 @@ fn get_nested_cell_content(
     for para in &cell.paragraphs {
         for record in &para.records {
             match record {
-                ParagraphRecord::ParaText { text, .. } => {
+                ParagraphRecord::ParaText { data: pt_data } => {
+                    let text = &pt_data.text;
                     if !text.trim().is_empty() {
                         parts.push(text.clone());
                     }
@@ -391,7 +392,8 @@ fn get_cell_content(
 
         for record in &para.records {
             match record {
-                ParagraphRecord::ParaText { text, .. } => {
+                ParagraphRecord::ParaText { data: pt_data } => {
+                    let text = &pt_data.text;
                     if !text.trim().is_empty() {
                         para_parts.push(text.clone());
                     }
@@ -408,10 +410,10 @@ fn get_cell_content(
                         para_parts.push(image_md);
                     }
                 }
-                ParagraphRecord::ShapeComponent { children, .. } => {
+                ParagraphRecord::ShapeComponent { data: sc_data } => {
                     let shape_parts =
                         crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown(
-                            children,
+                            &sc_data.children,
                             document,
                             bindata_index,
                             options.image_output_dir.as_deref(),
@@ -502,11 +504,9 @@ fn fill_cell_content(
         for record in &para.records {
             match record {
                 ParagraphRecord::ParaText {
-                    text,
-                    control_char_positions,
-                    ..
+                    data: pt_data,
                 } => {
-                    para_text_records.push((text, control_char_positions));
+                    para_text_records.push((&pt_data.text, &pt_data.control_char_positions));
                 }
                 _ => {
                     has_non_text_records = true;
@@ -617,13 +617,12 @@ fn fill_cell_content(
                         }
                     }
                     ParagraphRecord::ShapeComponent {
-                        shape_component: _,
-                        children,
+                        data: sc_data,
                     } => {
                         // SHAPE_COMPONENT의 children을 재귀적으로 처리 / Recursively process SHAPE_COMPONENT's children
                         let shape_parts =
                             crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown(
-                                children,
+                                &sc_data.children,
                                 document,
                                 bindata_index,
                                 options.image_output_dir.as_deref(),

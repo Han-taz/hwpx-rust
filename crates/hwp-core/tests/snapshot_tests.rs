@@ -1290,12 +1290,12 @@ fn test_footnote_endnote_debug() {
                 );
                 for record in &paragraph.records {
                     if let ParagraphRecord::CtrlHeader {
-                        header,
-                        children,
-                        paragraphs,
-                        ..
+                        data: ch_data,
                     } = record
                     {
+                        let header = &ch_data.header;
+                        let children = &ch_data.children;
+                        let paragraphs = &ch_data.paragraphs;
                         if header.ctrl_id.as_str() == CtrlId::FOOTNOTE {
                             let number =
                                 if let hwp_core::document::CtrlHeaderData::FootnoteEndnote {
@@ -1313,21 +1313,20 @@ fn test_footnote_endnote_debug() {
                             );
                             for child in children {
                                 if let ParagraphRecord::ListHeader {
-                                    paragraphs: list_paragraphs,
-                                    ..
+                                    data: lh_data,
                                 } = child
                                 {
                                     eprintln!(
                                         "[TEST] FOOTNOTE ListHeader: paragraphs_count={}",
-                                        list_paragraphs.len()
+                                        lh_data.paragraphs.len()
                                     );
-                                    for (para_idx, para) in list_paragraphs.iter().enumerate() {
+                                    for (para_idx, para) in lh_data.paragraphs.iter().enumerate() {
                                         for para_record in &para.records {
-                                            if let ParagraphRecord::ParaText { text, .. } =
+                                            if let ParagraphRecord::ParaText { data: pt_data } =
                                                 para_record
                                             {
                                                 eprintln!(
-                                                    "[TEST] FOOTNOTE ListHeader Para[{para_idx}] ParaText: {text}"
+                                                    "[TEST] FOOTNOTE ListHeader Para[{para_idx}] ParaText: {}", pt_data.text
                                                 );
                                             }
                                         }
@@ -1351,21 +1350,20 @@ fn test_footnote_endnote_debug() {
                             );
                             for child in children {
                                 if let ParagraphRecord::ListHeader {
-                                    paragraphs: list_paragraphs,
-                                    ..
+                                    data: lh_data,
                                 } = child
                                 {
                                     eprintln!(
                                         "[TEST] ENDNOTE ListHeader: paragraphs_count={}",
-                                        list_paragraphs.len()
+                                        lh_data.paragraphs.len()
                                     );
-                                    for (para_idx, para) in list_paragraphs.iter().enumerate() {
+                                    for (para_idx, para) in lh_data.paragraphs.iter().enumerate() {
                                         for para_record in &para.records {
-                                            if let ParagraphRecord::ParaText { text, .. } =
+                                            if let ParagraphRecord::ParaText { data: pt_data } =
                                                 para_record
                                             {
                                                 eprintln!(
-                                                    "[TEST] ENDNOTE ListHeader Para[{para_idx}] ParaText: {text}"
+                                                    "[TEST] ENDNOTE ListHeader Para[{para_idx}] ParaText: {}", pt_data.text
                                                 );
                                             }
                                         }
@@ -1406,10 +1404,10 @@ fn test_debug_charshape_strikethrough() {
         for section in &document.body_text.sections {
             for para in &section.paragraphs {
                 for record in &para.records {
-                    if let ParagraphRecord::ParaText { text, .. } = record {
-                        if text.contains("가운데줄") {
+                    if let ParagraphRecord::ParaText { data: pt_data } = record {
+                        if pt_data.text.contains("가운데줄") {
                             eprintln!("\n=== DEBUG: Found paragraph with '가운데줄' ===");
-                            eprintln!("Text: {text}");
+                            eprintln!("Text: {}", pt_data.text);
 
                             // ParaCharShape 찾기
                             // Find ParaCharShape

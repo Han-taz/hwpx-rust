@@ -58,11 +58,11 @@ pub(crate) fn convert_shape_component_children_to_markdown(
                     parts.push(image_md);
                 }
             }
-            ParagraphRecord::ListHeader { paragraphs, .. } => {
+            ParagraphRecord::ListHeader { data: lh_data } => {
                 // LIST_HEADER의 paragraphs 처리 (글상자 텍스트) / Process LIST_HEADER's paragraphs (textbox text)
                 // SHAPE_COMPONENT 내부의 LIST_HEADER는 글상자 텍스트를 포함할 수 있음
                 // LIST_HEADER inside SHAPE_COMPONENT can contain textbox text
-                for para in paragraphs {
+                for para in &lh_data.paragraphs {
                     let para_md =
                         convert_paragraph_to_markdown(para, document, bindata_index, &options, tracker);
                     if !para_md.is_empty() {

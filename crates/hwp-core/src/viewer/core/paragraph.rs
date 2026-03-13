@@ -31,16 +31,14 @@ pub fn process_paragraph<R: Renderer>(
     for record in &paragraph.records {
         match record {
             ParagraphRecord::ParaText {
-                text,
-                control_char_positions: _,
-                ..
+                data,
             } => {
                 // ParaText 처리 / Process ParaText
                 // TODO: 글자 모양 적용 로직 구현 (렌더러별로 다름)
                 // Character shape application logic (varies by renderer)
                 // 현재는 간단히 텍스트만 사용
                 // For now, just use text
-                let text_content = text.to_string();
+                let text_content = data.text.to_string();
                 text_parts.push(text_content);
             }
             ParagraphRecord::ShapeComponentPicture {
@@ -63,16 +61,13 @@ pub fn process_paragraph<R: Renderer>(
                 }
             }
             ParagraphRecord::CtrlHeader {
-                header,
-                children,
-                paragraphs: ctrl_paragraphs,
-                ..
+                data,
             } => {
                 // 컨트롤 헤더 처리 / Process control header
                 process_ctrl_header(
-                    header,
-                    children,
-                    ctrl_paragraphs,
+                    &data.header,
+                    &data.children,
+                    &data.paragraphs,
                     document,
                     renderer,
                     options,

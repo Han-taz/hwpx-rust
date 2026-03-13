@@ -88,9 +88,10 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
 
                                 // 중첩된 ShapeComponent: 재귀적으로 탐색
                                 ParagraphRecord::ShapeComponent {
-                                    shape_component,
-                                    children: nested_children,
+                                    data: sc_data,
                                 } => {
+                                    let shape_component = &sc_data.shape_component;
+                                    let nested_children = &sc_data.children;
                                     if let Some(height) = find_shape_component_height(
                                         nested_children,
                                         shape_component.height,
@@ -142,12 +143,11 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
                         for record in &para.records {
                             match record {
                                 ParagraphRecord::ShapeComponent {
-                                    shape_component,
-                                    children,
+                                    data: sc_data,
                                 } => {
                                     if let Some(shape_height_mm) = find_shape_component_height(
-                                        children,
-                                        shape_component.height,
+                                        &sc_data.children,
+                                        sc_data.shape_component.height,
                                     ) {
                                         if max_shape_height_mm.is_none()
                                             || max_shape_height_mm

@@ -59,9 +59,11 @@ pub fn convert_paragraph_to_markdown(
         std::collections::HashSet::new();
     for record in &paragraph.records {
         if let ParagraphRecord::CtrlHeader {
-            header, children, ..
+            data: ch_data,
         } = record
         {
+            let header = &ch_data.header;
+            let children = &ch_data.children;
             if header.ctrl_id == crate::document::CtrlId::TABLE {
                 // TABLE 컨트롤의 children에서 모든 이미지 ID 수집 (셀 내용 + children 직접)
                 // Collect all image IDs from TABLE control's children (cell content + direct children)
@@ -81,9 +83,9 @@ pub fn convert_paragraph_to_markdown(
                             }
                         }
                         ParagraphRecord::ShapeComponent {
-                            children: shape_children,
-                            ..
+                            data: sc_data,
                         } => {
+                            let shape_children = &sc_data.children;
                             // CtrlHeader.children의 ShapeComponent에서 이미지 ID 수집
                             for shape_child in shape_children {
                                 if let ParagraphRecord::ShapeComponentPicture {
@@ -112,7 +114,8 @@ pub fn convert_paragraph_to_markdown(
     // 하이퍼링크 CtrlHeader에서 URL 수집 (순서대로) / Collect URLs from hyperlink CtrlHeaders (in order)
     let mut hyperlinks: Vec<HyperlinkRegion> = Vec::new();
     for record in &paragraph.records {
-        if let ParagraphRecord::CtrlHeader { header, .. } = record {
+        if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
+            let header = &ch_data.header;
             use crate::viewer::markdown::utils::{get_hyperlink_url, is_hyperlink_field};
             if is_hyperlink_field(header) {
                 if let Some(url) = get_hyperlink_url(header) {
@@ -126,11 +129,11 @@ pub fn convert_paragraph_to_markdown(
     for record in &paragraph.records {
         match record {
             ParagraphRecord::ParaText {
-                text,
-                control_char_positions,
-                runs,
-                inline_control_params: _,
+                data: pt_data,
             } => {
+                let text = &pt_data.text;
+                let control_char_positions = &pt_data.control_char_positions;
+                let runs = &pt_data.runs;
                 // ParaText 변환 / Convert ParaText
                 // 표 셀 내부의 텍스트는 이미 Table.cells에 포함되어 convert_table_to_markdown에서 처리되므로
                 // 여기서는 표 앞뒤의 일반 텍스트도 정상적으로 처리됨
@@ -164,9 +167,9 @@ pub fn convert_paragraph_to_markdown(
                 }
             }
             ParagraphRecord::ShapeComponent {
-                shape_component: _,
-                children,
+                data: sc_data,
             } => {
+                let children = &sc_data.children;
                 // SHAPE_COMPONENT의 children을 재귀적으로 처리 / Recursively process SHAPE_COMPONENT's children
                 // 테이블 셀 내부의 이미지는 테이블 변환 시 이미 포함되므로 건너뜀
                 // Skip images inside table cells as they are already included in table conversion
@@ -234,11 +237,11 @@ pub fn convert_paragraph_to_markdown(
                 }
             }
             ParagraphRecord::CtrlHeader {
-                header,
-                children,
-                paragraphs: ctrl_paragraphs,
-                ..
+                data: ch_data,
             } => {
+                let header = &ch_data.header;
+                let children = &ch_data.children;
+                let ctrl_paragraphs = &ch_data.paragraphs;
                 // 하이퍼링크 필드 처리 / Handle hyperlink field
                 use crate::viewer::markdown::utils::{
                     get_hyperlink_url, is_hyperlink_field, should_process_control_header,
@@ -393,7 +396,8 @@ pub fn convert_paragraph_to_markdown(
                     }
 
                     match child {
-                        ParagraphRecord::ListHeader { paragraphs, .. } => {
+                        ParagraphRecord::ListHeader { data: lh_data } => {
+                            let paragraphs = &lh_data.paragraphs;
                             // LIST_HEADER 처리 (표 아래 캡션 등) / Process LIST_HEADER (caption below, etc.)
                             // libhwp 방식: TABLE 이후의 LIST_HEADER는 Table.cells에 포함되어 있으므로 children에서 처리하지 않음
                             // libhwp approach: LIST_HEADERs after TABLE are included in Table.cells, so don't process in children
@@ -430,9 +434,9 @@ pub fn convert_paragraph_to_markdown(
                             }
                         }
                         ParagraphRecord::ShapeComponent {
-                            shape_component: _,
-                            children: shape_children,
+                            data: sc_data,
                         } => {
+                            let shape_children = &sc_data.children;
                             // SHAPE_COMPONENT의 children 처리 (SHAPE_COMPONENT_PICTURE 등) / Process SHAPE_COMPONENT's children (SHAPE_COMPONENT_PICTURE, etc.)
                             // 먼저 표 셀 내부의 이미지인지 확인 / First check if images are inside table cells
                             let mut shape_parts_to_output = Vec::new();
@@ -467,7 +471,8 @@ pub fn convert_paragraph_to_markdown(
                                             }
                                         }
                                     }
-                                    ParagraphRecord::ListHeader { paragraphs, .. } => {
+                                    ParagraphRecord::ListHeader { data: lh_data } => {
+                            let paragraphs = &lh_data.paragraphs;
                                         // LIST_HEADER의 paragraphs 처리 (글상자 텍스트) / Process LIST_HEADER's paragraphs (textbox text)
                                         for para in paragraphs {
                                             let para_md = convert_paragraph_to_markdown(
@@ -703,9 +708,11 @@ pub fn convert_paragraph_to_markdown_with_state(
         std::collections::HashSet::new();
     for record in &paragraph.records {
         if let ParagraphRecord::CtrlHeader {
-            header, children, ..
+            data: ch_data,
         } = record
         {
+            let header = &ch_data.header;
+            let children = &ch_data.children;
             if header.ctrl_id == crate::document::CtrlId::TABLE {
                 for child in children {
                     match child {
@@ -722,9 +729,9 @@ pub fn convert_paragraph_to_markdown_with_state(
                             }
                         }
                         ParagraphRecord::ShapeComponent {
-                            children: shape_children,
-                            ..
+                            data: sc_data,
                         } => {
+                            let shape_children = &sc_data.children;
                             for shape_child in shape_children {
                                 if let ParagraphRecord::ShapeComponentPicture {
                                     shape_component_picture,
@@ -751,7 +758,8 @@ pub fn convert_paragraph_to_markdown_with_state(
     // 하이퍼링크 CtrlHeader에서 URL 수집 / Collect URLs from hyperlink CtrlHeaders
     let mut hyperlinks: Vec<HyperlinkRegion> = Vec::new();
     for record in &paragraph.records {
-        if let ParagraphRecord::CtrlHeader { header, .. } = record {
+        if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
+            let header = &ch_data.header;
             use crate::viewer::markdown::utils::{get_hyperlink_url, is_hyperlink_field};
             if is_hyperlink_field(header) {
                 if let Some(url) = get_hyperlink_url(header) {
@@ -769,11 +777,11 @@ pub fn convert_paragraph_to_markdown_with_state(
     for record in &paragraph.records {
         match record {
             ParagraphRecord::ParaText {
-                text,
-                control_char_positions,
-                runs,
-                ..
+                data: pt_data,
             } => {
+                let text = &pt_data.text;
+                let control_char_positions = &pt_data.control_char_positions;
+                let runs = &pt_data.runs;
                 if use_crossing {
                     // 문단 경계 하이퍼링크 처리 / Handle crossing hyperlinks
                     let result = convert_para_text_to_markdown_with_crossing_hyperlinks(
@@ -813,9 +821,9 @@ pub fn convert_paragraph_to_markdown_with_state(
                 }
             }
             ParagraphRecord::ShapeComponent {
-                shape_component: _,
-                children,
+                data: sc_data,
             } => {
+                let children = &sc_data.children;
                 for child in children {
                     match child {
                         ParagraphRecord::ShapeComponentPicture {
@@ -876,11 +884,11 @@ pub fn convert_paragraph_to_markdown_with_state(
                 }
             }
             ParagraphRecord::CtrlHeader {
-                header,
-                children,
-                paragraphs: ctrl_paragraphs,
-                ..
+                data: ch_data,
             } => {
+                let header = &ch_data.header;
+                let children = &ch_data.children;
+                let ctrl_paragraphs = &ch_data.paragraphs;
                 use crate::viewer::markdown::utils::{
                     get_hyperlink_url, is_hyperlink_field, should_process_control_header,
                 };
@@ -970,7 +978,8 @@ pub fn convert_paragraph_to_markdown_with_state(
                         continue;
                     }
                     match child {
-                        ParagraphRecord::ListHeader { paragraphs, .. } => {
+                        ParagraphRecord::ListHeader { data: lh_data } => {
+                            let paragraphs = &lh_data.paragraphs;
                             for para in paragraphs {
                                 let para_md =
                                     convert_paragraph_to_markdown(para, document, bindata_index, options, tracker);

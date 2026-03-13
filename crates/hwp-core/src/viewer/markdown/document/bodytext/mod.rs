@@ -69,12 +69,13 @@ pub fn convert_bodytext_to_markdown(
             if has_header_footer || has_footnote_endnote {
                 for record in &paragraph_item.records {
                     if let ParagraphRecord::CtrlHeader {
-                        header,
-                        children,
-                        paragraphs: ctrl_paragraphs,
+                        data: ch_data,
                     } = record
                     {
                         use crate::document::CtrlId;
+                        let header = &ch_data.header;
+                        let children = &ch_data.children;
+                        let ctrl_paragraphs = &ch_data.paragraphs;
                         if header.ctrl_id.as_str() == CtrlId::HEADER {
                             // 머리말 문단 처리 / Process header paragraph
                             // 파서에서 이미 ParaText를 제거하고, LIST_HEADER가 있으면 paragraphs는 비어있음
@@ -83,11 +84,11 @@ pub fn convert_bodytext_to_markdown(
                             // If LIST_HEADER exists, process from children, otherwise from paragraphs
                             let mut found_list_header = false;
                             for child_record in children {
-                                if let ParagraphRecord::ListHeader { paragraphs, .. } = child_record
+                                if let ParagraphRecord::ListHeader { data: lh_data } = child_record
                                 {
                                     found_list_header = true;
                                     // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
-                                    for para in paragraphs {
+                                    for para in &lh_data.paragraphs {
                                         let para_md = paragraph::convert_paragraph_to_markdown(
                                             para,
                                             document,
@@ -125,11 +126,11 @@ pub fn convert_bodytext_to_markdown(
                             // If LIST_HEADER exists, process from children, otherwise from paragraphs
                             let mut found_list_header = false;
                             for child_record in children {
-                                if let ParagraphRecord::ListHeader { paragraphs, .. } = child_record
+                                if let ParagraphRecord::ListHeader { data: lh_data } = child_record
                                 {
                                     found_list_header = true;
                                     // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
-                                    for para in paragraphs {
+                                    for para in &lh_data.paragraphs {
                                         let para_md = paragraph::convert_paragraph_to_markdown(
                                             para,
                                             document,

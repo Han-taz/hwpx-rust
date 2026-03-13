@@ -189,60 +189,58 @@ where
             if has_header_footer || has_footnote_endnote {
                 for record in &paragraph.records {
                     if let ParagraphRecord::CtrlHeader {
-                        header,
-                        children,
-                        paragraphs: ctrl_paragraphs,
+                        data,
                     } = record
                     {
                         use crate::document::CtrlId;
-                        if header.ctrl_id.as_str() == CtrlId::HEADER {
+                        if data.header.ctrl_id.as_str() == CtrlId::HEADER {
                             // 머리말 처리 / Process header
                             process_header(
-                                header,
-                                children,
-                                ctrl_paragraphs,
+                                &data.header,
+                                &data.children,
+                                &data.paragraphs,
                                 document,
                                 renderer,
                                 options,
                                 &mut parts,
                                 &mut tracker,
                             );
-                        } else if header.ctrl_id.as_str() == CtrlId::FOOTER {
+                        } else if data.header.ctrl_id.as_str() == CtrlId::FOOTER {
                             // 꼬리말 처리 / Process footer
                             process_footer(
-                                header,
-                                children,
-                                ctrl_paragraphs,
+                                &data.header,
+                                &data.children,
+                                &data.paragraphs,
                                 document,
                                 renderer,
                                 options,
                                 &mut parts,
                                 &mut tracker,
                             );
-                        } else if header.ctrl_id.as_str() == CtrlId::FOOTNOTE {
+                        } else if data.header.ctrl_id.as_str() == CtrlId::FOOTNOTE {
                             // 각주 처리 / Process footnote
                             let footnote_id = footnote_counter;
                             footnote_counter += 1;
                             process_footnote(
                                 footnote_id,
-                                header,
-                                children,
-                                ctrl_paragraphs,
+                                &data.header,
+                                &data.children,
+                                &data.paragraphs,
                                 document,
                                 renderer,
                                 options,
                                 &mut parts,
                                 &mut tracker,
                             );
-                        } else if header.ctrl_id.as_str() == CtrlId::ENDNOTE {
+                        } else if data.header.ctrl_id.as_str() == CtrlId::ENDNOTE {
                             // 미주 처리 / Process endnote
                             let endnote_id = endnote_counter;
                             endnote_counter += 1;
                             process_endnote(
                                 endnote_id,
-                                header,
-                                children,
-                                ctrl_paragraphs,
+                                &data.header,
+                                &data.children,
+                                &data.paragraphs,
                                 document,
                                 renderer,
                                 options,
@@ -319,7 +317,8 @@ fn process_header<R: Renderer>(
     // If LIST_HEADER exists, process from children, otherwise from paragraphs
     let mut found_list_header = false;
     for child_record in children {
-        if let ParagraphRecord::ListHeader { paragraphs, .. } = child_record {
+        if let ParagraphRecord::ListHeader { data } = child_record {
+            let paragraphs = &data.paragraphs;
             found_list_header = true;
             // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
             // 기존 뷰어 함수를 직접 호출 (글자 모양, 개요 번호 등 복잡한 처리를 위해)
@@ -363,7 +362,8 @@ fn process_footer<R: Renderer>(
     // If LIST_HEADER exists, process from children, otherwise from paragraphs
     let mut found_list_header = false;
     for child_record in children {
-        if let ParagraphRecord::ListHeader { paragraphs, .. } = child_record {
+        if let ParagraphRecord::ListHeader { data } = child_record {
+            let paragraphs = &data.paragraphs;
             found_list_header = true;
             // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
             for para in paragraphs {

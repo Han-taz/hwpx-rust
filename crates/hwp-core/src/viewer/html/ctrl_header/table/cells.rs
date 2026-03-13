@@ -66,9 +66,10 @@ pub(crate) fn render_cells(
 
                     // 중첩된 ShapeComponent: 재귀적으로 탐색
                     ParagraphRecord::ShapeComponent {
-                        shape_component,
-                        children: nested_children,
+                        data: sc_data,
                     } => {
+                        let shape_component = &sc_data.shape_component;
+                        let nested_children = &sc_data.children;
                         if let Some(height) =
                             find_shape_component_height(nested_children, shape_component.height)
                         {
@@ -140,11 +141,10 @@ pub(crate) fn render_cells(
             for record in &para.records {
                 match record {
                     ParagraphRecord::ShapeComponent {
-                        shape_component,
-                        children,
+                        data: sc_data,
                     } => {
                         if let Some(shape_height_mm) =
-                            find_shape_component_height(children, shape_component.height)
+                            find_shape_component_height(&sc_data.children, sc_data.shape_component.height)
                         {
                             if max_shape_height_mm.is_none()
                                 || max_shape_height_mm.map_or(true, |h| shape_height_mm > h)
@@ -345,14 +345,13 @@ pub(crate) fn render_cells(
                             }
                         }
                         ParagraphRecord::ShapeComponent {
-                            shape_component,
-                            children: nested_children,
+                            data: sc_data,
                         } => {
                             // 중첩된 ShapeComponent 재귀적으로 탐색 / Recursively search nested ShapeComponent
                             collect_images_from_shape_component(
-                                nested_children,
-                                shape_component.width,
-                                shape_component.height,
+                                &sc_data.children,
+                                sc_data.shape_component.width,
+                                sc_data.shape_component.height,
                                 document,
                                 bindata_index,
                                 options,
@@ -378,14 +377,13 @@ pub(crate) fn render_cells(
             for record in &para.records {
                 match record {
                     ParagraphRecord::ShapeComponent {
-                        shape_component,
-                        children,
+                        data: sc_data,
                     } => {
                         // ShapeComponent의 children에서 이미지 찾기 (재귀적으로) / Find images in ShapeComponent's children (recursively)
                         collect_images_from_shape_component(
-                            children,
-                            shape_component.width,
-                            shape_component.height,
+                            &sc_data.children,
+                            sc_data.shape_component.width,
+                            sc_data.shape_component.height,
                             document,
                             bindata_index,
                             options,
@@ -393,23 +391,20 @@ pub(crate) fn render_cells(
                         );
                     }
                     ParagraphRecord::CtrlHeader {
-                        header,
-                        children,
-                        paragraphs: ctrl_paragraphs,
-                        ..
+                        data: ch_data,
                     } => {
                         // CtrlHeader 처리 (그림 개체 등) / Process CtrlHeader (shape objects, etc.)
                         // process_ctrl_header를 호출하여 이미지 수집 (paragraph.rs와 동일한 방식) / Call process_ctrl_header to collect images (same way as paragraph.rs)
                         // children이 비어있으면 cell.paragraphs도 확인 / If children is empty, also check cell.paragraphs
                         let paragraphs_to_use =
-                            if children.is_empty() && !cell.paragraphs.is_empty() {
+                            if ch_data.children.is_empty() && !cell.paragraphs.is_empty() {
                                 &cell.paragraphs
                             } else {
-                                ctrl_paragraphs
+                                &ch_data.paragraphs
                             };
                         let ctrl_result = ctrl_header::process_ctrl_header(
-                            header,
-                            children,
+                            &ch_data.header,
+                            &ch_data.children,
                             paragraphs_to_use,
                             document,
                             options,
@@ -468,10 +463,10 @@ pub(crate) fn render_cells(
                     let mut obj_off_x_mm = 0.0;
                     let mut obj_off_y_mm = 0.0;
                     for record in &para.records {
-                        if let ParagraphRecord::CtrlHeader { header, .. } = record {
+                        if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
                             if let CtrlHeaderData::ObjectCommon {
                                 offset_x, offset_y, ..
-                            } = &header.data
+                            } = &ch_data.header.data
                             {
                                 obj_off_x_mm = round_to_2dp(int32_to_mm((*offset_x).into()));
                                 obj_off_y_mm = round_to_2dp(int32_to_mm((*offset_y).into()));
@@ -502,11 +497,10 @@ pub(crate) fn render_cells(
                     let mut control_char_positions = Vec::new();
                     for record in &para.records {
                         if let ParagraphRecord::ParaText {
-                            control_char_positions: ccp,
-                            ..
+                            data: pt_data,
                         } = record
                         {
-                            control_char_positions = ccp.clone();
+                            control_char_positions = pt_data.control_char_positions.clone();
                             break;
                         }
                     }

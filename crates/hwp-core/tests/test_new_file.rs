@@ -32,12 +32,11 @@ fn test_parse_new_hwpx_file() {
                 for (i, para) in section.paragraphs.iter().take(50).enumerate() {
                     for record in &para.records {
                         if let hwp_core::document::bodytext::ParagraphRecord::ParaText {
-                            text,
-                            ..
+                            data,
                         } = record
                         {
-                            if !text.trim().is_empty() {
-                                println!("[{i}] {}", text.trim());
+                            if !data.text.trim().is_empty() {
+                                println!("[{i}] {}", data.text.trim());
                             }
                         }
                     }

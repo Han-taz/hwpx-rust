@@ -112,11 +112,11 @@ impl Document {
             for paragraph in &section.paragraphs {
                 for record in &paragraph.records {
                     if let hwp_core::document::bodytext::ParagraphRecord::ParaText {
-                        text, ..
+                        data,
                     } = record
                     {
-                        if !text.trim().is_empty() {
-                            text_parts.push(text.trim().to_string());
+                        if !data.text.trim().is_empty() {
+                            text_parts.push(data.text.trim().to_string());
                         }
                     }
                 }

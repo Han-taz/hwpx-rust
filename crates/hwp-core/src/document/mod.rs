@@ -495,14 +495,11 @@ impl HwpDocument {
         ) {
             match record {
                 ParagraphRecord::CtrlHeader {
-                    header,
-                    children,
-                    paragraphs,
-                    ..
+                    data,
                 } => {
                     // Footnote/endnote ctrl headers ("fn  " / "en  "): assign number to all AUTO_NUMBER tokens in this subtree.
-                    if header.ctrl_id == "fn  " || header.ctrl_id == "en  " {
-                        let current = if header.ctrl_id == "fn  " {
+                    if data.header.ctrl_id == "fn  " || data.header.ctrl_id == "en  " {
+                        let current = if data.header.ctrl_id == "fn  " {
                             *footnote_no
                         } else {
                             *endnote_no
@@ -514,8 +511,8 @@ impl HwpDocument {
                         ) {
                             for r in records.iter_mut() {
                                 match r {
-                                    ParagraphRecord::ParaText { runs, .. } => {
-                                        for run in runs.iter_mut() {
+                                    ParagraphRecord::ParaText { data } => {
+                                        for run in data.runs.iter_mut() {
                                             if let ParaTextRun::Control {
                                                 code, display_text, ..
                                             } = run
@@ -529,34 +526,32 @@ impl HwpDocument {
                                         }
                                     }
                                     ParagraphRecord::CtrlHeader {
-                                        children,
-                                        paragraphs,
-                                        ..
+                                        data,
                                     } => {
-                                        fill_auto_numbers_in_records(children, value);
-                                        for p in paragraphs.iter_mut() {
+                                        fill_auto_numbers_in_records(&mut data.children, value);
+                                        for p in data.paragraphs.iter_mut() {
                                             fill_auto_numbers_in_records(&mut p.records, value);
                                         }
                                     }
-                                    ParagraphRecord::ListHeader { paragraphs, .. } => {
-                                        for p in paragraphs.iter_mut() {
+                                    ParagraphRecord::ListHeader { data } => {
+                                        for p in data.paragraphs.iter_mut() {
                                             fill_auto_numbers_in_records(&mut p.records, value);
                                         }
                                     }
-                                    ParagraphRecord::ShapeComponent { children, .. } => {
-                                        fill_auto_numbers_in_records(children, value);
+                                    ParagraphRecord::ShapeComponent { data } => {
+                                        fill_auto_numbers_in_records(&mut data.children, value);
                                     }
                                     _ => {}
                                 }
                             }
                         }
 
-                        fill_auto_numbers_in_records(children, current);
-                        for p in paragraphs.iter_mut() {
+                        fill_auto_numbers_in_records(&mut data.children, current);
+                        for p in data.paragraphs.iter_mut() {
                             fill_auto_numbers_in_records(&mut p.records, current);
                         }
 
-                        if header.ctrl_id == "fn  " {
+                        if data.header.ctrl_id == "fn  " {
                             *footnote_no += 1;
                         } else {
                             *endnote_no += 1;
@@ -564,12 +559,12 @@ impl HwpDocument {
                     }
 
                     // Table ctrl header ("tbl "): assign table number to the first AUTO_NUMBER found in caption paragraphs.
-                    if header.ctrl_id == "tbl " {
+                    if data.header.ctrl_id == "tbl " {
                         let mut assigned_for_this_table = false;
-                        for p in paragraphs.iter_mut() {
+                        for p in data.paragraphs.iter_mut() {
                             for r in p.records.iter_mut() {
-                                if let ParagraphRecord::ParaText { runs, .. } = r {
-                                    for run in runs.iter_mut() {
+                                if let ParagraphRecord::ParaText { data: pt_data } = r {
+                                    for run in pt_data.runs.iter_mut() {
                                         if let ParaTextRun::Control {
                                             code, display_text, ..
                                         } = run
@@ -598,7 +593,7 @@ impl HwpDocument {
                     }
 
                     // Recurse into nested structures for completeness.
-                    for c in children.iter_mut() {
+                    for c in data.children.iter_mut() {
                         resolve_paragraph_record(
                             c,
                             table_no,
@@ -608,7 +603,7 @@ impl HwpDocument {
                             _formula_no,
                         );
                     }
-                    for p in paragraphs.iter_mut() {
+                    for p in data.paragraphs.iter_mut() {
                         for r in p.records.iter_mut() {
                             resolve_paragraph_record(
                                 r,
@@ -621,8 +616,8 @@ impl HwpDocument {
                         }
                     }
                 }
-                ParagraphRecord::ListHeader { paragraphs, .. } => {
-                    for p in paragraphs.iter_mut() {
+                ParagraphRecord::ListHeader { data } => {
+                    for p in data.paragraphs.iter_mut() {
                         for r in p.records.iter_mut() {
                             resolve_paragraph_record(
                                 r,
@@ -635,8 +630,8 @@ impl HwpDocument {
                         }
                     }
                 }
-                ParagraphRecord::ShapeComponent { children, .. } => {
-                    for c in children.iter_mut() {
+                ParagraphRecord::ShapeComponent { data } => {
+                    for c in data.children.iter_mut() {
                         resolve_paragraph_record(
                             c,
                             table_no,
@@ -669,8 +664,8 @@ impl HwpDocument {
                 let mut new_number_attr_and_value: Option<(u32, u16)> = None;
 
                 for record in paragraph.records.iter() {
-                    if let ParagraphRecord::CtrlHeader { header, .. } = record {
-                        match &header.data {
+                    if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
+                        match &ch_data.header.data {
                             crate::document::bodytext::ctrl_header::CtrlHeaderData::AutoNumber {
                                 attribute,
                                 prefix,
@@ -727,8 +722,8 @@ impl HwpDocument {
                     if let Some(v) = next_value {
                         let formatted = format!("{}{}{}", prefix, format_number(shape, v), suffix);
                         for record in paragraph.records.iter_mut() {
-                            if let ParagraphRecord::ParaText { runs, .. } = record {
-                                for run in runs.iter_mut() {
+                            if let ParagraphRecord::ParaText { data: pt_data } = record {
+                                for run in pt_data.runs.iter_mut() {
                                     if let ParaTextRun::Control {
                                         code, display_text, ..
                                     } = run

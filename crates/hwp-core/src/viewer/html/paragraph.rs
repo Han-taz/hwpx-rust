@@ -80,11 +80,10 @@ pub fn render_paragraph(
     let mut control_char_positions = Vec::new();
     for record in &paragraph.records {
         if let ParagraphRecord::ParaText {
-            control_char_positions: ccp,
-            ..
+            data,
         } = record
         {
-            control_char_positions = ccp.clone();
+            control_char_positions = data.control_char_positions.clone();
             break;
         }
     }
@@ -107,11 +106,10 @@ pub fn render_paragraph(
     let mut shape_object_anchor_positions: Vec<usize> = Vec::new();
     for record in &paragraph.records {
         if let ParagraphRecord::ParaText {
-            control_char_positions,
-            ..
+            data,
         } = record
         {
-            for pos in control_char_positions.iter() {
+            for pos in data.control_char_positions.iter() {
                 if pos.code == ControlChar::SHAPE_OBJECT {
                     shape_object_anchor_positions.push(pos.position);
                 }
@@ -123,11 +121,11 @@ pub fn render_paragraph(
     for record in &paragraph.records {
         match record {
             ParagraphRecord::ShapeComponent {
-                shape_component,
-                children,
+                data: sc_data,
             } => {
                 // ShapeComponent의 children에서 이미지 찾기 / Find images in ShapeComponent's children
-                for child in children {
+                let shape_component = &sc_data.shape_component;
+                for child in &sc_data.children {
                     if let ParagraphRecord::ShapeComponentPicture {
                         shape_component_picture,
                     } = child
@@ -202,18 +200,15 @@ pub fn render_paragraph(
                 });
             }
             ParagraphRecord::CtrlHeader {
-                header,
-                children,
-                paragraphs,
-                ..
+                data: ch_data,
             } => {
                 // CtrlHeader 처리 / Process CtrlHeader
                 let ctrl_result = ctrl_header::process_ctrl_header(
-                    header, children, paragraphs, document, options, bindata_index,
+                    &ch_data.header, &ch_data.children, &ch_data.paragraphs, document, options, bindata_index,
                 );
                 // SHAPE_OBJECT(11)는 "표/그리기 개체" 공통 제어문자이므로, ctrl_id가 "tbl "인 경우에만
                 // ParaText의 SHAPE_OBJECT 위치를 순서대로 매칭하여 anchor를 부여합니다.
-                if header.ctrl_id == "tbl " {
+                if ch_data.header.ctrl_id == "tbl " {
                     let anchor = shape_object_anchor_positions
                         .get(shape_object_anchor_cursor)
                         .copied();
@@ -326,12 +321,12 @@ pub fn render_paragraph(
         // 하이퍼링크 CtrlHeader에서 URL 수집 / Collect URLs from hyperlink CtrlHeaders
         let mut hyperlinks: Vec<HyperlinkInfo> = Vec::new();
         for record in &paragraph.records {
-            if let ParagraphRecord::CtrlHeader { header, .. } = record {
+            if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
                 if let CtrlHeaderData::Field {
                     field_type,
                     command,
                     ..
-                } = &header.data
+                } = &ch_data.header.data
                 {
                     // 하이퍼링크 필드 체크 / Check hyperlink field
                     if field_type == "hlk" || field_type == "%hlk" {

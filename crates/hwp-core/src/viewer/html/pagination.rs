@@ -190,8 +190,8 @@ fn check_page_def_change(paragraph: &Paragraph, current_page_def: Option<&PageDe
                 .unwrap_or(true);
         }
         // CtrlHeader의 children에서도 확인 / Also check in CtrlHeader's children
-        if let ParagraphRecord::CtrlHeader { children, .. } = record {
-            for child in children {
+        if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
+            for child in &ch_data.children {
                 if let ParagraphRecord::PageDef { page_def } = child {
                     return current_page_def
                         .map(|pd| !std::ptr::eq(pd as *const _, page_def as *const _))

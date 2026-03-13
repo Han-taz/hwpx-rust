@@ -351,9 +351,9 @@ pub fn extract_text_and_shapes(
     for record in &paragraph.records {
         match record {
             ParagraphRecord::ParaText {
-                text: para_text, ..
+                data,
             } => {
-                text.push_str(para_text);
+                text.push_str(&data.text);
             }
             ParagraphRecord::ParaCharShape { shapes } => {
                 char_shapes.extend(shapes.iter().cloned());
@@ -368,8 +368,8 @@ pub fn extract_text_and_shapes(
 /// 문단에서 텍스트 runs 추출 / Extract text runs from paragraph
 pub fn extract_runs(paragraph: &crate::document::bodytext::Paragraph) -> Vec<ParaTextRun> {
     for record in &paragraph.records {
-        if let ParagraphRecord::ParaText { runs, .. } = record {
-            return runs.clone();
+        if let ParagraphRecord::ParaText { data } = record {
+            return data.runs.clone();
         }
     }
     Vec::new()
