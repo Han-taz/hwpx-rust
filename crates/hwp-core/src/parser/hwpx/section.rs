@@ -61,7 +61,7 @@ impl Default for HwpxCell {
             row_span: 1,
             col_addr: None,
             row_addr: None,
-            content_items: Vec::new(),
+            content_items: Vec::with_capacity(4),
         }
     }
 }
@@ -98,7 +98,7 @@ pub fn parse_sections(container: &mut HwpxContainer) -> Result<BodyText, HwpErro
         });
     }
 
-    let mut sections = Vec::new();
+    let mut sections = Vec::with_capacity(4);
 
     for (index, section_path) in section_files.iter().enumerate() {
         let content = container.read_file_string(section_path)?;
@@ -114,7 +114,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
     let mut reader = Reader::from_str(content);
     reader.config_mut().trim_text(true);
 
-    let mut paragraphs = Vec::new();
+    let mut paragraphs = Vec::with_capacity(16);
     let mut current_text = String::new();
     let mut in_text = false;
     let mut in_cell = false;
@@ -127,7 +127,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
     // Text run tracking with char shape ID
     // charPrIDRef를 추적하여 텍스트 run에 스타일 연결
     let mut current_char_shape_id: Option<u16> = None;
-    let mut current_runs: Vec<TextRunInfo> = Vec::new();
+    let mut current_runs: Vec<TextRunInfo> = Vec::with_capacity(4);
     let mut current_run_text = String::new();
 
     // Hyperlink tracking (fieldBegin/fieldEnd)
@@ -138,8 +138,8 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
     let mut current_param_name = String::new();
 
     // Table parsing with colspan/rowspan support
-    let mut table_rows: Vec<Vec<HwpxCell>> = Vec::new();
-    let mut current_row: Vec<HwpxCell> = Vec::new();
+    let mut table_rows: Vec<Vec<HwpxCell>> = Vec::with_capacity(8);
+    let mut current_row: Vec<HwpxCell> = Vec::with_capacity(4);
     let mut current_cell = HwpxCell::default();
     let mut table_caption = String::new();
 
@@ -645,7 +645,7 @@ fn create_paragraph(text: &str) -> Paragraph {
 /// char_shape_id가 연결된 텍스트 run들로 paragraph 생성
 fn create_paragraph_with_runs(text_runs: &[TextRunInfo]) -> Paragraph {
     // Build runs, handling hyperlink markers
-    let mut runs: Vec<ParaTextRun> = Vec::new();
+    let mut runs: Vec<ParaTextRun> = Vec::with_capacity(4);
     let mut total_text = String::new();
 
     for run_info in text_runs {
@@ -729,7 +729,8 @@ fn create_table_from_rows(rows: &[Vec<HwpxCell>]) -> Table {
         zones: vec![],
     };
 
-    let mut cells = Vec::new();
+    let total_cells: usize = rows.iter().map(|r| r.len()).sum();
+    let mut cells = Vec::with_capacity(total_cells);
 
     for (row_idx, row) in rows.iter().enumerate() {
         let mut calc_col_address: u16 = 0;
@@ -738,7 +739,7 @@ fn create_table_from_rows(rows: &[Vec<HwpxCell>]) -> Table {
             let col_address = cell_data.col_addr.unwrap_or(calc_col_address);
             let row_address = cell_data.row_addr.unwrap_or(row_idx as u16);
 
-            let mut cell_paragraphs = Vec::new();
+            let mut cell_paragraphs = Vec::with_capacity(cell_data.content_items.len().max(1));
 
             for item in &cell_data.content_items {
                 match item {

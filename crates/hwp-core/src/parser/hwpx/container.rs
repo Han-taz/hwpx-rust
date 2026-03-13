@@ -55,7 +55,7 @@ impl<'a> HwpxContainer<'a> {
                 path: path.to_string(),
             })?;
 
-        let mut buffer = Vec::new();
+        let mut buffer = Vec::with_capacity(file.size() as usize);
         file.read_to_end(&mut buffer)
             .map_err(|e| HwpError::Io(e.to_string()))?;
 
