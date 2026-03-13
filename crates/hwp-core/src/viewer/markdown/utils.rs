@@ -52,37 +52,6 @@ impl OutlineNumberTracker {
     }
 }
 
-/// 버전 번호를 읽기 쉬운 문자열로 변환
-/// Convert version number to readable string
-#[allow(dead_code)]
-pub(crate) fn format_version(document: &HwpDocument) -> String {
-    let version = document.file_header.version;
-    let major = (version >> 24) & 0xFF;
-    let minor = (version >> 16) & 0xFF;
-    let patch = (version >> 8) & 0xFF;
-    let build = version & 0xFF;
-
-    format!("{major}.{minor:02}.{patch:02}.{build:02}")
-}
-
-/// 문서에서 첫 번째 PageDef 정보 추출 / Extract first PageDef information from document
-#[allow(dead_code)]
-pub(crate) fn extract_page_info(
-    document: &HwpDocument,
-) -> Option<&crate::document::bodytext::PageDef> {
-    use crate::document::ParagraphRecord;
-    for section in &document.body_text.sections {
-        for paragraph in &section.paragraphs {
-            for record in &paragraph.records {
-                if let ParagraphRecord::PageDef { page_def } = record {
-                    return Some(page_def);
-                }
-            }
-        }
-    }
-    None
-}
-
 /// Check if a part is a text part (not a block element)
 /// part가 텍스트인지 확인 (블록 요소가 아님)
 pub(crate) fn is_text_part(part: &str) -> bool {

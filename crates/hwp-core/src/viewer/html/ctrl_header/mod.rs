@@ -11,9 +11,6 @@ mod section_def;
 /// Each ctrl_id type is processed in its own independent module.
 mod shape_object;
 
-#[allow(unused_imports)]
-pub use field::convert_field_ctrl_to_html;
-
 // table 모듈은 폴더로 분리되어 있음 / table module is separated into a folder
 pub mod table;
 
