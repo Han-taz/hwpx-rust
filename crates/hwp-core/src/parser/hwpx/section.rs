@@ -483,8 +483,7 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         if in_cell && !current_cell.current_text.is_empty() {
                             current_cell
                                 .content_items
-                                .push(CellContentItem::Text(current_cell.current_text.clone()));
-                            current_cell.current_text.clear();
+                                .push(CellContentItem::Text(std::mem::take(&mut current_cell.current_text)));
                         }
                         // Add newline between nested paragraphs (e.g., in drawText/container)
                         // This ensures proper line breaks in TOC and other nested structures
@@ -556,21 +555,20 @@ fn parse_section_xml(content: &str, index: WORD) -> Result<Section, HwpError> {
                         // Create image paragraph when picture element ends
                         // 테이블 셀 내부의 이미지는 셀에 저장하고, 그 외에는 별도 paragraph로 추가
                         // Store images inside table cells, otherwise add as separate paragraph
-                        if let Some(ref image_ref) = current_image_ref {
+                        if let Some(image_ref) = std::mem::take(&mut current_image_ref) {
                             let in_table = table_depth > 0;
                             if in_table && in_cell {
                                 // 테이블 셀 내부의 이미지는 순서대로 콘텐츠 항목에 추가
                                 // Add image to content items in order
                                 current_cell
                                     .content_items
-                                    .push(CellContentItem::Image(image_ref.clone()));
+                                    .push(CellContentItem::Image(image_ref));
                             } else {
                                 // 테이블 밖의 이미지는 별도 paragraph로 추가
-                                paragraphs.push(create_image_paragraph(image_ref));
+                                paragraphs.push(create_image_paragraph(&image_ref));
                             }
                         }
                         _in_picture = false;
-                        current_image_ref = None;
                     }
                     s if s.ends_with(b":fieldBegin") || s == b"fieldBegin" => {
                         in_field_begin = false;
