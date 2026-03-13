@@ -21,9 +21,11 @@ hwpx-rust is a Rust library that parses HWPX (XML-based Korean word processor) f
 
 ### 1-1. XML Event Loop String Allocation Removal
 
-**Problem:** Every XML event triggers `String::from_utf8_lossy()` conversions (39 sites in section.rs, 25 in header.rs). These allocations occur in the hottest loop of the parser.
+**Problem:** Every XML event triggers `String::from_utf8_lossy()` conversions (19 sites in section.rs, 19 in header.rs). These allocations occur in the hottest loop of the parser.
 
 **Solution:** Replace String comparisons with `&[u8]` byte comparisons.
+
+**Design rule:** Element/attribute *keys* are compared as `&[u8]` (never allocated). Attribute *values* are converted to `Cow<str>` via `unescape_value()` only when they need to be stored or parsed as numbers. All HWPX namespace prefixes (e.g., `hp:`, `hc:`) are ASCII-only, so byte comparison is semantically identical.
 
 **Before:**
 ```rust
@@ -40,14 +42,15 @@ let local_name = name.as_ref();
 if local_name.ends_with(b":tab") || local_name == b"tab" { ... }
 
 let key = attr.key.as_ref();
-// Only convert to String when the value is actually stored
+// Only convert when the value needs to be stored or parsed
 if key == b"width" {
+    // unescape_value() returns Cow<str> — no allocation if no escapes
     let value = attr.unescape_value().unwrap_or_default();
     width = value.parse().unwrap_or(0);
 }
 ```
 
-**Files:** `parser/hwpx/section.rs` (39 sites), `parser/hwpx/header.rs` (25 sites)
+**Files:** `parser/hwpx/section.rs` (19 sites), `parser/hwpx/header.rs` (19 sites)
 
 **Verification:** All existing unit tests + snapshot tests must pass unchanged.
 
@@ -138,7 +141,15 @@ let mut runs: Vec<ParaTextRun> = Vec::with_capacity(4);
 
 **Problem:** 8 sites use `parse().unwrap_or(0)` or `unwrap_or_default()`, silently discarding parse failures. 1 site in bindata.rs silently drops failed file reads.
 
-**Solution:** Add warnings via existing `ParseWarnings` system. Pass `&mut ParseWarnings` (or equivalent) into parser functions.
+**Solution:** Add warnings via existing `ParseWarnings` system. Thread `&mut ParseWarnings` into parser functions.
+
+`ParseWarning` is a struct with severity levels, constructed via `ParseWarning::warning(message)`, `ParseWarning::info(message)`, or `ParseWarning::recovered_error(message)`. Warnings are added via `ParseWarnings::push()`.
+
+**Function signature changes required:**
+- `parse_section_xml(content, index)` → `parse_section_xml(content, index, warnings: &mut ParseWarnings)`
+- `parse_header_xml_content(content, doc_info)` → `parse_header_xml_content(content, doc_info, warnings: &mut ParseWarnings)`
+- `parse_bindata(container, doc)` → `parse_bindata(container, doc, warnings: &mut ParseWarnings)`
+- Callers in `parser/hwpx/mod.rs` pass `&mut document.warnings`
 
 ```rust
 // Before
@@ -146,12 +157,14 @@ leader = value.parse().unwrap_or(0);
 
 // After
 leader = value.parse().unwrap_or_else(|_| {
-    warnings.add_warning(format!("Invalid tab leader value: {}", value));
+    warnings.push(ParseWarning::warning(format!("Invalid tab leader value: {}", String::from_utf8_lossy(&attr.value))));
     0
 });
 ```
 
-**Files:** `parser/hwpx/section.rs` (8 sites), `parser/hwpx/bindata.rs` (1 site)
+**Files:** `parser/hwpx/section.rs` (8 sites), `parser/hwpx/bindata.rs` (1 site), `parser/hwpx/mod.rs` (callers)
+
+**Ordering constraint:** Phase 1-5 modifies function signatures in section.rs and header.rs, which Phase 1-1 also modifies. Implement 1-1 first, then 1-5. Do not parallelize these two.
 
 ---
 
@@ -159,10 +172,10 @@ leader = value.parse().unwrap_or_else(|_| {
 
 ### 2-1. Table Cell Sort Consolidation + chars Processing
 
-**Problem:** Same `table.cells` sorted 3 times in table.rs (lines 32, 172, 309). `chars().skip().take().collect()` creates O(N^2) behavior in nested loops (lines 548-552, 578).
+**Problem:** `table.cells` is sorted in 3 different functions (table.rs lines 32, 172, 309). These are in separate code paths (`convert_nested_table_to_text`, `convert_table_to_html`, `convert_table_to_markdown_simple`), so a single table is sorted at most twice (once in a main path + once recursively for nested tables). Additionally, `chars().skip().take().collect()` at lines 548-552 and 578 creates O(T*B) behavior where T=text length and B=break count, due to `skip()` reiterating from the start each time.
 
 **Solution:**
-1. Sort cells once at table conversion entry point, pass sorted slice to sub-functions.
+1. Sort cells once at table conversion entry point, pass sorted slice to sub-functions — eliminates re-sort on recursive nested table calls.
 2. Replace `chars().skip().take().collect()` with `char_indices()` pre-computation + `&str` slicing.
 
 **Before:**
@@ -223,12 +236,16 @@ if char_shape.attributes.underline_type > 0 {
 **After:**
 ```rust
 let mut buf = String::with_capacity(text.len() * 2);
+// Opening tags in forward order
 if italic { buf.push_str("<em>"); }
 if underline { buf.push_str("<u>"); }
 buf.push_str(&styled_text);
+// Closing tags in REVERSE order (stack discipline — innermost closes first)
 if underline { buf.push_str("</u>"); }
 if italic { buf.push_str("</em>"); }
 ```
+
+**Note:** Tag ordering must follow stack discipline: opening tags in forward order, closing tags in reverse. The current `format!()` chain naturally produces this via nesting, but a buffer approach requires explicit reverse ordering.
 
 **Files:** `viewer/html/text.rs`, `viewer/markdown/document/bodytext/para_text.rs` (similar pattern)
 
@@ -270,7 +287,7 @@ struct CtrlHeaderData {
 
 **Targets:** `ParaText`, `CtrlHeader`, `ListHeader`, `ShapeComponent`
 
-**Impact:** All pattern match sites across parser and viewer must be updated. No output change.
+**Impact:** ~271 `ParagraphRecord::` match arms across the codebase must be updated. The Rust compiler enforces exhaustive matching, so all sites will produce compile errors until fixed — no silent breakage possible.
 
 **Files:** `document/bodytext/mod.rs`, all files matching against ParagraphRecord variants
 
@@ -298,7 +315,7 @@ enum CacheKey {
 }
 ```
 
-Cache is invalidated never (document is immutable after parse). `RefCell` is safe under Python GIL.
+Cache is invalidated never (document is immutable after parse). `RefCell` is safe under Python GIL. Use `#[pyclass(unsendable)]` to prevent cross-thread access, which would cause `RefCell` to panic.
 
 **Files:** `packages/hwpx-python/src/lib.rs`
 
@@ -349,19 +366,21 @@ Remove 29 `#[allow(dead_code)]` instances across 12 files. Truly unused code is 
 **Solution:** Cache file list at container creation.
 
 ```rust
-pub struct HwpxContainer {
-    archive: ZipArchive<Cursor<Vec<u8>>>,
-    file_list: Vec<String>,
+pub struct HwpxContainer<'a> {
+    archive: ZipArchive<Cursor<&'a [u8]>>,
+    file_list: Vec<String>,  // cached at creation
 }
 
-impl HwpxContainer {
-    pub fn new(data: &[u8]) -> Result<Self, HwpError> {
-        let archive = ZipArchive::new(Cursor::new(data.to_vec()))?;
+impl<'a> HwpxContainer<'a> {
+    pub fn new(data: &'a [u8]) -> Result<Self, HwpError> {
+        let archive = ZipArchive::new(Cursor::new(data))?;
         let file_list: Vec<String> = archive.file_names().map(|s| s.to_string()).collect();
         Ok(Self { archive, file_list })
     }
 }
 ```
+
+**Note:** Preserves existing `&'a [u8]` borrowed lifetime pattern — no ownership change.
 
 **Files:** `parser/hwpx/container.rs`
 
@@ -382,3 +401,25 @@ impl HwpxContainer {
 - Phase 3-1: Compiler errors guide all match site updates; no output change
 - Phase 3-2: New unit tests for cache hit/miss behavior
 - All phases: `cargo clippy --all-targets --all-features -- -D warnings`
+
+## Benchmarking
+
+Add `criterion` benchmarks before Phase 1 begins to establish baseline and validate impact:
+
+```toml
+# crates/hwp-core/Cargo.toml
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "parse_benchmark"
+harness = false
+```
+
+Benchmark targets:
+- **Parse:** HWPX file parse time (end-to-end from bytes to HwpDocument)
+- **Markdown conversion:** `to_markdown()` on parsed document
+- **HTML conversion:** `to_html()` on parsed document
+- **Text extraction:** `get_text()` equivalent
+
+Run before/after each phase to measure actual impact. Use a representative HWPX fixture with mixed content (tables, images, styled text).
