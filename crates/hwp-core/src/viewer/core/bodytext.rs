@@ -67,14 +67,17 @@ where
         == std::any::TypeId::of::<crate::viewer::markdown::MarkdownOptions>()
     {
         use crate::viewer::markdown::document::bodytext::paragraph::convert_paragraph_to_markdown_with_state;
+        use crate::viewer::shared::build_bindata_index;
         // 안전하게 타입 캐스팅 / Safely cast type
         unsafe {
             let md_options =
                 &*(options as *const R::Options as *const crate::viewer::markdown::MarkdownOptions);
             let md_tracker = tracker.as_markdown_tracker_mut();
+            let bindata_index = build_bindata_index(document);
             let result = convert_paragraph_to_markdown_with_state(
                 paragraph,
                 document,
+                &bindata_index,
                 md_options,
                 md_tracker,
                 open_hyperlink,

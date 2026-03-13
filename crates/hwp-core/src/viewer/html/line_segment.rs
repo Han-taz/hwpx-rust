@@ -49,6 +49,7 @@ pub struct DocumentRenderState<'a> {
     pub table_counter_start: u32,
     pub pattern_counter: &'a mut usize,
     pub color_to_pattern: &'a mut HashMap<u32, String>,
+    pub bindata_index: &'a crate::viewer::shared::BinDataIndex,
 }
 
 /// 테이블 정보 구조체 / Table info struct
@@ -219,10 +220,12 @@ pub fn render_line_segments(
         page_def: None,
     };
 
+    let empty_bindata_index = crate::viewer::shared::BinDataIndex::new();
     let mut state = DocumentRenderState {
         table_counter_start: 1,
         pattern_counter: &mut pattern_counter,
         color_to_pattern: &mut color_to_pattern,
+        bindata_index: &empty_bindata_index,
     };
 
     render_line_segments_with_content(&content, &context, &mut state)
@@ -425,6 +428,7 @@ pub fn render_line_segments_with_content(
                     table_number: Some(current_table_number),
                     pattern_counter: state.pattern_counter,
                     color_to_pattern: state.color_to_pattern,
+                    bindata_index: state.bindata_index,
                 };
 
                 let position = TablePosition {

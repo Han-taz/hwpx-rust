@@ -10,6 +10,7 @@ use crate::viewer::html::line_segment::{
 use crate::viewer::html::styles::{int32_to_mm, round_to_2dp};
 use crate::viewer::html::{common, ctrl_header};
 use crate::viewer::html::{image, text};
+use crate::viewer::shared::BinDataIndex;
 use crate::viewer::HtmlOptions;
 use crate::{HwpDocument, INT32};
 
@@ -25,6 +26,7 @@ pub(crate) fn render_cells(
     ctrl_header_height_mm: Option<f64>,
     document: &HwpDocument,
     options: &HtmlOptions,
+    bindata_index: &BinDataIndex,
     pattern_counter: &mut usize, // 문서 레벨 pattern_counter (문서 전체에서 패턴 ID 공유) / Document-level pattern_counter (share pattern IDs across document)
     color_to_pattern: &mut HashMap<u32, String>, // 문서 레벨 color_to_pattern (문서 전체에서 패턴 ID 공유) / Document-level color_to_pattern (share pattern IDs across document)
 ) -> String {
@@ -266,6 +268,7 @@ pub(crate) fn render_cells(
                         let bindata_id = shape_component_picture.picture_info.bindata_id;
                         let image_url = common::get_image_url(
                             document,
+                            bindata_index,
                             bindata_id,
                             options.image_output_dir.as_deref(),
                             options.html_output_dir.as_deref(),
@@ -310,6 +313,7 @@ pub(crate) fn render_cells(
                 shape_component_width: u32,
                 shape_component_height: u32,
                 document: &HwpDocument,
+                bindata_index: &BinDataIndex,
                 options: &HtmlOptions,
                 images: &mut Vec<ImageInfo>,
             ) {
@@ -321,6 +325,7 @@ pub(crate) fn render_cells(
                             let bindata_id = shape_component_picture.picture_info.bindata_id;
                             let image_url = common::get_image_url(
                                 document,
+                                bindata_index,
                                 bindata_id,
                                 options.image_output_dir.as_deref(),
                                 options.html_output_dir.as_deref(),
@@ -349,6 +354,7 @@ pub(crate) fn render_cells(
                                 shape_component.width,
                                 shape_component.height,
                                 document,
+                                bindata_index,
                                 options,
                                 images,
                             );
@@ -381,6 +387,7 @@ pub(crate) fn render_cells(
                             shape_component.width,
                             shape_component.height,
                             document,
+                            bindata_index,
                             options,
                             &mut images,
                         );
@@ -406,6 +413,7 @@ pub(crate) fn render_cells(
                             paragraphs_to_use,
                             document,
                             options,
+                            bindata_index,
                         );
                         images.extend(ctrl_result.images);
                     }
@@ -526,6 +534,7 @@ pub(crate) fn render_cells(
                         table_counter_start: 0, // 셀 내부에서는 테이블 번호 사용 안 함 / table numbers not used inside cells
                         pattern_counter,
                         color_to_pattern,
+                        bindata_index,
                     };
 
                     cell_content.push_str(&render_line_segments_with_content(

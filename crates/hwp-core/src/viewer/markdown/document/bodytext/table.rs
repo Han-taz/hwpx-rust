@@ -4,12 +4,14 @@
 /// 스펙 문서 매핑: 표 57 - 본문의 데이터 레코드, TABLE (HWPTAG_BEGIN + 61)
 /// Spec mapping: Table 57 - BodyText data records, TABLE (HWPTAG_BEGIN + 61)
 use crate::document::{bodytext::Table, HwpDocument, ParagraphRecord};
+use crate::viewer::shared::BinDataIndex;
 
 /// Convert nested table to text with line breaks
 /// 중첩 테이블을 줄바꿈이 포함된 텍스트로 변환
 fn convert_nested_table_to_text(
     table: &Table,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -51,7 +53,7 @@ fn convert_nested_table_to_text(
         let mut cell_texts = Vec::new();
         for cell in &row_cells {
             // 셀 내용 추출 (재귀적으로 중첩 테이블도 처리)
-            let cell_text = get_nested_cell_content(cell, document, options, tracker);
+            let cell_text = get_nested_cell_content(cell, document, bindata_index, options, tracker);
             if !cell_text.trim().is_empty() {
                 cell_texts.push(cell_text);
             }
@@ -72,6 +74,7 @@ fn convert_nested_table_to_text(
 fn get_nested_cell_content(
     cell: &crate::document::bodytext::TableCell,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -87,7 +90,8 @@ fn get_nested_cell_content(
                 }
                 ParagraphRecord::Table { table } => {
                     // 재귀적으로 중첩 테이블 처리
-                    let nested = convert_nested_table_to_text(table, document, options, tracker);
+                    let nested =
+                        convert_nested_table_to_text(table, document, bindata_index, options, tracker);
                     if !nested.trim().is_empty() {
                         parts.push(nested);
                     }
@@ -106,6 +110,7 @@ fn get_nested_cell_content(
 pub fn convert_table_to_markdown(
     table: &Table,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -131,9 +136,9 @@ pub fn convert_table_to_markdown(
     // HTML 모드이거나 병합된 셀이 있으면 HTML 테이블로 출력
     // Use HTML table if in HTML mode or has merged cells
     if options.use_html == Some(true) || has_merged_cells {
-        convert_table_to_html(table, document, options, tracker)
+        convert_table_to_html(table, document, bindata_index, options, tracker)
     } else {
-        convert_table_to_markdown_simple(table, document, options, tracker)
+        convert_table_to_markdown_simple(table, document, bindata_index, options, tracker)
     }
 }
 
@@ -142,6 +147,7 @@ pub fn convert_table_to_markdown(
 fn convert_table_to_html(
     table: &Table,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -218,7 +224,7 @@ fn convert_table_to_html(
 
             // 셀 내용 추출
             // Extract cell content
-            let cell_content = get_cell_content(cell, document, options, tracker);
+            let cell_content = get_cell_content(cell, document, bindata_index, options, tracker);
 
             // 빈 행 필터링: 셀에 실제 내용이 있는지 확인
             // Empty row filtering: check if cell has actual content
@@ -279,6 +285,7 @@ fn convert_table_to_html(
 fn convert_table_to_markdown_simple(
     table: &Table,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -333,7 +340,7 @@ fn convert_table_to_markdown_simple(
 
             if col < col_count {
                 fill_cell_content(
-                    &mut grid, cell, row, col, row_count, col_count, document, options, tracker,
+                    &mut grid, cell, row, col, row_count, col_count, document, bindata_index, options, tracker,
                 );
             }
         }
@@ -344,7 +351,7 @@ fn convert_table_to_markdown_simple(
 
             if row < row_count && col < col_count {
                 fill_cell_content(
-                    &mut grid, cell, row, col, row_count, col_count, document, options, tracker,
+                    &mut grid, cell, row, col, row_count, col_count, document, bindata_index, options, tracker,
                 );
             }
         }
@@ -381,6 +388,7 @@ fn convert_table_to_markdown_simple(
 fn get_cell_content(
     cell: &crate::document::bodytext::TableCell,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -401,6 +409,7 @@ fn get_cell_content(
                         crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown(
                             shape_component_picture,
                             document,
+                            bindata_index,
                             options.image_output_dir.as_deref(),
                         )
                     {
@@ -412,6 +421,7 @@ fn get_cell_content(
                         crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown(
                             children,
                             document,
+                            bindata_index,
                             options.image_output_dir.as_deref(),
                             tracker,
                         );
@@ -423,6 +433,7 @@ fn get_cell_content(
                         crate::viewer::markdown::document::bodytext::shape_component_picture::convert_hwpx_image_to_markdown(
                             binary_item_ref,
                             document,
+                            bindata_index,
                             options.image_output_dir.as_deref(),
                         )
                     {
@@ -433,7 +444,7 @@ fn get_cell_content(
                     // 중첩 테이블을 HTML 테이블로 렌더링 (재귀)
                     // Render nested table as HTML table (recursive)
                     let nested_table_html =
-                        convert_table_to_html(table, document, options, tracker);
+                        convert_table_to_html(table, document, bindata_index, options, tracker);
                     if !nested_table_html.trim().is_empty() {
                         para_parts.push(nested_table_html);
                     }
@@ -465,6 +476,7 @@ fn fill_cell_content(
     row_count: usize,
     col_count: usize,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) {
@@ -602,6 +614,7 @@ fn fill_cell_content(
                             crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown(
                                 shape_component_picture,
                                 document,
+                                bindata_index,
                                 options.image_output_dir.as_deref(),
                             )
                         {
@@ -618,6 +631,7 @@ fn fill_cell_content(
                             crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown(
                                 children,
                                 document,
+                                bindata_index,
                                 options.image_output_dir.as_deref(),
                                 tracker,
                             );
@@ -634,6 +648,7 @@ fn fill_cell_content(
                             crate::viewer::markdown::document::bodytext::shape_component_picture::convert_hwpx_image_to_markdown(
                                 binary_item_ref,
                                 document,
+                                bindata_index,
                                 options.image_output_dir.as_deref(),
                             )
                         {
@@ -646,14 +661,14 @@ fn fill_cell_content(
                         if options.use_html == Some(true) {
                             // HTML 모드: 중첩 테이블을 HTML로 렌더링 (재귀)
                             let nested_table_html =
-                                convert_table_to_html(table, document, options, tracker);
+                                convert_table_to_html(table, document, bindata_index, options, tracker);
                             if !nested_table_html.trim().is_empty() {
                                 cell_parts.push(nested_table_html);
                             }
                         } else {
                             // 마크다운 모드: 텍스트로 변환 (마크다운은 중첩 테이블 미지원)
                             let nested_table_content =
-                                convert_nested_table_to_text(table, document, options, tracker);
+                                convert_nested_table_to_text(table, document, bindata_index, options, tracker);
                             if !nested_table_content.trim().is_empty() {
                                 cell_parts.push(nested_table_content);
                             }

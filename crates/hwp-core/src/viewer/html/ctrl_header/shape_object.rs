@@ -4,6 +4,7 @@ use crate::document::bodytext::ParagraphRecord;
 use crate::document::{CtrlHeader, CtrlHeaderData, Paragraph};
 use crate::viewer::html::common;
 use crate::viewer::html::line_segment::ImageInfo;
+use crate::viewer::shared::BinDataIndex;
 use crate::viewer::HtmlOptions;
 use crate::HwpDocument;
 
@@ -14,6 +15,7 @@ pub fn process_shape_object<'a>(
     paragraphs: &'a [Paragraph],
     document: &'a HwpDocument,
     options: &'a HtmlOptions,
+    bindata_index: &'a BinDataIndex,
 ) -> CtrlHeaderResult<'a> {
     let mut result = CtrlHeaderResult::new();
 
@@ -93,6 +95,7 @@ pub fn process_shape_object<'a>(
             children,
             document,
             options,
+            bindata_index,
             like_letters,
             affect_line_spacing,
             vert_rel_to,
@@ -110,6 +113,7 @@ pub fn process_shape_object<'a>(
                 &para.records,
                 document,
                 options,
+                bindata_index,
                 like_letters,
                 affect_line_spacing,
                 vert_rel_to,
@@ -128,6 +132,7 @@ fn collect_images_from_records(
     records: &[ParagraphRecord],
     document: &HwpDocument,
     options: &HtmlOptions,
+    bindata_index: &BinDataIndex,
     like_letters: bool,
     affect_line_spacing: bool,
     vert_rel_to: Option<VertRelTo>,
@@ -143,6 +148,7 @@ fn collect_images_from_records(
                 let bindata_id = shape_component_picture.picture_info.bindata_id;
                 let image_url = common::get_image_url(
                     document,
+                    bindata_index,
                     bindata_id,
                     options.image_output_dir.as_deref(),
                     options.html_output_dir.as_deref(),
@@ -173,6 +179,7 @@ fn collect_images_from_records(
                     children,
                     document,
                     options,
+                    bindata_index,
                     like_letters,
                     affect_line_spacing,
                     vert_rel_to,
@@ -188,6 +195,7 @@ fn collect_images_from_records(
                     children,
                     document,
                     options,
+                    bindata_index,
                     like_letters,
                     affect_line_spacing,
                     vert_rel_to,

@@ -65,6 +65,10 @@ fn find_page_number_position(document: &HwpDocument) -> Option<&CtrlHeaderData> 
 /// # Returns / 반환값
 /// HTML string representation of the document / 문서의 HTML 문자열 표현
 pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
+    // Build BinData index once for O(1) lookups throughout conversion
+    // BinData 인덱스를 한 번 빌드하여 변환 전체에서 O(1) 조회 사용
+    let bindata_index = crate::viewer::shared::build_bindata_index(document);
+
     let mut html = String::new();
 
     // HTML 문서 시작 / Start HTML document
@@ -332,6 +336,7 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
                     document,
                     options,
                     position,
+                    bindata_index: &bindata_index,
                 };
 
                 let mut state = ParagraphRenderState {

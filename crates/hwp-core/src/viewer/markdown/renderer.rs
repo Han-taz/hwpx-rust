@@ -61,8 +61,10 @@ impl Renderer for MarkdownRenderer {
         // 기존 테이블 변환 함수 사용
         use crate::viewer::markdown::document::bodytext::table::convert_table_to_markdown;
         use crate::viewer::markdown::utils::OutlineNumberTracker;
+        use crate::viewer::shared::build_bindata_index;
         let mut tracker = OutlineNumberTracker::new();
-        convert_table_to_markdown(table, document, options, &mut tracker)
+        let bindata_index = build_bindata_index(document);
+        convert_table_to_markdown(table, document, &bindata_index, options, &mut tracker)
     }
 
     fn render_image(
@@ -73,6 +75,7 @@ impl Renderer for MarkdownRenderer {
     ) -> Option<String> {
         // bindata_id로 직접 이미지 렌더링 / Render image directly by bindata_id
         use crate::viewer::markdown::common::format_image_markdown;
+        use crate::viewer::shared::build_bindata_index;
 
         // BinData에서 이미지 데이터 가져오기 / Get image data from BinData
         if let Some(bin_item) = document
@@ -81,8 +84,9 @@ impl Renderer for MarkdownRenderer {
             .iter()
             .find(|item| item.index == image_id)
         {
+            let bindata_index = build_bindata_index(document);
             let image_markdown = format_image_markdown(
-                document,
+                &bindata_index,
                 image_id,
                 &bin_item.data,
                 options.image_output_dir.as_deref(),

@@ -32,6 +32,7 @@ pub struct ParagraphRenderContext<'a> {
     pub document: &'a HwpDocument,
     pub options: &'a HtmlOptions,
     pub position: ParagraphPosition<'a>,
+    pub bindata_index: &'a crate::viewer::shared::BinDataIndex,
 }
 
 /// 문단 렌더링 상태 / Paragraph rendering state
@@ -52,6 +53,7 @@ pub fn render_paragraph(
     // 구조체에서 개별 값 추출 / Extract individual values from structs
     let document = context.document;
     let options = context.options;
+    let bindata_index = context.bindata_index;
     let hcd_position = context.position.hcd_position;
     let page_def = context.position.page_def;
     let first_para_vertical_mm = context.position.first_para_vertical_mm;
@@ -133,6 +135,7 @@ pub fn render_paragraph(
                         let bindata_id = shape_component_picture.picture_info.bindata_id;
                         let image_url = common::get_image_url(
                             document,
+                            bindata_index,
                             bindata_id,
                             options.image_output_dir.as_deref(),
                             options.html_output_dir.as_deref(),
@@ -157,6 +160,7 @@ pub fn render_paragraph(
                 let bindata_id = shape_component_picture.picture_info.bindata_id;
                 let image_url = common::get_image_url(
                     document,
+                    bindata_index,
                     bindata_id,
                     options.image_output_dir.as_deref(),
                     options.html_output_dir.as_deref(),
@@ -205,7 +209,7 @@ pub fn render_paragraph(
             } => {
                 // CtrlHeader 처리 / Process CtrlHeader
                 let ctrl_result = ctrl_header::process_ctrl_header(
-                    header, children, paragraphs, document, options,
+                    header, children, paragraphs, document, options, bindata_index,
                 );
                 // SHAPE_OBJECT(11)는 "표/그리기 개체" 공통 제어문자이므로, ctrl_id가 "tbl "인 경우에만
                 // ParaText의 SHAPE_OBJECT 위치를 순서대로 매칭하여 anchor를 부여합니다.
@@ -369,6 +373,7 @@ pub fn render_paragraph(
             table_counter_start,
             pattern_counter: state.pattern_counter,
             color_to_pattern: state.color_to_pattern,
+            bindata_index,
         };
 
         result.push_str(&super::line_segment::render_line_segments_with_content(
@@ -491,6 +496,7 @@ pub fn render_paragraph(
                 table_number: Some(*state.table_counter),
                 pattern_counter: state.pattern_counter,
                 color_to_pattern: state.color_to_pattern,
+                bindata_index,
             };
 
             let position = TablePosition {
