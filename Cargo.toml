@@ -8,7 +8,7 @@ resolver = "2"
 [workspace.package]
 version = "0.2.0"
 edition = "2021"
-authors = ["ohah <bookyoon173@gmail.com>"]
+authors = ["kevin <ftkevin12@gmail.com>"]
 license = "MIT"
 
 [workspace.dependencies]

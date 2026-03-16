@@ -2,7 +2,7 @@
 name = "hwpx-python"
 version = "0.2.0"
 edition = "2021"
-authors = ["Kevin"]
+authors = ["kevin <ftkevin12@gmail.com>"]
 license = "MIT"
 description = "Python bindings for HWP/HWPX document parser"
 
