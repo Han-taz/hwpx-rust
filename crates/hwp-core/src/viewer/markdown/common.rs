@@ -2,27 +2,26 @@
 ///
 /// 공통 BinData/이미지 함수는 `viewer::shared`에서 재사용합니다.
 /// Common BinData/image functions are re-exported from `viewer::shared`.
-use crate::document::HwpDocument;
 use std::path::Path;
 
 // 공통 함수 재사용 / Re-use common functions from shared module
-use crate::viewer::shared::{detect_mime_type_from_base64, save_image_to_file};
+use crate::viewer::shared::{detect_mime_type_from_base64, save_image_to_file, BinDataIndex};
 
 /// Format image markdown - either as base64 data URI or file path
 /// 이미지 마크다운 포맷 - base64 데이터 URI 또는 파일 경로
 pub(crate) fn format_image_markdown(
-    document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     bindata_id: crate::types::WORD,
     base64_data: &str,
     image_output_dir: Option<&str>,
 ) -> String {
-    format_image_markdown_with_alt(document, bindata_id, base64_data, image_output_dir, "image")
+    format_image_markdown_with_alt(bindata_index, bindata_id, base64_data, image_output_dir, "image")
 }
 
 /// Format image markdown with custom alt text
 /// 사용자 지정 alt text로 이미지 마크다운 포맷
 pub(crate) fn format_image_markdown_with_alt(
-    document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     bindata_id: crate::types::WORD,
     base64_data: &str,
     image_output_dir: Option<&str>,
@@ -31,7 +30,7 @@ pub(crate) fn format_image_markdown_with_alt(
     match image_output_dir {
         Some(dir_path) => {
             // 이미지를 파일로 저장하고 파일 경로를 마크다운에 포함 / Save image as file and include file path in markdown
-            match save_image_to_file(document, bindata_id, base64_data, dir_path) {
+            match save_image_to_file(bindata_index, bindata_id, base64_data, dir_path) {
                 Ok(file_path) => {
                     // 상대 경로로 변환 (images/ 디렉토리 포함) / Convert to relative path (include images/ directory)
                     let file_path_obj = Path::new(&file_path);

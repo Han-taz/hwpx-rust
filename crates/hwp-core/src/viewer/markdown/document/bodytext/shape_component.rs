@@ -5,6 +5,7 @@
 /// Spec mapping: Table 57 - BodyText data records, SHAPE_COMPONENT (HWPTAG_BEGIN + 60)
 use crate::document::{HwpDocument, ParagraphRecord};
 use crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown;
+use crate::viewer::shared::BinDataIndex;
 
 /// Convert ShapeComponent children to markdown
 /// ShapeComponent의 자식들을 마크다운으로 변환
@@ -12,6 +13,7 @@ use crate::viewer::markdown::document::bodytext::shape_component_picture::conver
 /// # Arguments / 매개변수
 /// * `children` - ShapeComponent의 자식 레코드들 / Child records of ShapeComponent
 /// * `document` - HWP 문서 / HWP document
+/// * `bindata_index` - Pre-built BinData index / 미리 빌드된 BinData 인덱스
 /// * `image_output_dir` - 이미지 출력 디렉토리 (선택) / Image output directory (optional)
 /// * `tracker` - 개요 번호 추적기 / Outline number tracker
 ///
@@ -20,6 +22,7 @@ use crate::viewer::markdown::document::bodytext::shape_component_picture::conver
 pub(crate) fn convert_shape_component_children_to_markdown(
     children: &[ParagraphRecord],
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     image_output_dir: Option<&str>,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> Vec<String> {
@@ -49,17 +52,19 @@ pub(crate) fn convert_shape_component_children_to_markdown(
                 if let Some(image_md) = convert_shape_component_picture_to_markdown(
                     shape_component_picture,
                     document,
+                    bindata_index,
                     image_output_dir,
                 ) {
                     parts.push(image_md);
                 }
             }
-            ParagraphRecord::ListHeader { paragraphs, .. } => {
+            ParagraphRecord::ListHeader { data: lh_data } => {
                 // LIST_HEADER의 paragraphs 처리 (글상자 텍스트) / Process LIST_HEADER's paragraphs (textbox text)
                 // SHAPE_COMPONENT 내부의 LIST_HEADER는 글상자 텍스트를 포함할 수 있음
                 // LIST_HEADER inside SHAPE_COMPONENT can contain textbox text
-                for para in paragraphs {
-                    let para_md = convert_paragraph_to_markdown(para, document, &options, tracker);
+                for para in &lh_data.paragraphs {
+                    let para_md =
+                        convert_paragraph_to_markdown(para, document, bindata_index, &options, tracker);
                     if !para_md.is_empty() {
                         parts.push(para_md);
                     }

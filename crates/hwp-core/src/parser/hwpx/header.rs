@@ -14,7 +14,7 @@ use crate::document::docinfo::para_shape::{
     ParagraphAlignment, VerticalAlignment,
 };
 use crate::document::{DocInfo, FileHeader};
-use crate::error::HwpError;
+use crate::error::{HwpError, ParseWarning, ParseWarnings};
 use crate::types::{COLORREF, DWORD};
 
 use super::container::HwpxContainer;
@@ -54,7 +54,7 @@ fn parse_version_xml(container: &mut HwpxContainer) -> Result<DWORD, HwpError> {
                             || attr.key.as_ref() == b"oversion"
                             || attr.key.as_ref() == b"app-version"
                         {
-                            if let Ok(v) = String::from_utf8_lossy(&attr.value).parse::<u32>() {
+                            if let Some(v) = std::str::from_utf8(&attr.value).ok().and_then(|s| s.parse::<u32>().ok()) {
                                 // Convert to HWP version format (major.minor.build.revision)
                                 version = (v << 24) | 0x00010000;
                             }
@@ -76,7 +76,7 @@ fn parse_version_xml(container: &mut HwpxContainer) -> Result<DWORD, HwpError> {
 }
 
 /// Parse header.xml and create DocInfo
-pub fn parse_doc_info(container: &mut HwpxContainer) -> Result<DocInfo, HwpError> {
+pub fn parse_doc_info(container: &mut HwpxContainer, warnings: &mut ParseWarnings) -> Result<DocInfo, HwpError> {
     let content = container.read_file_string("Contents/header.xml")?;
 
     let mut reader = Reader::from_str(&content);
@@ -88,7 +88,7 @@ pub fn parse_doc_info(container: &mut HwpxContainer) -> Result<DocInfo, HwpError
 
     // Parse the XML and extract relevant information
     // For now, we create a minimal DocInfo that allows the document to be processed
-    parse_header_xml_content(&mut reader, &mut doc_info)?;
+    parse_header_xml_content(&mut reader, &mut doc_info, warnings)?;
 
     Ok(doc_info)
 }
@@ -111,6 +111,7 @@ fn parse_color(color_str: &str) -> COLORREF {
 fn parse_header_xml_content(
     reader: &mut Reader<&[u8]>,
     doc_info: &mut DocInfo,
+    warnings: &mut ParseWarnings,
 ) -> Result<(), HwpError> {
     let mut in_char_properties = false;
     let mut in_para_shapes = false;
@@ -126,32 +127,42 @@ fn parse_header_xml_content(
     loop {
         match reader.read_event() {
             Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
-                let name = e.name();
-                let local_name = String::from_utf8_lossy(name.as_ref());
+                let local_name = e.name();
+                let local_name = local_name.as_ref();
 
-                match local_name.as_ref() {
+                match local_name {
                     // HWPX uses charProperties/charPr instead of charShapes/charShape
-                    s if s.ends_with("charProperties") => in_char_properties = true,
-                    s if s.ends_with("paraShapes") || s.ends_with("paraProperties") => {
+                    s if s.ends_with(b"charProperties") => in_char_properties = true,
+                    s if s.ends_with(b"paraShapes") || s.ends_with(b"paraProperties") => {
                         in_para_shapes = true
                     }
-                    s if s.ends_with("faceNames") || s.ends_with("fontfaces") => {
+                    s if s.ends_with(b"faceNames") || s.ends_with(b"fontfaces") => {
                         in_face_names = true
                     }
-                    s if s.ends_with("charPr") && in_char_properties => {
+                    s if s.ends_with(b"charPr") && in_char_properties => {
                         // Parse charPr element attributes
                         let mut height: i32 = 1000; // Default 10pt
                         let mut text_color: COLORREF = COLORREF(0);
 
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref());
-                            let value = String::from_utf8_lossy(&attr.value);
-                            match key.as_ref() {
-                                "height" => {
-                                    height = value.parse().unwrap_or(1000);
+                            match attr.key.as_ref() {
+                                b"height" => {
+                                    height = std::str::from_utf8(&attr.value)
+                                        .ok()
+                                        .and_then(|s| s.parse().ok())
+                                        .unwrap_or_else(|| {
+                                            if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid charPr height value: {s}"
+                                                )));
+                                            }
+                                            1000
+                                        });
                                 }
-                                "textColor" => {
-                                    text_color = parse_color(&value);
+                                b"textColor" => {
+                                    if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                        text_color = parse_color(s);
+                                    }
                                 }
                                 _ => {}
                             }
@@ -232,83 +243,91 @@ fn parse_header_xml_content(
                             strikethrough_color: None,
                         });
                     }
-                    s if s.ends_with("fontRef") => {
+                    s if s.ends_with(b"fontRef") => {
                         // Parse font references for current char shape
                         if let Some(ref mut cs) = current_char_shape {
                             for attr in e.attributes().flatten() {
-                                let key = String::from_utf8_lossy(attr.key.as_ref());
-                                let value: u16 =
-                                    String::from_utf8_lossy(&attr.value).parse().unwrap_or(0);
-                                match key.as_ref() {
-                                    "hangul" => cs.font_ids.korean = value,
-                                    "latin" => cs.font_ids.english = value,
-                                    "hanja" => cs.font_ids.chinese = value,
-                                    "japanese" => cs.font_ids.japanese = value,
-                                    "other" => cs.font_ids.other = value,
-                                    "symbol" => cs.font_ids.symbol = value,
-                                    "user" => cs.font_ids.user = value,
+                                let value: u16 = std::str::from_utf8(&attr.value)
+                                    .ok()
+                                    .and_then(|s| s.parse().ok())
+                                    .unwrap_or_else(|| {
+                                        if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                            warnings.push(ParseWarning::warning(format!(
+                                                "Invalid fontRef attribute value: {s}"
+                                            )));
+                                        }
+                                        0
+                                    });
+                                match attr.key.as_ref() {
+                                    b"hangul" => cs.font_ids.korean = value,
+                                    b"latin" => cs.font_ids.english = value,
+                                    b"hanja" => cs.font_ids.chinese = value,
+                                    b"japanese" => cs.font_ids.japanese = value,
+                                    b"other" => cs.font_ids.other = value,
+                                    b"symbol" => cs.font_ids.symbol = value,
+                                    b"user" => cs.font_ids.user = value,
                                     _ => {}
                                 }
                             }
                         }
                     }
-                    s if s.ends_with("underline") => {
+                    s if s.ends_with(b"underline") => {
                         // Parse underline for current char shape
                         if let Some(ref mut cs) = current_char_shape {
                             for attr in e.attributes().flatten() {
-                                let key = String::from_utf8_lossy(attr.key.as_ref());
-                                let value = String::from_utf8_lossy(&attr.value);
-                                match key.as_ref() {
-                                    "type" => {
-                                        cs.attributes.underline_type = match value.as_ref() {
-                                            "BOTTOM" => 1,
-                                            "TOP" => 2,
+                                match attr.key.as_ref() {
+                                    b"type" => {
+                                        cs.attributes.underline_type = match attr.value.as_ref() {
+                                            b"BOTTOM" => 1,
+                                            b"TOP" => 2,
                                             _ => 0, // NONE
                                         };
                                     }
-                                    "color" => {
-                                        cs.underline_color = parse_color(&value);
+                                    b"color" => {
+                                        if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                            cs.underline_color = parse_color(s);
+                                        }
                                     }
                                     _ => {}
                                 }
                             }
                         }
                     }
-                    s if s.ends_with("strikeout") => {
+                    s if s.ends_with(b"strikeout") => {
                         // Parse strikethrough for current char shape
                         if let Some(ref mut cs) = current_char_shape {
                             for attr in e.attributes().flatten() {
-                                let key = String::from_utf8_lossy(attr.key.as_ref());
-                                let value = String::from_utf8_lossy(&attr.value);
-                                match key.as_ref() {
-                                    "shape" => {
+                                match attr.key.as_ref() {
+                                    b"shape" => {
                                         // If shape is not "NONE", strikethrough is enabled
                                         cs.attributes.strikethrough =
-                                            if value == "NONE" { 0 } else { 1 };
+                                            if attr.value.as_ref() == b"NONE" { 0 } else { 1 };
                                     }
-                                    "color" => {
-                                        cs.strikethrough_color = Some(parse_color(&value));
+                                    b"color" => {
+                                        if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                            cs.strikethrough_color = Some(parse_color(s));
+                                        }
                                     }
                                     _ => {}
                                 }
                             }
                         }
                     }
-                    s if s.ends_with("bold") => {
+                    s if s.ends_with(b"bold") => {
                         // Parse bold for current char shape
                         // HWPX uses <hh:bold/> self-closing element to indicate bold
                         if let Some(ref mut cs) = current_char_shape {
                             cs.attributes.bold = true;
                         }
                     }
-                    s if s.ends_with("italic") => {
+                    s if s.ends_with(b"italic") => {
                         // Parse italic for current char shape
                         // HWPX uses <hh:italic/> self-closing element to indicate italic
                         if let Some(ref mut cs) = current_char_shape {
                             cs.attributes.italic = true;
                         }
                     }
-                    s if (s.ends_with("paraPr") || s.ends_with("paraShape")) && in_para_shapes => {
+                    s if (s.ends_with(b"paraPr") || s.ends_with(b"paraShape")) && in_para_shapes => {
                         // Create new ParaShape with default values
                         current_para_shape = Some(ParaShape {
                             attributes1: ParaShapeAttributes1 {
@@ -349,100 +368,122 @@ fn parse_header_xml_content(
                             line_spacing: None,
                         });
                     }
-                    s if s.ends_with(":align") && current_para_shape.is_some() => {
+                    s if s.ends_with(b":align") && current_para_shape.is_some() => {
                         // Parse <hh:align horizontal="JUSTIFY|LEFT|RIGHT|CENTER" />
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref());
-                            let value = String::from_utf8_lossy(&attr.value);
-                            if key == "horizontal" {
+                            if attr.key.as_ref() == b"horizontal" {
                                 if let Some(ref mut ps) = current_para_shape {
-                                    ps.attributes1.align = match value.as_ref() {
-                                        "LEFT" => ParagraphAlignment::Left,
-                                        "RIGHT" => ParagraphAlignment::Right,
-                                        "CENTER" => ParagraphAlignment::Center,
-                                        "DISTRIBUTE" => ParagraphAlignment::Distribute,
+                                    ps.attributes1.align = match attr.value.as_ref() {
+                                        b"LEFT" => ParagraphAlignment::Left,
+                                        b"RIGHT" => ParagraphAlignment::Right,
+                                        b"CENTER" => ParagraphAlignment::Center,
+                                        b"DISTRIBUTE" => ParagraphAlignment::Distribute,
                                         _ => ParagraphAlignment::Justify,
                                     };
                                 }
                             }
                         }
                     }
-                    s if s.ends_with(":margin") && current_para_shape.is_some() => {
+                    s if s.ends_with(b":margin") && current_para_shape.is_some() => {
                         // Enter <hh:margin> element
                         in_margin = true;
                     }
-                    s if s.ends_with(":intent") && in_margin && current_para_shape.is_some() => {
+                    s if s.ends_with(b":intent") && in_margin && current_para_shape.is_some() => {
                         // Parse <hc:intent value="N" unit="HWPUNIT" />
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref());
-                            let value = String::from_utf8_lossy(&attr.value);
-                            if key == "value" {
+                            if attr.key.as_ref() == b"value" {
                                 if let Some(ref mut ps) = current_para_shape {
                                     // HWPUNIT = 1/7200 inch, HWP INT32 = 1/1800 inch
                                     // Convert: value / 4
-                                    let hwpunit_value: i32 = value.parse().unwrap_or(0);
+                                    let hwpunit_value: i32 = std::str::from_utf8(&attr.value)
+                                        .ok()
+                                        .and_then(|s| s.parse().ok())
+                                        .unwrap_or_else(|| {
+                                            if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid margin intent value: {s}"
+                                                )));
+                                            }
+                                            0
+                                        });
                                     ps.indent = hwpunit_value / 4;
                                 }
                             }
                         }
                     }
-                    s if s.ends_with(":left") && in_margin && current_para_shape.is_some() => {
+                    s if s.ends_with(b":left") && in_margin && current_para_shape.is_some() => {
                         // Parse <hc:left value="N" unit="HWPUNIT" />
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref());
-                            let value = String::from_utf8_lossy(&attr.value);
-                            if key == "value" {
+                            if attr.key.as_ref() == b"value" {
                                 if let Some(ref mut ps) = current_para_shape {
-                                    let hwpunit_value: i32 = value.parse().unwrap_or(0);
+                                    let hwpunit_value: i32 = std::str::from_utf8(&attr.value)
+                                        .ok()
+                                        .and_then(|s| s.parse().ok())
+                                        .unwrap_or_else(|| {
+                                            if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid margin left value: {s}"
+                                                )));
+                                            }
+                                            0
+                                        });
                                     ps.left_margin = hwpunit_value / 4;
                                 }
                             }
                         }
                     }
-                    s if s.ends_with(":right") && in_margin && current_para_shape.is_some() => {
+                    s if s.ends_with(b":right") && in_margin && current_para_shape.is_some() => {
                         // Parse <hc:right value="N" unit="HWPUNIT" />
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref());
-                            let value = String::from_utf8_lossy(&attr.value);
-                            if key == "value" {
+                            if attr.key.as_ref() == b"value" {
                                 if let Some(ref mut ps) = current_para_shape {
-                                    let hwpunit_value: i32 = value.parse().unwrap_or(0);
+                                    let hwpunit_value: i32 = std::str::from_utf8(&attr.value)
+                                        .ok()
+                                        .and_then(|s| s.parse().ok())
+                                        .unwrap_or_else(|| {
+                                            if let Ok(s) = std::str::from_utf8(&attr.value) {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid margin right value: {s}"
+                                                )));
+                                            }
+                                            0
+                                        });
                                     ps.right_margin = hwpunit_value / 4;
                                 }
                             }
                         }
                     }
-                    s if (s.ends_with("font") || s.ends_with("faceName")) && in_face_names => {
+                    s if (s.ends_with(b"font") || s.ends_with(b"faceName")) && in_face_names => {
                         // Parse font face - simplified for now
                     }
                     _ => {}
                 }
             }
             Ok(Event::End(ref e)) => {
-                let name = e.name();
-                let local_name = String::from_utf8_lossy(name.as_ref());
+                let local_name = e.name();
+                let local_name = local_name.as_ref();
 
-                match local_name.as_ref() {
-                    s if s.ends_with("charProperties") => in_char_properties = false,
-                    s if s.ends_with("paraShapes") || s.ends_with("paraProperties") => {
+                match local_name {
+                    s if s.ends_with(b"charProperties") => in_char_properties = false,
+                    s if s.ends_with(b"paraShapes") || s.ends_with(b"paraProperties") => {
                         in_para_shapes = false
                     }
-                    s if s.ends_with("faceNames") || s.ends_with("fontfaces") => {
+                    s if s.ends_with(b"faceNames") || s.ends_with(b"fontfaces") => {
                         in_face_names = false
                     }
-                    s if s.ends_with("charPr") => {
+                    s if s.ends_with(b"charPr") => {
                         // Save completed char shape
                         if let Some(cs) = current_char_shape.take() {
                             doc_info.char_shapes.push(cs);
                         }
                     }
-                    s if s.ends_with("paraPr") || s.ends_with("paraShape") => {
+                    s if s.ends_with(b"paraPr") || s.ends_with(b"paraShape") => {
                         // Save completed para shape
                         if let Some(ps) = current_para_shape.take() {
                             doc_info.para_shapes.push(ps);
                         }
                     }
-                    s if s.ends_with(":margin") => {
+                    s if s.ends_with(b":margin") => {
                         // Exit <hh:margin> element
                         in_margin = false;
                     }

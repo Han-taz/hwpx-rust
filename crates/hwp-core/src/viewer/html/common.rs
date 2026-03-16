@@ -7,12 +7,13 @@ use crate::WORD;
 use std::path::Path;
 
 // 공통 함수 재사용 / Re-use common functions from shared module
-use crate::viewer::shared::{get_mime_type_from_bindata_id, save_image_to_file};
+use crate::viewer::shared::{get_mime_type_from_bindata_id, save_image_to_file, BinDataIndex};
 
 /// Get image URL (file path or base64 data URI)
 /// 이미지 URL 가져오기 (파일 경로 또는 base64 데이터 URI)
 pub fn get_image_url(
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     bindata_id: WORD,
     image_output_dir: Option<&str>,
     html_output_dir: Option<&str>,
@@ -33,7 +34,7 @@ pub fn get_image_url(
     match image_output_dir {
         Some(dir_path) => {
             // 이미지를 파일로 저장 / Save image as file
-            match save_image_to_file(document, bindata_id, base64_data, dir_path) {
+            match save_image_to_file(bindata_index, bindata_id, base64_data, dir_path) {
                 Ok(file_path) => {
                     // HTML 출력 디렉토리가 있으면 상대 경로 계산 / Calculate relative path if HTML output directory is provided
                     if let Some(html_dir) = html_output_dir {
@@ -67,14 +68,14 @@ pub fn get_image_url(
                 }
                 Err(_) => {
                     // 실패 시 base64로 폴백 / Fallback to base64 on failure
-                    let mime_type = get_mime_type_from_bindata_id(document, bindata_id);
+                    let mime_type = get_mime_type_from_bindata_id(bindata_index, bindata_id);
                     format!("data:{mime_type};base64,{base64_data}")
                 }
             }
         }
         None => {
             // base64 데이터 URI로 임베드 / Embed as base64 data URI
-            let mime_type = get_mime_type_from_bindata_id(document, bindata_id);
+            let mime_type = get_mime_type_from_bindata_id(bindata_index, bindata_id);
             format!("data:{mime_type};base64,{base64_data}")
         }
     }

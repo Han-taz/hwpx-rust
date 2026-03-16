@@ -1,5 +1,8 @@
 #![allow(clippy::useless_conversion)]
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+
 use hwp_core::viewer::html::{to_html, HtmlOptions};
 use hwp_core::viewer::markdown::{to_markdown, MarkdownOptions};
 use hwp_core::{HwpDocument, HwpParser};
@@ -16,10 +19,26 @@ fn format_version(version: u32) -> String {
     format!("{major}.{minor}.{patch}.{revision}")
 }
 
+/// Cache key for conversion results
+#[derive(Hash, Eq, PartialEq)]
+enum CacheKey {
+    Markdown {
+        use_html: bool,
+        include_version: bool,
+        image_dir: Option<String>,
+    },
+    Html {
+        image_dir: Option<String>,
+    },
+    Json,
+    Text,
+}
+
 /// HWP/HWPX Document wrapper for Python
-#[pyclass]
+#[pyclass(unsendable)]
 struct Document {
     inner: HwpDocument,
+    cache: RefCell<HashMap<CacheKey, String>>,
 }
 
 #[pymethods]
@@ -52,6 +71,14 @@ impl Document {
         include_version: bool,
         image_output_dir: Option<String>,
     ) -> String {
+        let key = CacheKey::Markdown {
+            use_html,
+            include_version,
+            image_dir: image_output_dir.clone(),
+        };
+        if let Some(cached) = self.cache.borrow().get(&key) {
+            return cached.clone();
+        }
         let options = MarkdownOptions {
             image_output_dir,
             use_html: Some(use_html),
@@ -59,7 +86,9 @@ impl Document {
             include_page_info: None,
             image_alt_text: None,
         };
-        to_markdown(&self.inner, &options)
+        let result = to_markdown(&self.inner, &options);
+        self.cache.borrow_mut().insert(key, result.clone());
+        result
     }
 
     /// Convert document to HTML
@@ -71,6 +100,12 @@ impl Document {
     ///     HTML string
     #[pyo3(signature = (image_output_dir=None))]
     fn to_html(&self, image_output_dir: Option<String>) -> String {
+        let key = CacheKey::Html {
+            image_dir: image_output_dir.clone(),
+        };
+        if let Some(cached) = self.cache.borrow().get(&key) {
+            return cached.clone();
+        }
         let options = HtmlOptions {
             image_output_dir,
             html_output_dir: None,
@@ -78,7 +113,9 @@ impl Document {
             include_page_info: None,
             css_class_prefix: String::new(),
         };
-        to_html(&self.inner, &options)
+        let result = to_html(&self.inner, &options);
+        self.cache.borrow_mut().insert(key, result.clone());
+        result
     }
 
     /// Convert document to JSON
@@ -86,8 +123,13 @@ impl Document {
     /// Returns:
     ///     JSON string representation of the document
     fn to_json(&self) -> PyResult<String> {
-        serde_json::to_string_pretty(&self.inner)
-            .map_err(|e| PyValueError::new_err(format!("JSON serialization error: {e}")))
+        if let Some(cached) = self.cache.borrow().get(&CacheKey::Json) {
+            return Ok(cached.clone());
+        }
+        let result = serde_json::to_string_pretty(&self.inner)
+            .map_err(|e| PyValueError::new_err(format!("JSON serialization error: {e}")))?;
+        self.cache.borrow_mut().insert(CacheKey::Json, result.clone());
+        Ok(result)
     }
 
     /// Get parsing warnings
@@ -106,24 +148,31 @@ impl Document {
 
     /// Get plain text content from the document
     fn get_text(&self) -> String {
-        let mut text_parts = Vec::new();
-
+        if let Some(cached) = self.cache.borrow().get(&CacheKey::Text) {
+            return cached.clone();
+        }
+        let mut result = String::new();
+        let mut first = true;
         for section in &self.inner.body_text.sections {
             for paragraph in &section.paragraphs {
                 for record in &paragraph.records {
-                    if let hwp_core::document::bodytext::ParagraphRecord::ParaText {
-                        text, ..
-                    } = record
+                    if let hwp_core::document::bodytext::ParagraphRecord::ParaText { data } =
+                        record
                     {
-                        if !text.trim().is_empty() {
-                            text_parts.push(text.trim().to_string());
+                        let trimmed = data.text.trim();
+                        if !trimmed.is_empty() {
+                            if !first {
+                                result.push('\n');
+                            }
+                            result.push_str(trimmed);
+                            first = false;
                         }
                     }
                 }
             }
         }
-
-        text_parts.join("\n")
+        self.cache.borrow_mut().insert(CacheKey::Text, result.clone());
+        result
     }
 }
 
@@ -141,7 +190,10 @@ impl Document {
 fn parse(data: &[u8]) -> PyResult<Document> {
     let parser = HwpParser::new();
     match parser.parse(data) {
-        Ok(doc) => Ok(Document { inner: doc }),
+        Ok(doc) => Ok(Document {
+            inner: doc,
+            cache: RefCell::new(HashMap::new()),
+        }),
         Err(e) => Err(PyValueError::new_err(format!("Parse error: {e}"))),
     }
 }

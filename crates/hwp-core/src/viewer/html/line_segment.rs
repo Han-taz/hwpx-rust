@@ -12,12 +12,12 @@ use crate::{HwpDocument, ParaShape};
 use std::collections::HashMap;
 
 /// 하이퍼링크 영역 정보 / Hyperlink region information
-/// NOTE: 현재 HTML에서 하이퍼링크 처리는 세그먼트 단위 위치 변환이 복잡하여 미사용
-/// Currently unused as HTML hyperlink processing is complex due to segment-level position conversion
-#[allow(dead_code)]
+/// NOTE: URL 필드는 현재 렌더링에서 소비되지 않음 (HTML 하이퍼링크 처리가 복잡하여 향후 구현 예정)
+/// The url field is not yet consumed in rendering (deferred: HTML hyperlink processing is complex)
 #[derive(Debug, Clone)]
 pub struct HyperlinkInfo {
-    /// URL
+    /// URL (collected but not yet used in rendering — deferred feature)
+    #[allow(dead_code)]
     pub url: String,
 }
 
@@ -49,6 +49,7 @@ pub struct DocumentRenderState<'a> {
     pub table_counter_start: u32,
     pub pattern_counter: &'a mut usize,
     pub color_to_pattern: &'a mut HashMap<u32, String>,
+    pub bindata_index: &'a crate::viewer::shared::BinDataIndex,
 }
 
 /// 테이블 정보 구조체 / Table info struct
@@ -163,69 +164,6 @@ pub fn render_line_segment(
     }
 
     format!(r#"<div class="hls {para_shape_class}" style="{style}">{content}</div>"#)
-}
-
-/// 라인 세그먼트를 HTML로 렌더링 (ParaShape indent 포함) / Render line segment to HTML (with ParaShape indent)
-#[allow(dead_code)]
-pub fn render_line_segment_with_indent(
-    segment: &LineSegmentInfo,
-    content: &str,
-    para_shape_class: &str,
-    para_shape_indent: Option<i32>,
-) -> String {
-    render_line_segment(
-        segment,
-        content,
-        para_shape_class,
-        para_shape_indent,
-        None,
-        true,
-        None,
-    )
-}
-
-/// 라인 세그먼트 그룹을 HTML로 렌더링 / Render line segment group to HTML
-#[allow(dead_code)]
-pub fn render_line_segments(
-    segments: &[LineSegmentInfo],
-    text: &str,
-    char_shapes: &[CharShapeInfo],
-    document: &HwpDocument,
-    para_shape_class: &str,
-) -> String {
-    // 이 함수는 레거시 호환성을 위해 유지되지만, 내부적으로는 독립적인 pattern_counter를 사용합니다.
-    // This function is kept for legacy compatibility but uses an independent pattern_counter internally.
-    use std::collections::HashMap;
-    let mut pattern_counter = 0;
-    let mut color_to_pattern: HashMap<u32, String> = HashMap::new();
-
-    let content = LineSegmentContent {
-        segments,
-        text,
-        char_shapes,
-        control_char_positions: &[],
-        original_text_len: text.chars().count(),
-        images: &[],
-        tables: &[],
-        hyperlinks: Vec::new(),
-    };
-
-    let context = LineSegmentRenderContext {
-        document,
-        para_shape_class,
-        options: &HtmlOptions::default(),
-        para_shape_indent: None,
-        hcd_position: None,
-        page_def: None,
-    };
-
-    let mut state = DocumentRenderState {
-        table_counter_start: 1,
-        pattern_counter: &mut pattern_counter,
-        color_to_pattern: &mut color_to_pattern,
-    };
-
-    render_line_segments_with_content(&content, &context, &mut state)
 }
 
 /// 라인 세그먼트 그룹을 HTML로 렌더링 (이미지와 테이블 포함) / Render line segment group to HTML (with images and tables)
@@ -425,6 +363,7 @@ pub fn render_line_segments_with_content(
                     table_number: Some(current_table_number),
                     pattern_counter: state.pattern_counter,
                     color_to_pattern: state.color_to_pattern,
+                    bindata_index: state.bindata_index,
                 };
 
                 let position = TablePosition {

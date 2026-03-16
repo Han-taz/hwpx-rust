@@ -12,6 +12,7 @@ pub mod table;
 
 use crate::document::{ColumnDivideType, HwpDocument, ParagraphRecord};
 use crate::viewer::markdown::MarkdownOptions;
+use crate::viewer::shared::build_bindata_index;
 
 pub use para_text::CrossingHyperlinkState;
 pub use paragraph::{
@@ -39,6 +40,10 @@ pub fn convert_bodytext_to_markdown(
     let mut footnotes = Vec::new();
     let mut endnotes = Vec::new();
 
+    // Build BinData index once for O(1) lookups throughout conversion
+    // BinData 인덱스를 한 번 빌드하여 변환 전체에서 O(1) 조회 사용
+    let bindata_index = build_bindata_index(document);
+
     // 개요 번호 추적기 생성 / Create outline number tracker
     let mut outline_tracker = crate::viewer::markdown::utils::OutlineNumberTracker::new();
 
@@ -47,9 +52,9 @@ pub fn convert_bodytext_to_markdown(
         // 문단 경계 하이퍼링크 상태 추적 / Track cross-paragraph hyperlink state
         let mut open_hyperlink: Option<para_text::CrossingHyperlinkState> = None;
 
-        for paragraph in &section.paragraphs {
+        for paragraph_item in &section.paragraphs {
             // control_mask를 사용하여 빠른 필터링 (최적화) / Use control_mask for quick filtering (optimization)
-            let control_mask = &paragraph.para_header.control_mask;
+            let control_mask = &paragraph_item.para_header.control_mask;
 
             // control_mask로 머리말/꼬리말/각주/미주가 있는지 빠르게 확인 / Quickly check if header/footer/footnote/endnote exists using control_mask
             // 주의: control_mask는 머리말/꼬리말을 구분하지 못하고, 각주/미주도 구분하지 못함
@@ -62,14 +67,15 @@ pub fn convert_bodytext_to_markdown(
             // Multiple controls can exist in one paragraph, so process all without break
             // control_mask로 필터링하여 불필요한 순회 방지 / Filter with control_mask to avoid unnecessary iteration
             if has_header_footer || has_footnote_endnote {
-                for record in &paragraph.records {
+                for record in &paragraph_item.records {
                     if let ParagraphRecord::CtrlHeader {
-                        header,
-                        children,
-                        paragraphs: ctrl_paragraphs,
+                        data: ch_data,
                     } = record
                     {
                         use crate::document::CtrlId;
+                        let header = &ch_data.header;
+                        let children = &ch_data.children;
+                        let ctrl_paragraphs = &ch_data.paragraphs;
                         if header.ctrl_id.as_str() == CtrlId::HEADER {
                             // 머리말 문단 처리 / Process header paragraph
                             // 파서에서 이미 ParaText를 제거하고, LIST_HEADER가 있으면 paragraphs는 비어있음
@@ -78,14 +84,15 @@ pub fn convert_bodytext_to_markdown(
                             // If LIST_HEADER exists, process from children, otherwise from paragraphs
                             let mut found_list_header = false;
                             for child_record in children {
-                                if let ParagraphRecord::ListHeader { paragraphs, .. } = child_record
+                                if let ParagraphRecord::ListHeader { data: lh_data } = child_record
                                 {
                                     found_list_header = true;
                                     // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
-                                    for para in paragraphs {
+                                    for para in &lh_data.paragraphs {
                                         let para_md = paragraph::convert_paragraph_to_markdown(
                                             para,
                                             document,
+                                            &bindata_index,
                                             options,
                                             &mut outline_tracker,
                                         );
@@ -102,6 +109,7 @@ pub fn convert_bodytext_to_markdown(
                                     let para_md = paragraph::convert_paragraph_to_markdown(
                                         para,
                                         document,
+                                        &bindata_index,
                                         options,
                                         &mut outline_tracker,
                                     );
@@ -118,14 +126,15 @@ pub fn convert_bodytext_to_markdown(
                             // If LIST_HEADER exists, process from children, otherwise from paragraphs
                             let mut found_list_header = false;
                             for child_record in children {
-                                if let ParagraphRecord::ListHeader { paragraphs, .. } = child_record
+                                if let ParagraphRecord::ListHeader { data: lh_data } = child_record
                                 {
                                     found_list_header = true;
                                     // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
-                                    for para in paragraphs {
+                                    for para in &lh_data.paragraphs {
                                         let para_md = paragraph::convert_paragraph_to_markdown(
                                             para,
                                             document,
+                                            &bindata_index,
                                             options,
                                             &mut outline_tracker,
                                         );
@@ -142,6 +151,7 @@ pub fn convert_bodytext_to_markdown(
                                     let para_md = paragraph::convert_paragraph_to_markdown(
                                         para,
                                         document,
+                                        &bindata_index,
                                         options,
                                         &mut outline_tracker,
                                     );
@@ -160,6 +170,7 @@ pub fn convert_bodytext_to_markdown(
                                 let para_md = paragraph::convert_paragraph_to_markdown(
                                     para,
                                     document,
+                                    &bindata_index,
                                     options,
                                     &mut outline_tracker,
                                 );
@@ -179,6 +190,7 @@ pub fn convert_bodytext_to_markdown(
                                 let para_md = paragraph::convert_paragraph_to_markdown(
                                     para,
                                     document,
+                                    &bindata_index,
                                     options,
                                     &mut outline_tracker,
                                 );
@@ -198,7 +210,7 @@ pub fn convert_bodytext_to_markdown(
             if !has_header_footer && !has_footnote_endnote {
                 // 일반 본문 문단 처리 / Process regular body paragraph
                 // Check if we need to add page break / 페이지 나누기가 필요한지 확인
-                let has_page_break = paragraph
+                let has_page_break = paragraph_item
                     .para_header
                     .column_divide_type
                     .iter()
@@ -216,8 +228,9 @@ pub fn convert_bodytext_to_markdown(
                 // Convert paragraph to markdown with cross-paragraph hyperlink support
                 // 문단 경계 하이퍼링크를 지원하여 문단을 마크다운으로 변환
                 let result = paragraph::convert_paragraph_to_markdown_with_state(
-                    paragraph,
+                    paragraph_item,
                     document,
+                    &bindata_index,
                     options,
                     &mut outline_tracker,
                     open_hyperlink.as_ref(),

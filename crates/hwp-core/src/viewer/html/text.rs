@@ -1,24 +1,10 @@
 /// 텍스트 렌더링 모듈 / Text rendering module
 use crate::document::{
     bodytext::{
-        control_char::ControlChar, CharShapeInfo, ControlCharPosition, ParaTextRun, ParagraphRecord,
+        CharShapeInfo, ParaTextRun, ParagraphRecord,
     },
     HwpDocument,
 };
-
-/// 하이퍼링크 영역 정보 (HTML용) / Hyperlink region information (for HTML)
-/// NOTE: 현재 HTML에서 하이퍼링크 처리는 세그먼트 단위 위치 변환이 복잡하여 미사용
-/// Currently unused as HTML hyperlink processing is complex due to segment-level position conversion
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct HtmlHyperlinkRegion {
-    /// URL
-    pub url: String,
-}
-
-/// RESERVED_3 (code 3) - 필드 콘텐츠 시작 / Field content start
-#[allow(dead_code)]
-const FIELD_CONTENT_START: u8 = 3;
 
 /// 텍스트를 HTML로 렌더링 / Render text to HTML
 pub fn render_text(
@@ -126,22 +112,28 @@ pub fn render_text(
             // 속성 / Attributes
             // bold는 CSS의 font-weight:bold로 처리되므로 <strong> 태그 사용하지 않음
             // Bold is handled by CSS font-weight:bold, so don't use <strong> tag
-            let mut styled_text = text_for_styling;
-            if char_shape.attributes.italic {
-                styled_text = format!("<em>{styled_text}</em>");
-            }
-            if char_shape.attributes.underline_type > 0 {
-                styled_text = format!("<u>{styled_text}</u>");
-            }
-            if char_shape.attributes.strikethrough > 0 {
-                styled_text = format!("<s>{styled_text}</s>");
-            }
-            if char_shape.attributes.superscript {
-                styled_text = format!("<sup>{styled_text}</sup>");
-            }
-            if char_shape.attributes.subscript {
-                styled_text = format!("<sub>{styled_text}</sub>");
-            }
+            let italic = char_shape.attributes.italic;
+            let underline = char_shape.attributes.underline_type > 0;
+            let strikethrough = char_shape.attributes.strikethrough > 0;
+            let superscript = char_shape.attributes.superscript;
+            let subscript = char_shape.attributes.subscript;
+            let styled_text = if italic || underline || strikethrough || superscript || subscript {
+                let mut buf = String::with_capacity(text_for_styling.len() + 40);
+                if italic { buf.push_str("<em>"); }
+                if underline { buf.push_str("<u>"); }
+                if strikethrough { buf.push_str("<s>"); }
+                if superscript { buf.push_str("<sup>"); }
+                if subscript { buf.push_str("<sub>"); }
+                buf.push_str(&text_for_styling);
+                if subscript { buf.push_str("</sub>"); }
+                if superscript { buf.push_str("</sup>"); }
+                if strikethrough { buf.push_str("</s>"); }
+                if underline { buf.push_str("</u>"); }
+                if italic { buf.push_str("</em>"); }
+                buf
+            } else {
+                text_for_styling
+            };
 
             // .hrt span으로 래핑 / Wrap with .hrt span
             if !inline_style.is_empty() {
@@ -220,22 +212,28 @@ pub fn render_text_runs(runs: &[ParaTextRun], document: &HwpDocument) -> String 
                     }
 
                     // 스타일 태그 적용 / Apply style tags
-                    let mut styled_text = text_for_styling;
-                    if char_shape.attributes.italic {
-                        styled_text = format!("<em>{styled_text}</em>");
-                    }
-                    if char_shape.attributes.underline_type > 0 {
-                        styled_text = format!("<u>{styled_text}</u>");
-                    }
-                    if char_shape.attributes.strikethrough > 0 {
-                        styled_text = format!("<s>{styled_text}</s>");
-                    }
-                    if char_shape.attributes.superscript {
-                        styled_text = format!("<sup>{styled_text}</sup>");
-                    }
-                    if char_shape.attributes.subscript {
-                        styled_text = format!("<sub>{styled_text}</sub>");
-                    }
+                    let italic = char_shape.attributes.italic;
+                    let underline = char_shape.attributes.underline_type > 0;
+                    let strikethrough = char_shape.attributes.strikethrough > 0;
+                    let superscript = char_shape.attributes.superscript;
+                    let subscript = char_shape.attributes.subscript;
+                    let styled_text = if italic || underline || strikethrough || superscript || subscript {
+                        let mut buf = String::with_capacity(text_for_styling.len() + 40);
+                        if italic { buf.push_str("<em>"); }
+                        if underline { buf.push_str("<u>"); }
+                        if strikethrough { buf.push_str("<s>"); }
+                        if superscript { buf.push_str("<sup>"); }
+                        if subscript { buf.push_str("<sub>"); }
+                        buf.push_str(&text_for_styling);
+                        if subscript { buf.push_str("</sub>"); }
+                        if superscript { buf.push_str("</sup>"); }
+                        if strikethrough { buf.push_str("</s>"); }
+                        if underline { buf.push_str("</u>"); }
+                        if italic { buf.push_str("</em>"); }
+                        buf
+                    } else {
+                        text_for_styling
+                    };
 
                     // span으로 래핑 / Wrap with span
                     if !inline_style.is_empty() {
@@ -339,9 +337,9 @@ pub fn extract_text_and_shapes(
     for record in &paragraph.records {
         match record {
             ParagraphRecord::ParaText {
-                text: para_text, ..
+                data,
             } => {
-                text.push_str(para_text);
+                text.push_str(&data.text);
             }
             ParagraphRecord::ParaCharShape { shapes } => {
                 char_shapes.extend(shapes.iter().cloned());
@@ -356,8 +354,8 @@ pub fn extract_text_and_shapes(
 /// 문단에서 텍스트 runs 추출 / Extract text runs from paragraph
 pub fn extract_runs(paragraph: &crate::document::bodytext::Paragraph) -> Vec<ParaTextRun> {
     for record in &paragraph.records {
-        if let ParagraphRecord::ParaText { runs, .. } = record {
-            return runs.clone();
+        if let ParagraphRecord::ParaText { data } = record {
+            return data.runs.clone();
         }
     }
     Vec::new()
@@ -376,182 +374,3 @@ pub fn runs_have_char_shape_id(runs: &[ParaTextRun]) -> bool {
     })
 }
 
-/// 제어 문자 크기 (WCHAR 단위) / Control character size (in WCHAR units)
-#[allow(dead_code)]
-fn get_control_char_size(code: u8) -> usize {
-    // CHAR 타입: NULL(0), LINE_BREAK(10), PARA_BREAK(13), HYPHEN(24), BOUND_SPACE(30), FIXED_SPACE(31)
-    if matches!(code, 0 | 10 | 13 | 24 | 30 | 31) {
-        1
-    } else {
-        8
-    }
-}
-
-/// 원본 스트림 위치를 실제 텍스트 위치로 변환
-/// Convert original stream position to actual text position
-#[allow(dead_code)]
-fn convert_stream_position_to_text_position(
-    stream_position: usize,
-    control_positions: &[ControlCharPosition],
-) -> usize {
-    let mut offset = 0;
-    for pos in control_positions {
-        if pos.position < stream_position {
-            offset += get_control_char_size(pos.code);
-        }
-    }
-    stream_position.saturating_sub(offset)
-}
-
-/// HTML 특수 문자 이스케이프 / Escape HTML special characters
-#[allow(dead_code)]
-fn escape_html_attr(text: &str) -> String {
-    text.replace('&', "&amp;")
-        .replace('"', "&quot;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-}
-
-/// 하이퍼링크 정보를 사용하여 텍스트를 HTML로 렌더링
-/// Render text to HTML with hyperlink information
-///
-/// NOTE: 현재 HTML에서 하이퍼링크 처리는 세그먼트 단위 위치 변환이 복잡하여 미사용
-/// Currently unused as HTML hyperlink processing is complex due to segment-level position conversion
-///
-/// # Arguments
-/// * `text` - 텍스트 내용 / Text content
-/// * `char_shapes` - 글자 모양 정보 / Character shape information
-/// * `control_positions` - 제어 문자 위치 정보 / Control character positions
-/// * `hyperlinks` - 하이퍼링크 정보 리스트 / Hyperlink information list
-/// * `document` - HWP 문서 / HWP document
-/// * `css_prefix` - CSS 클래스 접두사 / CSS class prefix
-///
-/// # Returns
-/// HTML 문자열 / HTML string
-#[allow(dead_code)]
-pub fn render_text_with_hyperlinks(
-    text: &str,
-    char_shapes: &[CharShapeInfo],
-    control_positions: &[ControlCharPosition],
-    hyperlinks: &[HtmlHyperlinkRegion],
-    document: &HwpDocument,
-    css_prefix: &str,
-) -> String {
-    if text.is_empty() || hyperlinks.is_empty() {
-        return render_text(text, char_shapes, document, css_prefix);
-    }
-
-    // 필드 영역 찾기 / Find field regions
-    let mut field_regions: Vec<(usize, usize)> = Vec::new();
-    let mut sorted_positions: Vec<_> = control_positions.iter().collect();
-    sorted_positions.sort_by_key(|p| p.position);
-
-    let mut current_field_start: Option<usize> = None;
-    for pos in &sorted_positions {
-        if pos.code == FIELD_CONTENT_START {
-            current_field_start = Some(pos.position + get_control_char_size(pos.code));
-        } else if pos.code == ControlChar::FIELD_END {
-            if let Some(start) = current_field_start.take() {
-                field_regions.push((start, pos.position));
-            }
-        }
-    }
-
-    // 필드 영역 수와 하이퍼링크 수가 다르면 기본 렌더링 사용
-    if field_regions.len() != hyperlinks.len() {
-        return render_text(text, char_shapes, document, css_prefix);
-    }
-
-    let text_chars: Vec<char> = text.chars().collect();
-    let text_len = text_chars.len();
-
-    let mut result = String::new();
-    let mut current_text_pos = 0;
-
-    // 각 필드 영역 처리 / Process each field region
-    for (i, (stream_start, stream_end)) in field_regions.iter().enumerate() {
-        let text_start = convert_stream_position_to_text_position(*stream_start, control_positions);
-        let text_end = convert_stream_position_to_text_position(*stream_end, control_positions);
-
-        // 필드 이전 텍스트 렌더링 / Render text before field
-        if current_text_pos < text_start && text_start <= text_len {
-            let before_text: String = text_chars[current_text_pos..text_start].iter().collect();
-            if !before_text.is_empty() {
-                // CharShape 구간 필터링 / Filter CharShape segments
-                let filtered_shapes: Vec<CharShapeInfo> = char_shapes
-                    .iter()
-                    .filter(|s| (s.position as usize) < text_start)
-                    .cloned()
-                    .collect();
-                result.push_str(&render_text(
-                    &before_text,
-                    &filtered_shapes,
-                    document,
-                    css_prefix,
-                ));
-            }
-        }
-
-        // 필드 내부 텍스트 (하이퍼링크) / Field content (hyperlink)
-        if text_start < text_end && text_end <= text_len {
-            let link_text: String = text_chars[text_start..text_end].iter().collect();
-            if !link_text.trim().is_empty() {
-                if let Some(hyperlink) = hyperlinks.get(i) {
-                    let escaped_url = escape_html_attr(&hyperlink.url);
-                    // CharShape 구간 필터링 / Filter CharShape segments
-                    let filtered_shapes: Vec<CharShapeInfo> = char_shapes
-                        .iter()
-                        .filter(|s| {
-                            let pos = s.position as usize;
-                            pos >= text_start && pos < text_end
-                        })
-                        .cloned()
-                        .collect();
-                    let inner_html =
-                        render_text(&link_text, &filtered_shapes, document, css_prefix);
-                    result.push_str(&format!(
-                        r#"<a href="{}" class="hwp-link">{}</a>"#,
-                        escaped_url, inner_html
-                    ));
-                } else {
-                    let filtered_shapes: Vec<CharShapeInfo> = char_shapes
-                        .iter()
-                        .filter(|s| {
-                            let pos = s.position as usize;
-                            pos >= text_start && pos < text_end
-                        })
-                        .cloned()
-                        .collect();
-                    result.push_str(&render_text(
-                        &link_text,
-                        &filtered_shapes,
-                        document,
-                        css_prefix,
-                    ));
-                }
-            }
-        }
-
-        current_text_pos = text_end;
-    }
-
-    // 마지막 필드 이후 텍스트 렌더링 / Render text after last field
-    if current_text_pos < text_len {
-        let after_text: String = text_chars[current_text_pos..].iter().collect();
-        if !after_text.is_empty() {
-            let filtered_shapes: Vec<CharShapeInfo> = char_shapes
-                .iter()
-                .filter(|s| (s.position as usize) >= current_text_pos)
-                .cloned()
-                .collect();
-            result.push_str(&render_text(
-                &after_text,
-                &filtered_shapes,
-                document,
-                css_prefix,
-            ));
-        }
-    }
-
-    result
-}

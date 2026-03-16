@@ -11,9 +11,9 @@ pub fn collect_text_and_images_from_paragraph(
 ) {
     for record in &para.records {
         match record {
-            ParagraphRecord::ParaText { text, .. } => {
-                if !text.trim().is_empty() {
-                    table_cell_texts.insert(text.trim().to_string());
+            ParagraphRecord::ParaText { data } => {
+                if !data.text.trim().is_empty() {
+                    table_cell_texts.insert(data.text.trim().to_string());
                 }
             }
             ParagraphRecord::ShapeComponentPicture {
@@ -22,9 +22,9 @@ pub fn collect_text_and_images_from_paragraph(
                 // 이미지 ID 수집 / Collect image ID
                 table_cell_image_ids.insert(shape_component_picture.picture_info.bindata_id);
             }
-            ParagraphRecord::ShapeComponent { children, .. } => {
+            ParagraphRecord::ShapeComponent { data } => {
                 // SHAPE_COMPONENT의 children 확인 / Check SHAPE_COMPONENT's children
-                for shape_child in children {
+                for shape_child in &data.children {
                     match shape_child {
                         ParagraphRecord::ShapeComponentPicture {
                             shape_component_picture,
@@ -32,9 +32,9 @@ pub fn collect_text_and_images_from_paragraph(
                             table_cell_image_ids
                                 .insert(shape_component_picture.picture_info.bindata_id);
                         }
-                        ParagraphRecord::ListHeader { paragraphs, .. } => {
+                        ParagraphRecord::ListHeader { data: lh_data } => {
                             // LIST_HEADER의 paragraphs도 확인 / Check LIST_HEADER's paragraphs
-                            for list_para in paragraphs {
+                            for list_para in &lh_data.paragraphs {
                                 collect_text_and_images_from_paragraph(
                                     list_para,
                                     table_cell_texts,
@@ -47,12 +47,10 @@ pub fn collect_text_and_images_from_paragraph(
                 }
             }
             ParagraphRecord::CtrlHeader {
-                children,
-                paragraphs: ctrl_paragraphs,
-                ..
+                data: ch_data,
             } => {
                 // CTRL_HEADER 내부의 paragraphs도 재귀적으로 확인 / Recursively check paragraphs inside CTRL_HEADER
-                for ctrl_para in ctrl_paragraphs {
+                for ctrl_para in &ch_data.paragraphs {
                     collect_text_and_images_from_paragraph(
                         ctrl_para,
                         table_cell_texts,
@@ -60,11 +58,11 @@ pub fn collect_text_and_images_from_paragraph(
                     );
                 }
                 // CTRL_HEADER의 children도 재귀적으로 확인 / Recursively check children of CTRL_HEADER
-                for child in children {
+                for child in &ch_data.children {
                     match child {
-                        ParagraphRecord::ShapeComponent { children, .. } => {
+                        ParagraphRecord::ShapeComponent { data: sc_data } => {
                             // SHAPE_COMPONENT의 children 확인 / Check SHAPE_COMPONENT's children
-                            for shape_child in children {
+                            for shape_child in &sc_data.children {
                                 match shape_child {
                                     ParagraphRecord::ShapeComponentPicture {
                                         shape_component_picture,
@@ -73,9 +71,9 @@ pub fn collect_text_and_images_from_paragraph(
                                             shape_component_picture.picture_info.bindata_id,
                                         );
                                     }
-                                    ParagraphRecord::ListHeader { paragraphs, .. } => {
+                                    ParagraphRecord::ListHeader { data: lh_data } => {
                                         // LIST_HEADER의 paragraphs도 확인 / Check LIST_HEADER's paragraphs
-                                        for list_para in paragraphs {
+                                        for list_para in &lh_data.paragraphs {
                                             collect_text_and_images_from_paragraph(
                                                 list_para,
                                                 table_cell_texts,

@@ -5,6 +5,7 @@
 /// Spec mapping: Table 57 - BodyText data records, SHAPE_COMPONENT_PICTURE
 use crate::document::{bodytext::ShapeComponentPicture, HwpDocument};
 use crate::viewer::markdown::common::format_image_markdown;
+use crate::viewer::shared::BinDataIndex;
 
 /// Convert ShapeComponentPicture to markdown
 /// ShapeComponentPicture를 마크다운으로 변환
@@ -12,6 +13,7 @@ use crate::viewer::markdown::common::format_image_markdown;
 /// # Arguments / 매개변수
 /// * `shape_component_picture` - 그림 개체 / Picture shape component
 /// * `document` - HWP 문서 / HWP document
+/// * `bindata_index` - Pre-built BinData index / 미리 빌드된 BinData 인덱스
 /// * `image_output_dir` - 이미지 출력 디렉토리 (선택) / Image output directory (optional)
 ///
 /// # Returns / 반환값
@@ -19,6 +21,7 @@ use crate::viewer::markdown::common::format_image_markdown;
 pub(crate) fn convert_shape_component_picture_to_markdown(
     shape_component_picture: &ShapeComponentPicture,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     image_output_dir: Option<&str>,
 ) -> Option<String> {
     // 그림 개체를 마크다운 이미지로 변환 / Convert picture shape component to markdown image
@@ -32,7 +35,7 @@ pub(crate) fn convert_shape_component_picture_to_markdown(
         .find(|item| item.index == bindata_id)
     {
         let image_markdown =
-            format_image_markdown(document, bindata_id, &bin_item.data, image_output_dir);
+            format_image_markdown(bindata_index, bindata_id, &bin_item.data, image_output_dir);
         if !image_markdown.is_empty() {
             return Some(image_markdown);
         }
@@ -46,6 +49,7 @@ pub(crate) fn convert_shape_component_picture_to_markdown(
 /// # Arguments / 매개변수
 /// * `binary_item_ref` - 바이너리 아이템 참조 이름 (예: "image1") / Binary item reference name (e.g., "image1")
 /// * `document` - HWP 문서 / HWP document
+/// * `bindata_index` - Pre-built BinData index / 미리 빌드된 BinData 인덱스
 /// * `image_output_dir` - 이미지 출력 디렉토리 (선택) / Image output directory (optional)
 ///
 /// # Returns / 반환값
@@ -53,6 +57,7 @@ pub(crate) fn convert_shape_component_picture_to_markdown(
 pub(crate) fn convert_hwpx_image_to_markdown(
     binary_item_ref: &str,
     document: &HwpDocument,
+    bindata_index: &BinDataIndex,
     image_output_dir: Option<&str>,
 ) -> Option<String> {
     // HWPX 이미지 참조를 마크다운 이미지로 변환 / Convert HWPX image reference to markdown image
@@ -63,8 +68,12 @@ pub(crate) fn convert_hwpx_image_to_markdown(
         .iter()
         .find(|item| item.name.as_deref() == Some(binary_item_ref))
     {
-        let image_markdown =
-            format_image_markdown(document, bin_item.index, &bin_item.data, image_output_dir);
+        let image_markdown = format_image_markdown(
+            bindata_index,
+            bin_item.index,
+            &bin_item.data,
+            image_output_dir,
+        );
         if !image_markdown.is_empty() {
             return Some(image_markdown);
         }

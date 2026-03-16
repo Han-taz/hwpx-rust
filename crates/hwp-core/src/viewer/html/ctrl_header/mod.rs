@@ -11,14 +11,12 @@ mod section_def;
 /// Each ctrl_id type is processed in its own independent module.
 mod shape_object;
 
-#[allow(unused_imports)]
-pub use field::convert_field_ctrl_to_html;
-
 // table 모듈은 폴더로 분리되어 있음 / table module is separated into a folder
 pub mod table;
 
 use crate::document::{CtrlHeader, CtrlId, Paragraph, ParagraphRecord};
 use crate::viewer::html::line_segment::{ImageInfo, TableInfo};
+use crate::viewer::shared::BinDataIndex;
 use crate::viewer::HtmlOptions;
 use crate::HwpDocument;
 
@@ -50,6 +48,7 @@ pub fn process_ctrl_header<'a>(
     paragraphs: &'a [Paragraph],
     document: &'a HwpDocument,
     options: &'a HtmlOptions,
+    bindata_index: &'a BinDataIndex,
 ) -> CtrlHeaderResult<'a> {
     match header.ctrl_id.as_str() {
         CtrlId::TABLE => {
@@ -58,7 +57,7 @@ pub fn process_ctrl_header<'a>(
         }
         CtrlId::SHAPE_OBJECT => {
             // 그리기 개체 처리 / Process shape object
-            shape_object::process_shape_object(header, children, paragraphs, document, options)
+            shape_object::process_shape_object(header, children, paragraphs, document, options, bindata_index)
         }
         CtrlId::SECTION_DEF => {
             // 구역 정의 처리 / Process section definition

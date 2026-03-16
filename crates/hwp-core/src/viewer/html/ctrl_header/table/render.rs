@@ -4,6 +4,7 @@ use crate::document::bodytext::{
 };
 use crate::types::{Hwpunit16ToMm, HWPUNIT};
 use crate::viewer::html::styles::{int32_to_mm, round_to_2dp};
+use crate::viewer::shared::BinDataIndex;
 use crate::viewer::HtmlOptions;
 use crate::{HwpDocument, INT32};
 
@@ -68,6 +69,7 @@ pub struct TableRenderContext<'a> {
     pub table_number: Option<u32>,
     pub pattern_counter: &'a mut usize,
     pub color_to_pattern: &'a mut std::collections::HashMap<u32, String>,
+    pub bindata_index: &'a BinDataIndex,
 }
 
 /// 테이블 위치 정보 / Table position information
@@ -170,6 +172,7 @@ pub fn render_table(
         ctrl_header_height_mm,
         document,
         _options,
+        context.bindata_index,
         context.pattern_counter,
         context.color_to_pattern,
     );

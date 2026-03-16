@@ -4,6 +4,7 @@ use crate::document::bodytext::ParagraphRecord;
 use crate::document::{CtrlHeader, CtrlHeaderData, Paragraph};
 use crate::viewer::html::common;
 use crate::viewer::html::line_segment::ImageInfo;
+use crate::viewer::shared::BinDataIndex;
 use crate::viewer::HtmlOptions;
 use crate::HwpDocument;
 
@@ -14,6 +15,7 @@ pub fn process_shape_object<'a>(
     paragraphs: &'a [Paragraph],
     document: &'a HwpDocument,
     options: &'a HtmlOptions,
+    bindata_index: &'a BinDataIndex,
 ) -> CtrlHeaderResult<'a> {
     let mut result = CtrlHeaderResult::new();
 
@@ -34,11 +36,11 @@ pub fn process_shape_object<'a>(
     // children에서 찾기 / Search in children
     for record in children {
         if let ParagraphRecord::ShapeComponent {
-            shape_component, ..
+            data: sc_data,
         } = record
         {
-            initial_width = Some(shape_component.width);
-            initial_height = Some(shape_component.height);
+            initial_width = Some(sc_data.shape_component.width);
+            initial_height = Some(sc_data.shape_component.height);
             break;
         }
     }
@@ -49,24 +51,23 @@ pub fn process_shape_object<'a>(
             for record in &para.records {
                 match record {
                     ParagraphRecord::ShapeComponent {
-                        shape_component, ..
+                        data: sc_data,
                     } => {
-                        initial_width = Some(shape_component.width);
-                        initial_height = Some(shape_component.height);
+                        initial_width = Some(sc_data.shape_component.width);
+                        initial_height = Some(sc_data.shape_component.height);
                         break;
                     }
                     ParagraphRecord::CtrlHeader {
-                        children: nested_children,
-                        ..
+                        data: ch_data,
                     } => {
                         // 중첩된 CtrlHeader의 children에서도 찾기 / Also search in nested CtrlHeader's children
-                        for nested_record in nested_children {
+                        for nested_record in &ch_data.children {
                             if let ParagraphRecord::ShapeComponent {
-                                shape_component, ..
+                                data: sc_data,
                             } = nested_record
                             {
-                                initial_width = Some(shape_component.width);
-                                initial_height = Some(shape_component.height);
+                                initial_width = Some(sc_data.shape_component.width);
+                                initial_height = Some(sc_data.shape_component.height);
                                 break;
                             }
                         }
@@ -93,6 +94,7 @@ pub fn process_shape_object<'a>(
             children,
             document,
             options,
+            bindata_index,
             like_letters,
             affect_line_spacing,
             vert_rel_to,
@@ -110,6 +112,7 @@ pub fn process_shape_object<'a>(
                 &para.records,
                 document,
                 options,
+                bindata_index,
                 like_letters,
                 affect_line_spacing,
                 vert_rel_to,
@@ -128,6 +131,7 @@ fn collect_images_from_records(
     records: &[ParagraphRecord],
     document: &HwpDocument,
     options: &HtmlOptions,
+    bindata_index: &BinDataIndex,
     like_letters: bool,
     affect_line_spacing: bool,
     vert_rel_to: Option<VertRelTo>,
@@ -143,6 +147,7 @@ fn collect_images_from_records(
                 let bindata_id = shape_component_picture.picture_info.bindata_id;
                 let image_url = common::get_image_url(
                     document,
+                    bindata_index,
                     bindata_id,
                     options.image_output_dir.as_deref(),
                     options.html_output_dir.as_deref(),
@@ -165,29 +170,30 @@ fn collect_images_from_records(
                 }
             }
             ParagraphRecord::ShapeComponent {
-                shape_component,
-                children,
+                data: sc_data,
             } => {
                 // 재귀적으로 children에서 이미지 찾기 (shape_component.width/height 전달)
                 collect_images_from_records(
-                    children,
+                    &sc_data.children,
                     document,
                     options,
+                    bindata_index,
                     like_letters,
                     affect_line_spacing,
                     vert_rel_to,
-                    Some(shape_component.width),
-                    Some(shape_component.height),
+                    Some(sc_data.shape_component.width),
+                    Some(sc_data.shape_component.height),
                     images,
                 );
             }
-            ParagraphRecord::CtrlHeader { children, .. } => {
+            ParagraphRecord::CtrlHeader { data: ch_data } => {
                 // 중첩된 CtrlHeader도 처리 (속성은 상위에서 상속, shape_component 크기는 유지)
                 // Process nested CtrlHeader (attributes inherited from parent, shape_component size maintained)
                 collect_images_from_records(
-                    children,
+                    &ch_data.children,
                     document,
                     options,
+                    bindata_index,
                     like_letters,
                     affect_line_spacing,
                     vert_rel_to,

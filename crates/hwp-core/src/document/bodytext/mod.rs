@@ -152,31 +152,68 @@ pub struct Paragraph {
     pub records: Vec<ParagraphRecord>,
 }
 
+/// Data for ParaText variant (boxed to reduce enum size)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ParaTextData {
+    /// 텍스트 내용 (UTF-16LE) / Text content (UTF-16LE)
+    pub text: String,
+    /// 텍스트/컨트롤 토큰 시퀀스 (표/개체 등 위치를 보존하기 위한 구조) / Text/control token sequence
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub runs: Vec<ParaTextRun>,
+    /// 제어 문자 위치 정보 / Control character positions
+    #[serde(default)]
+    pub control_char_positions: Vec<crate::document::bodytext::control_char::ControlCharPosition>,
+    /// INLINE 제어 문자 파라미터 정보 / INLINE control character parameter information
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub inline_control_params: Vec<(
+        usize,
+        crate::document::bodytext::control_char::InlineControlParam,
+    )>,
+}
+
+/// Data for CtrlHeader variant (boxed to reduce enum size)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CtrlHeaderRecordData {
+    /// 컨트롤 헤더 정보 / Control header information
+    #[serde(flatten)]
+    pub header: CtrlHeader,
+    /// 컨트롤 헤더의 자식 레코드 (레벨 2) / Child records of control header (level 2)
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub children: Vec<ParagraphRecord>,
+    /// 컨트롤 헤더 내부의 문단들 / Paragraphs inside control header
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub paragraphs: Vec<Paragraph>,
+}
+
+/// Data for ListHeader variant (boxed to reduce enum size)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListHeaderRecordData {
+    /// 문단 리스트 헤더 정보 / Paragraph list header information
+    pub header: ListHeader,
+    /// 리스트 헤더의 자식 문단들 / Child paragraphs of list header
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub paragraphs: Vec<Paragraph>,
+}
+
+/// Data for ShapeComponent variant (boxed to reduce enum size)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShapeComponentRecordData {
+    /// 개체 요소 정보 / Shape component information
+    pub shape_component: ShapeComponent,
+    /// 개체 요소의 자식 레코드 / Child records of shape component
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub children: Vec<ParagraphRecord>,
+}
+
 /// Paragraph record (level 1 records)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)] // ChartData variant is large but rarely used
 pub enum ParagraphRecord {
     /// 문단의 텍스트 / Paragraph text
     ParaText {
-        /// 텍스트 내용 (UTF-16LE) / Text content (UTF-16LE)
-        text: String,
-        /// 텍스트/컨트롤 토큰 시퀀스 (표/개체 등 위치를 보존하기 위한 구조) / Text/control token sequence
-        #[serde(skip_serializing_if = "Vec::is_empty", default)]
-        runs: Vec<ParaTextRun>,
-        /// 제어 문자 위치 정보 / Control character positions
-        /// 제어 문자가 없어도 빈 배열로 표시되어 JSON에 포함됩니다 / Empty array is included in JSON even if no control characters
-        #[serde(default)]
-        control_char_positions: Vec<crate::document::bodytext::control_char::ControlCharPosition>,
-        /// INLINE 제어 문자 파라미터 정보 (문자 인덱스, 파라미터) / INLINE control character parameter information (char index, parameter)
-        /// INLINE 타입 제어 문자(FIELD_END, TITLE_MARK, TAB 등)의 파라미터를 저장합니다.
-        /// Stores parameters for INLINE type control characters (FIELD_END, TITLE_MARK, TAB, etc.).
-        /// 스펙 문서에 파라미터 구조가 명시되지 않았으므로 바이트 배열로 저장됩니다.
-        /// Parameter structure is not specified in spec document, so stored as byte array.
-        #[serde(skip_serializing_if = "Vec::is_empty", default)]
-        inline_control_params: Vec<(
-            usize,
-            crate::document::bodytext::control_char::InlineControlParam,
-        )>,
+        #[serde(flatten)]
+        data: Box<ParaTextData>,
     },
     /// 문단의 글자 모양 / Paragraph character shape
     ParaCharShape {
@@ -195,29 +232,13 @@ pub enum ParagraphRecord {
     },
     /// 컨트롤 헤더 / Control header
     CtrlHeader {
-        /// 컨트롤 헤더 정보 / Control header information
         #[serde(flatten)]
-        header: CtrlHeader,
-        /// 컨트롤 헤더의 자식 레코드 (레벨 2) / Child records of control header (level 2)
-        /// 각주/미주, 머리말/꼬리말 등의 컨트롤 헤더 내부에 PARA_HEADER가 직접 올 수 있음
-        /// PARA_HEADER는 Paragraph로 변환되어 paragraphs에 저장됨
-        /// PARA_HEADER can appear directly inside control headers like footnotes/endnotes, headers/footers, etc.
-        /// PARA_HEADER is converted to Paragraph and stored in paragraphs
-        #[serde(skip_serializing_if = "Vec::is_empty", default)]
-        children: Vec<ParagraphRecord>,
-        /// 컨트롤 헤더 내부의 문단들 (레벨 2 이상의 PARA_HEADER) / Paragraphs inside control header (PARA_HEADER at level 2 or higher)
-        /// 각주/미주, 머리말/꼬리말 등의 컨트롤 헤더 내부에 직접 나타나는 문단들
-        /// Paragraphs that appear directly inside control headers like footnotes/endnotes, headers/footers, etc.
-        #[serde(skip_serializing_if = "Vec::is_empty", default)]
-        paragraphs: Vec<Paragraph>,
+        data: Box<CtrlHeaderRecordData>,
     },
     /// 문단 리스트 헤더 / Paragraph list header
     ListHeader {
-        /// 문단 리스트 헤더 정보 / Paragraph list header information
-        header: ListHeader,
-        /// 리스트 헤더의 자식 문단들 (레벨 3, 예: 테이블 셀 내부 문단) / Child paragraphs of list header (level 3, e.g., paragraphs inside table cell)
-        #[serde(skip_serializing_if = "Vec::is_empty", default)]
-        paragraphs: Vec<Paragraph>,
+        #[serde(flatten)]
+        data: Box<ListHeaderRecordData>,
     },
     /// 표 개체 / Table object
     Table {
@@ -241,11 +262,8 @@ pub enum ParagraphRecord {
     },
     /// 개체 요소 / Shape component
     ShapeComponent {
-        /// 개체 요소 정보 / Shape component information
-        shape_component: ShapeComponent,
-        /// 개체 요소의 자식 레코드 (레벨 3, 예: SHAPE_COMPONENT_PICTURE) / Child records of shape component (level 3, e.g., SHAPE_COMPONENT_PICTURE)
-        #[serde(skip_serializing_if = "Vec::is_empty", default)]
-        children: Vec<ParagraphRecord>,
+        #[serde(flatten)]
+        data: Box<ShapeComponentRecordData>,
     },
     /// 직선 개체 / Line shape component
     ShapeComponentLine {
@@ -466,12 +484,12 @@ impl Section {
         // For body paragraphs, ParaText contains reference text ("각주참조" etc.), so don't remove it
         if is_inside_control_header {
             let is_control_paragraph = records.iter().any(|record| {
-                if let ParagraphRecord::CtrlHeader { header, .. } = record {
+                if let ParagraphRecord::CtrlHeader { data } = record {
                     use crate::document::bodytext::CtrlId;
-                    header.ctrl_id.as_str() == CtrlId::HEADER
-                        || header.ctrl_id.as_str() == CtrlId::FOOTER
-                        || header.ctrl_id.as_str() == CtrlId::FOOTNOTE
-                        || header.ctrl_id.as_str() == CtrlId::ENDNOTE
+                    data.header.ctrl_id.as_str() == CtrlId::HEADER
+                        || data.header.ctrl_id.as_str() == CtrlId::FOOTER
+                        || data.header.ctrl_id.as_str() == CtrlId::FOOTNOTE
+                        || data.header.ctrl_id.as_str() == CtrlId::ENDNOTE
                 } else {
                     false
                 }
@@ -498,9 +516,9 @@ impl Section {
                 .count();
             if para_text_count > 0 {
                 for record in &records {
-                    if let ParagraphRecord::ParaText { text, .. } = record {
+                    if let ParagraphRecord::ParaText { data } = record {
                         #[cfg(debug_assertions)]
-                        eprintln!("[DEBUG] Body paragraph ParaText: {text}");
+                        eprintln!("[DEBUG] Body paragraph ParaText: {}", data.text);
                     }
                 }
             }
@@ -646,10 +664,12 @@ impl Section {
                 }
 
                 Ok(ParagraphRecord::ParaText {
-                    text: cleaned_text,
-                    runs,
-                    control_char_positions,
-                    inline_control_params,
+                    data: Box::new(ParaTextData {
+                        text: cleaned_text,
+                        runs,
+                        control_char_positions,
+                        inline_control_params,
+                    }),
                 })
             }
             HwpTag::PARA_CHAR_SHAPE => {
@@ -813,11 +833,10 @@ impl Section {
                             Self::parse_record_from_tree(child, version, original_data)?;
                         // 테이블 셀로 처리하기 위해 paragraphs 추출 / Extract paragraphs for table cell processing
                         let paragraphs_for_cell = if let ParagraphRecord::ListHeader {
-                            header: _,
-                            paragraphs,
+                            data,
                         } = &list_header_record
                         {
-                            paragraphs.clone()
+                            data.paragraphs.clone()
                         } else {
                             Vec::new()
                         };
@@ -1175,9 +1194,11 @@ impl Section {
                 );
 
                 Ok(ParagraphRecord::CtrlHeader {
-                    header: final_ctrl_header,
-                    children,
-                    paragraphs,
+                    data: Box::new(CtrlHeaderRecordData {
+                        header: final_ctrl_header,
+                        children,
+                        paragraphs,
+                    }),
                 })
             }
             HwpTag::LIST_HEADER => {
@@ -1298,12 +1319,12 @@ impl Section {
                                                         )?;
                                                     // 디버그: ListHeader 내부의 ParaText 확인 / Debug: Check ParaText inside ListHeader
                                                     if let ParagraphRecord::ParaText {
-                                                        text, ..
+                                                        data,
                                                     } = &parsed_record
                                                     {
                                                         #[cfg(debug_assertions)]
                                                         eprintln!(
-                                                            "[DEBUG] ListHeader ParaText: {text}"
+                                                            "[DEBUG] ListHeader ParaText: {}", data.text
                                                         );
                                                     }
                                                     para_records.push(parsed_record);
@@ -1339,8 +1360,10 @@ impl Section {
                 }
 
                 Ok(ParagraphRecord::ListHeader {
-                    header: list_header,
-                    paragraphs,
+                    data: Box::new(ListHeaderRecordData {
+                        header: list_header,
+                        paragraphs,
+                    }),
                 })
             }
             HwpTag::TABLE => {
@@ -1428,13 +1451,12 @@ impl Section {
                         // Add found PARA_HEADERs to LIST_HEADER's paragraphs
                         if !para_headers_found.is_empty() {
                             if let ParagraphRecord::ListHeader {
-                                header,
-                                mut paragraphs,
+                                mut data,
                             } = list_header_with_paragraphs
                             {
-                                paragraphs.extend(para_headers_found);
+                                data.paragraphs.extend(para_headers_found);
                                 list_header_with_paragraphs =
-                                    ParagraphRecord::ListHeader { header, paragraphs };
+                                    ParagraphRecord::ListHeader { data };
 
                                 // 처리한 PARA_HEADER들만큼 index 건너뛰기
                                 // Skip processed PARA_HEADERs
@@ -1454,8 +1476,10 @@ impl Section {
                 }
 
                 Ok(ParagraphRecord::ShapeComponent {
-                    shape_component,
-                    children,
+                    data: Box::new(ShapeComponentRecordData {
+                        shape_component,
+                        children,
+                    }),
                 })
             }
             HwpTag::SHAPE_COMPONENT_LINE => {

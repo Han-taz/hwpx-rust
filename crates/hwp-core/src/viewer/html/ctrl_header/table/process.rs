@@ -161,21 +161,18 @@ pub fn process_table<'a>(
 
         for record in &para.records {
             if let ParagraphRecord::ParaText {
-                text,
-                control_char_positions,
-                runs,
-                ..
+                data: pt_data,
             } = record
             {
-                if !text.trim().is_empty() {
-                    caption_text_opt = Some(text.clone());
-                    caption_control_chars = control_char_positions.clone();
+                if !pt_data.text.trim().is_empty() {
+                    caption_text_opt = Some(pt_data.text.clone());
+                    caption_control_chars = pt_data.control_char_positions.clone();
                     // AUTO_NUMBER 위치 찾기 / Find AUTO_NUMBER position
-                    caption_auto_number_position_opt = control_char_positions
+                    caption_auto_number_position_opt = pt_data.control_char_positions
                         .iter()
                         .find(|cp| cp.code == ControlChar::AUTO_NUMBER)
                         .map(|cp| cp.position);
-                    caption_auto_number_display_text_opt = runs.iter().find_map(|run| {
+                    caption_auto_number_display_text_opt = pt_data.runs.iter().find_map(|run| {
                         if let ParaTextRun::Control {
                             code, display_text, ..
                         } = run
@@ -232,13 +229,10 @@ pub fn process_table<'a>(
         } else if found_table {
             // 테이블 다음에 오는 문단에서 텍스트 추출 / Extract text from paragraph after table
             if let ParagraphRecord::ParaText {
-                text,
-                control_char_positions,
-                runs,
-                ..
+                data: pt_data,
             } = child
             {
-                let auto_disp = runs.iter().find_map(|run| {
+                let auto_disp = pt_data.runs.iter().find_map(|run| {
                     if let ParaTextRun::Control {
                         code, display_text, ..
                     } = run
@@ -250,24 +244,21 @@ pub fn process_table<'a>(
                     None
                 });
                 caption_text = Some(parse_caption_text(
-                    text,
-                    control_char_positions,
+                    &pt_data.text,
+                    &pt_data.control_char_positions,
                     None,
                     auto_disp,
                 ));
                 break;
-            } else if let ParagraphRecord::ListHeader { paragraphs, .. } = child {
+            } else if let ParagraphRecord::ListHeader { data: lh_data } = child {
                 // ListHeader의 paragraphs에서 텍스트 추출 / Extract text from ListHeader's paragraphs
-                for para in paragraphs {
+                for para in &lh_data.paragraphs {
                     for record in &para.records {
                         if let ParagraphRecord::ParaText {
-                            text,
-                            control_char_positions,
-                            runs,
-                            ..
+                            data: pt_data,
                         } = record
                         {
-                            let auto_disp = runs.iter().find_map(|run| {
+                            let auto_disp = pt_data.runs.iter().find_map(|run| {
                                 if let ParaTextRun::Control {
                                     code, display_text, ..
                                 } = run
@@ -279,8 +270,8 @@ pub fn process_table<'a>(
                                 None
                             });
                             caption_text = Some(parse_caption_text(
-                                text,
-                                control_char_positions,
+                                &pt_data.text,
+                                &pt_data.control_char_positions,
                                 None,
                                 auto_disp,
                             ));
@@ -298,13 +289,10 @@ pub fn process_table<'a>(
         } else {
             // 테이블 이전에 오는 문단에서 텍스트 추출 (첫 번째 테이블의 캡션) / Extract text from paragraph before table (caption for first table)
             if let ParagraphRecord::ParaText {
-                text,
-                control_char_positions,
-                runs,
-                ..
+                data: pt_data,
             } = child
             {
-                let auto_disp = runs.iter().find_map(|run| {
+                let auto_disp = pt_data.runs.iter().find_map(|run| {
                     if let ParaTextRun::Control {
                         code, display_text, ..
                     } = run
@@ -316,23 +304,20 @@ pub fn process_table<'a>(
                     None
                 });
                 caption_text = Some(parse_caption_text(
-                    text,
-                    control_char_positions,
+                    &pt_data.text,
+                    &pt_data.control_char_positions,
                     None,
                     auto_disp,
                 ));
-            } else if let ParagraphRecord::ListHeader { paragraphs, .. } = child {
+            } else if let ParagraphRecord::ListHeader { data: lh_data } = child {
                 // ListHeader의 paragraphs에서 텍스트 추출 / Extract text from ListHeader's paragraphs
-                for para in paragraphs {
+                for para in &lh_data.paragraphs {
                     for record in &para.records {
                         if let ParagraphRecord::ParaText {
-                            text,
-                            control_char_positions,
-                            runs,
-                            ..
+                            data: pt_data,
                         } = record
                         {
-                            let auto_disp = runs.iter().find_map(|run| {
+                            let auto_disp = pt_data.runs.iter().find_map(|run| {
                                 if let ParaTextRun::Control {
                                     code, display_text, ..
                                 } = run
@@ -344,8 +329,8 @@ pub fn process_table<'a>(
                                 None
                             });
                             caption_text = Some(parse_caption_text(
-                                text,
-                                control_char_positions,
+                                &pt_data.text,
+                                &pt_data.control_char_positions,
                                 None,
                                 auto_disp,
                             ));
