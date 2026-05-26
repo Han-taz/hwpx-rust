@@ -29,8 +29,8 @@ quick-xml = { version = "0.37", features = ["serialize"] }
 [dev-dependencies]
 insta = "1.43.2"
 criterion = "0.5"
+toml = "0.8"
 
 [[bench]]
 name = "parse_benchmark"
 harness = false
-

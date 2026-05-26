@@ -1,0 +1,24 @@
+[[documents]]
+path = "test-hwpx.hwpx"
+format = "hwpx"
+expect_parse = "success"
+max_data_loss = 0
+max_recovered_error = 0
+allowed_categories = ["MissingOptionalPart"]
+expected_sections = 1
+
+[[documents]]
+path = "hyperlink.hwpx"
+format = "hwpx"
+expect_parse = "success"
+max_data_loss = 0
+max_recovered_error = 0
+allowed_categories = ["MissingOptionalPart"]
+
+[[documents]]
+path = "linespacing.hwpx"
+format = "hwpx"
+expect_parse = "success"
+max_data_loss = 0
+max_recovered_error = 0
+allowed_categories = ["MissingOptionalPart"]
