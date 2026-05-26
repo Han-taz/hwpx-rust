@@ -5,6 +5,7 @@
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
+use crate::diagnostics::DiagnosticReport;
 use crate::document::docinfo::char_shape::{
     CharShape, CharShapeAttributes, LanguageCharAttributesI8, LanguageCharAttributesU8,
     LanguageFontInfo,
@@ -54,7 +55,10 @@ fn parse_version_xml(container: &mut HwpxContainer) -> Result<DWORD, HwpError> {
                             || attr.key.as_ref() == b"oversion"
                             || attr.key.as_ref() == b"app-version"
                         {
-                            if let Some(v) = std::str::from_utf8(&attr.value).ok().and_then(|s| s.parse::<u32>().ok()) {
+                            if let Some(v) = std::str::from_utf8(&attr.value)
+                                .ok()
+                                .and_then(|s| s.parse::<u32>().ok())
+                            {
                                 // Convert to HWP version format (major.minor.build.revision)
                                 version = (v << 24) | 0x00010000;
                             }
@@ -76,7 +80,11 @@ fn parse_version_xml(container: &mut HwpxContainer) -> Result<DWORD, HwpError> {
 }
 
 /// Parse header.xml and create DocInfo
-pub fn parse_doc_info(container: &mut HwpxContainer, warnings: &mut ParseWarnings) -> Result<DocInfo, HwpError> {
+pub fn parse_doc_info(
+    container: &mut HwpxContainer,
+    warnings: &mut ParseWarnings,
+    diagnostics: &mut DiagnosticReport,
+) -> Result<DocInfo, HwpError> {
     let content = container.read_file_string("Contents/header.xml")?;
 
     let mut reader = Reader::from_str(&content);
@@ -88,7 +96,7 @@ pub fn parse_doc_info(container: &mut HwpxContainer, warnings: &mut ParseWarning
 
     // Parse the XML and extract relevant information
     // For now, we create a minimal DocInfo that allows the document to be processed
-    parse_header_xml_content(&mut reader, &mut doc_info, warnings)?;
+    parse_header_xml_content(&mut reader, &mut doc_info, warnings, diagnostics)?;
 
     Ok(doc_info)
 }
@@ -112,6 +120,7 @@ fn parse_header_xml_content(
     reader: &mut Reader<&[u8]>,
     doc_info: &mut DocInfo,
     warnings: &mut ParseWarnings,
+    _diagnostics: &mut DiagnosticReport,
 ) -> Result<(), HwpError> {
     let mut in_char_properties = false;
     let mut in_para_shapes = false;
@@ -327,7 +336,9 @@ fn parse_header_xml_content(
                             cs.attributes.italic = true;
                         }
                     }
-                    s if (s.ends_with(b"paraPr") || s.ends_with(b"paraShape")) && in_para_shapes => {
+                    s if (s.ends_with(b"paraPr") || s.ends_with(b"paraShape"))
+                        && in_para_shapes =>
+                    {
                         // Create new ParaShape with default values
                         current_para_shape = Some(ParaShape {
                             attributes1: ParaShapeAttributes1 {

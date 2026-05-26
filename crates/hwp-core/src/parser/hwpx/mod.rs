@@ -56,13 +56,25 @@ pub fn parse(data: &[u8]) -> Result<HwpDocument, HwpError> {
     let mut document = HwpDocument::new(file_header);
 
     // Parse document info from header.xml
-    document.doc_info = header::parse_doc_info(&mut container, &mut document.warnings)?;
+    document.doc_info = header::parse_doc_info(
+        &mut container,
+        &mut document.warnings,
+        &mut document.diagnostics,
+    )?;
 
     // Parse body text from section files
-    document.body_text = section::parse_sections(&mut container, &mut document.warnings)?;
+    document.body_text = section::parse_sections(
+        &mut container,
+        &mut document.warnings,
+        &mut document.diagnostics,
+    )?;
 
     // Parse binary data (images, etc.)
-    document.bin_data = bindata::parse_bindata(&mut container, &mut document.warnings)?;
+    document.bin_data = bindata::parse_bindata(
+        &mut container,
+        &mut document.warnings,
+        &mut document.diagnostics,
+    )?;
 
     // Parse preview text if available
     if container.file_exists("Preview/PrvText.txt") {

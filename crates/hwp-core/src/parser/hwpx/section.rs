@@ -5,6 +5,7 @@
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
+use crate::diagnostics::DiagnosticReport;
 use crate::document::bodytext::list_header::{
     LineBreak, ListHeader, ListHeaderAttribute, TextDirection, VerticalAlign,
 };
@@ -89,7 +90,11 @@ struct HyperlinkState {
 }
 
 /// Parse all section files and create BodyText
-pub fn parse_sections(container: &mut HwpxContainer, warnings: &mut ParseWarnings) -> Result<BodyText, HwpError> {
+pub fn parse_sections(
+    container: &mut HwpxContainer,
+    warnings: &mut ParseWarnings,
+    diagnostics: &mut DiagnosticReport,
+) -> Result<BodyText, HwpError> {
     let section_files = container.get_section_files();
 
     if section_files.is_empty() {
@@ -102,7 +107,7 @@ pub fn parse_sections(container: &mut HwpxContainer, warnings: &mut ParseWarning
 
     for (index, section_path) in section_files.iter().enumerate() {
         let content = container.read_file_string(section_path)?;
-        let section = parse_section_xml(&content, index as WORD, warnings)?;
+        let section = parse_section_xml(&content, index as WORD, warnings, diagnostics)?;
         sections.push(section);
     }
 
@@ -110,7 +115,12 @@ pub fn parse_sections(container: &mut HwpxContainer, warnings: &mut ParseWarning
 }
 
 /// Parse a single section XML file
-fn parse_section_xml(content: &str, index: WORD, warnings: &mut ParseWarnings) -> Result<Section, HwpError> {
+fn parse_section_xml(
+    content: &str,
+    index: WORD,
+    warnings: &mut ParseWarnings,
+    _diagnostics: &mut DiagnosticReport,
+) -> Result<Section, HwpError> {
     let mut reader = Reader::from_str(content);
     reader.config_mut().trim_text(true);
 
@@ -329,12 +339,13 @@ fn parse_section_xml(content: &str, index: WORD, warnings: &mut ParseWarnings) -
                                 match key {
                                     b"prIDRef" => {
                                         let value = String::from_utf8_lossy(&attr.value);
-                                        current_para_shape_id = value.parse().unwrap_or_else(|_| {
-                                            warnings.push(ParseWarning::warning(format!(
-                                                "Invalid paragraph prIDRef value: {value}"
-                                            )));
-                                            0
-                                        });
+                                        current_para_shape_id =
+                                            value.parse().unwrap_or_else(|_| {
+                                                warnings.push(ParseWarning::warning(format!(
+                                                    "Invalid paragraph prIDRef value: {value}"
+                                                )));
+                                                0
+                                            });
                                     }
                                     b"styleIDRef" => {
                                         let value = String::from_utf8_lossy(&attr.value);
@@ -523,7 +534,9 @@ fn parse_section_xml(content: &str, index: WORD, warnings: &mut ParseWarnings) -
                         if in_cell && !current_cell.current_text.is_empty() {
                             current_cell
                                 .content_items
-                                .push(CellContentItem::Text(std::mem::take(&mut current_cell.current_text)));
+                                .push(CellContentItem::Text(std::mem::take(
+                                    &mut current_cell.current_text,
+                                )));
                         }
                         // Add newline between nested paragraphs (e.g., in drawText/container)
                         // This ensures proper line breaks in TOC and other nested structures
@@ -891,6 +904,7 @@ fn create_image_paragraph(binary_item_ref: &str) -> Paragraph {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diagnostics::DiagnosticReport;
     use crate::document::bodytext::ParagraphRecord;
 
     /// Helper: wrap XML fragment in a minimal section envelope
@@ -903,6 +917,20 @@ mod tests {
 {body}
 </hs:sec>"#
         )
+    }
+
+    fn parse_test_section(xml: &str) -> Section {
+        parse_test_section_at(xml, 0)
+    }
+
+    fn parse_test_section_at(xml: &str, index: WORD) -> Section {
+        parse_test_section_result(xml, index).unwrap()
+    }
+
+    fn parse_test_section_result(xml: &str, index: WORD) -> Result<Section, HwpError> {
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = DiagnosticReport::default();
+        parse_section_xml(xml, index, &mut warnings, &mut diagnostics)
     }
 
     /// Helper: extract text from first ParaText record of a paragraph
@@ -940,7 +968,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs.len(), 1);
         assert_eq!(para_text(&section.paragraphs[0]), Some("Hello World"));
     }
@@ -954,7 +982,7 @@ mod tests {
             <hp:p><hp:run><hp:t>Third</hp:t></hp:run></hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs.len(), 3);
         assert_eq!(para_text(&section.paragraphs[0]), Some("First"));
         assert_eq!(para_text(&section.paragraphs[1]), Some("Second"));
@@ -964,7 +992,7 @@ mod tests {
     #[test]
     fn test_parse_empty_section() {
         let xml = wrap_section("");
-        let section = parse_section_xml(&xml, 5, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section_at(&xml, 5);
         assert_eq!(section.index, 5);
         assert!(section.paragraphs.is_empty());
     }
@@ -980,7 +1008,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs.len(), 1);
         assert_eq!(para_text(&section.paragraphs[0]), Some("BoldItalic"));
 
@@ -1019,7 +1047,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs.len(), 1);
         assert_eq!(section.paragraphs[0].para_header.para_shape_id, 3);
         assert_eq!(section.paragraphs[0].para_header.para_style_id, 2);
@@ -1034,7 +1062,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs[0].para_header.para_shape_id, 0);
         assert_eq!(section.paragraphs[0].para_header.para_style_id, 0);
     }
@@ -1057,7 +1085,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs.len(), 1);
         let text = para_text(&section.paragraphs[0]).unwrap();
         assert!(text.contains("Before"));
@@ -1079,7 +1107,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         let text = para_text(&section.paragraphs[0]).unwrap();
         assert!(text.contains("Name"));
         assert!(text.contains("100"));
@@ -1127,7 +1155,7 @@ mod tests {
             </hp:tbl>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         // Table should produce exactly one paragraph
         assert_eq!(section.paragraphs.len(), 1);
 
@@ -1180,7 +1208,7 @@ mod tests {
             </hp:tbl>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         let table = match &section.paragraphs[0].records[0] {
             ParagraphRecord::Table { table } => table,
             _ => panic!("Expected Table"),
@@ -1209,7 +1237,7 @@ mod tests {
             </hp:tbl>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         // Caption paragraph + table paragraph
         assert_eq!(section.paragraphs.len(), 2);
         assert_eq!(para_text(&section.paragraphs[0]), Some("Table Caption"));
@@ -1231,7 +1259,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         // Text paragraph + image paragraph
         assert!(section.paragraphs.len() >= 2);
 
@@ -1265,7 +1293,7 @@ mod tests {
             </hp:tbl>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         let table = match &section.paragraphs[0].records[0] {
             ParagraphRecord::Table { table } => table,
             _ => panic!("Expected Table"),
@@ -1298,7 +1326,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs.len(), 1);
 
         let runs = para_runs(&section.paragraphs[0]).unwrap();
@@ -1328,7 +1356,7 @@ mod tests {
             </hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         let runs = para_runs(&section.paragraphs[0]).unwrap();
 
         // Should have: "Visit " text + Hyperlink + " site" text
@@ -1375,7 +1403,7 @@ mod tests {
             </hp:tbl>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs.len(), 1);
 
         let outer_table = match &section.paragraphs[0].records[0] {
@@ -1414,7 +1442,7 @@ mod tests {
             <hp:p><hp:run><hp:t>After table</hp:t></hp:run></hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 0, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section(&xml);
         assert_eq!(section.paragraphs.len(), 3);
         assert_eq!(para_text(&section.paragraphs[0]), Some("Before table"));
         assert!(matches!(
@@ -1431,7 +1459,7 @@ mod tests {
             <hp:p><hp:run><hp:t>Test</hp:t></hp:run></hp:p>
         "#,
         );
-        let section = parse_section_xml(&xml, 42, &mut ParseWarnings::new()).unwrap();
+        let section = parse_test_section_at(&xml, 42);
         assert_eq!(section.index, 42);
     }
 
@@ -1441,7 +1469,7 @@ mod tests {
     fn test_parse_malformed_xml() {
         let xml = "<broken><unclosed>";
         // Should not panic, returns error or empty section
-        let result = parse_section_xml(xml, 0, &mut ParseWarnings::new());
+        let result = parse_test_section_result(xml, 0);
         // Malformed XML might still parse (quick_xml is lenient) or error
         // Either way it should not panic
         let _ = result;

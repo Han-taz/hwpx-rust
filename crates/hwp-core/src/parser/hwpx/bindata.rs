@@ -3,6 +3,7 @@
 /// BinData folder contains binary files like images, OLE objects, etc.
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
+use crate::diagnostics::DiagnosticReport;
 use crate::document::bindata::{BinData, BinaryDataItem};
 use crate::error::{HwpError, ParseWarning, ParseWarnings};
 use crate::types::WORD;
@@ -10,7 +11,11 @@ use crate::types::WORD;
 use super::container::HwpxContainer;
 
 /// Parse BinData folder and create BinData structure
-pub fn parse_bindata(container: &mut HwpxContainer, warnings: &mut ParseWarnings) -> Result<BinData, HwpError> {
+pub fn parse_bindata(
+    container: &mut HwpxContainer,
+    warnings: &mut ParseWarnings,
+    _diagnostics: &mut DiagnosticReport,
+) -> Result<BinData, HwpError> {
     let bindata_files = container.get_bindata_files();
 
     let mut items = Vec::new();
@@ -50,4 +55,3 @@ pub fn parse_bindata(container: &mut HwpxContainer, warnings: &mut ParseWarnings
 
     Ok(BinData { items })
 }
-
