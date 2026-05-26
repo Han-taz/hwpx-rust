@@ -86,6 +86,17 @@ json_str = doc.to_json()
 print(json_str)
 ```
 
+### Parser diagnostics
+
+```python
+report = doc.diagnostic_report()
+print(report["summary"])
+for item in report["items"]:
+    print(item["severity"], item["category"], item["message"])
+```
+
+`doc.warnings` remains available for string compatibility.
+
 ### Document properties
 
 ```python

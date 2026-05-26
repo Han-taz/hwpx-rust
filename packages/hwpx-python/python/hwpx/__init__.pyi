@@ -1,5 +1,5 @@
 """Type stubs for hwpx module"""
-from typing import Optional
+from typing import Any, Dict, Optional
 
 class Document:
     """HWP/HWPX Document wrapper"""
@@ -51,6 +51,15 @@ class Document:
 
         Returns:
             JSON string representation of the document structure.
+        """
+        ...
+
+    def diagnostic_report(self) -> Dict[str, Any]:
+        """
+        Return structured parser diagnostics.
+
+        Returns:
+            Dictionary with keys: items, summary.
         """
         ...
 

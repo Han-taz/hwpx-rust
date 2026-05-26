@@ -8,6 +8,7 @@ use hwp_core::viewer::markdown::{to_markdown, MarkdownOptions};
 use hwp_core::{HwpDocument, HwpParser};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::types::{PyDict, PyList};
 
 /// Format version DWORD to "M.n.P.r" string
 /// Format: 0xMMnnPPrr (e.g., 0x05000300 = "5.0.3.0")
@@ -128,7 +129,9 @@ impl Document {
         }
         let result = serde_json::to_string_pretty(&self.inner)
             .map_err(|e| PyValueError::new_err(format!("JSON serialization error: {e}")))?;
-        self.cache.borrow_mut().insert(CacheKey::Json, result.clone());
+        self.cache
+            .borrow_mut()
+            .insert(CacheKey::Json, result.clone());
         Ok(result)
     }
 
@@ -146,6 +149,55 @@ impl Document {
             .collect()
     }
 
+    /// Get structured parser diagnostics
+    ///
+    /// Returns:
+    ///     Dictionary with diagnostic items and summary
+    fn diagnostic_report<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        let report = PyDict::new_bound(py);
+        let items = PyList::empty_bound(py);
+
+        for item in &self.inner.diagnostics.items {
+            let item_dict = PyDict::new_bound(py);
+            item_dict.set_item("severity", item.severity.as_str())?;
+            item_dict.set_item("category", item.category.as_str())?;
+            item_dict.set_item("message", &item.message)?;
+
+            let context = PyDict::new_bound(py);
+            context.set_item("source", item.context.source.as_deref())?;
+            context.set_item("section_index", item.context.section_index)?;
+            context.set_item("element", item.context.element.as_deref())?;
+            context.set_item("attribute", item.context.attribute.as_deref())?;
+            context.set_item("value", item.context.value.as_deref())?;
+            context.set_item("offset", item.context.offset)?;
+            context.set_item("component", item.context.component.as_deref())?;
+            item_dict.set_item("context", context)?;
+
+            item_dict.set_item("suggestion", item.suggestion.as_deref())?;
+            items.append(item_dict)?;
+        }
+
+        let summary = self.inner.diagnostics.summary();
+        let summary_dict = PyDict::new_bound(py);
+        summary_dict.set_item("total", summary.total)?;
+
+        let by_severity = PyDict::new_bound(py);
+        for (key, value) in summary.by_severity {
+            by_severity.set_item(key, value)?;
+        }
+        summary_dict.set_item("by_severity", by_severity)?;
+
+        let by_category = PyDict::new_bound(py);
+        for (key, value) in summary.by_category {
+            by_category.set_item(key, value)?;
+        }
+        summary_dict.set_item("by_category", by_category)?;
+
+        report.set_item("items", items)?;
+        report.set_item("summary", summary_dict)?;
+        Ok(report)
+    }
+
     /// Get plain text content from the document
     fn get_text(&self) -> String {
         if let Some(cached) = self.cache.borrow().get(&CacheKey::Text) {
@@ -156,8 +208,7 @@ impl Document {
         for section in &self.inner.body_text.sections {
             for paragraph in &section.paragraphs {
                 for record in &paragraph.records {
-                    if let hwp_core::document::bodytext::ParagraphRecord::ParaText { data } =
-                        record
+                    if let hwp_core::document::bodytext::ParagraphRecord::ParaText { data } = record
                     {
                         let trimmed = data.text.trim();
                         if !trimmed.is_empty() {
@@ -171,7 +222,9 @@ impl Document {
                 }
             }
         }
-        self.cache.borrow_mut().insert(CacheKey::Text, result.clone());
+        self.cache
+            .borrow_mut()
+            .insert(CacheKey::Text, result.clone());
         result
     }
 }
