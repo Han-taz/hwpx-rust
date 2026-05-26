@@ -2397,6 +2397,9 @@ expression: json
   "scripts": null,
   "xml_template": null,
   "summary_information": null,
+  "diagnostics": {
+    "items": []
+  },
   "warnings": {
     "warnings": []
   }

@@ -53,6 +53,9 @@ pub struct HwpDocument {
     pub xml_template: Option<XmlTemplate>,
     /// Summary Information (\005HwpSummaryInformation stream)
     pub summary_information: Option<SummaryInformation>,
+    /// Structured parser diagnostics / 구조화된 파서 진단 정보
+    #[serde(default)]
+    pub diagnostics: crate::diagnostics::DiagnosticReport,
     /// 파싱 경고 모음 / Collection of parsing warnings
     #[serde(default)]
     pub warnings: crate::error::ParseWarnings,
@@ -71,6 +74,7 @@ impl HwpDocument {
             scripts: None,
             xml_template: None,
             summary_information: None,
+            diagnostics: crate::diagnostics::DiagnosticReport::default(),
             warnings: crate::error::ParseWarnings::new(),
         }
     }
@@ -762,5 +766,64 @@ impl HwpDocument {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::diagnostics::{DiagnosticCategory, DiagnosticItem, DiagnosticSeverity};
+
+    fn test_file_header() -> FileHeader {
+        FileHeader {
+            signature: "HWP Document File".to_string(),
+            version: 0x05010000,
+            document_flags: 0,
+            license_flags: 0,
+            encrypt_version: 0,
+            kogl_country: 0,
+            reserved: vec![0; 207],
+        }
+    }
+
+    #[test]
+    fn new_document_has_empty_diagnostics() {
+        let doc = HwpDocument::new(test_file_header());
+        assert!(doc.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn diagnostics_field_defaults_when_missing_from_json() {
+        let original = HwpDocument::new(test_file_header());
+        let mut value = serde_json::to_value(&original).expect("document should serialize");
+        let object = value
+            .as_object_mut()
+            .expect("document JSON should be an object");
+        object.remove("diagnostics");
+        let file_header = object
+            .get_mut("file_header")
+            .and_then(|file_header| file_header.as_object_mut())
+            .expect("file_header should be an object");
+        file_header.insert("version".to_string(), serde_json::json!(0x05010000u32));
+        file_header.insert("document_flags".to_string(), serde_json::json!(0u32));
+        file_header.insert("license_flags".to_string(), serde_json::json!(0u32));
+        file_header.insert("reserved".to_string(), serde_json::json!([]));
+
+        let doc: HwpDocument = serde_json::from_value(value).expect("old JSON should deserialize");
+        assert!(doc.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn document_json_includes_diagnostics() {
+        let mut doc = HwpDocument::new(test_file_header());
+        doc.diagnostics.push(DiagnosticItem::new(
+            DiagnosticSeverity::Unsupported,
+            DiagnosticCategory::UnsupportedElement,
+            "Unsupported element",
+        ));
+
+        let value = serde_json::to_value(&doc).expect("document should serialize");
+        assert!(value.get("diagnostics").is_some());
+        assert_eq!(value["diagnostics"]["items"][0]["severity"], "Unsupported");
     }
 }
