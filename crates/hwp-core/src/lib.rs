@@ -31,6 +31,7 @@
 
 pub mod cfb;
 pub mod decompress;
+pub mod diagnostics;
 pub mod document;
 pub mod error;
 pub mod parser;
@@ -42,6 +43,10 @@ use std::io::Cursor;
 
 pub use cfb::CfbParser;
 pub use decompress::{decompress_deflate, decompress_zlib};
+pub use diagnostics::{
+    DiagnosticCategory, DiagnosticContext, DiagnosticItem, DiagnosticReport, DiagnosticSeverity,
+    DiagnosticSummary,
+};
 pub use document::{
     BinData, BinDataRecord, BodyText, BorderFill, Bullet, CharShape, DocInfo, DocumentProperties,
     FaceName, FileHeader, HwpDocument, IdMappings, Numbering, ParaShape, Section,
