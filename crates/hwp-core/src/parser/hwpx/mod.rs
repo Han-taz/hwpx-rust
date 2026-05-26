@@ -75,9 +75,20 @@ pub fn parse(data: &[u8]) -> Result<HwpDocument, HwpError> {
         &mut document.warnings,
         &mut document.diagnostics,
     )?;
+    bindata::record_missing_referenced_bindata(
+        &document.body_text,
+        &document.bin_data,
+        &mut document.diagnostics,
+    );
 
     // Parse preview text if available
-    if container.file_exists("Preview/PrvText.txt") {
+    let has_preview_text = container.file_exists("Preview/PrvText.txt");
+    record_missing_optional_part(
+        has_preview_text,
+        "Preview/PrvText.txt",
+        &mut document.diagnostics,
+    );
+    if has_preview_text {
         if let Ok(text) = container.read_file_string("Preview/PrvText.txt") {
             document.preview_text = Some(crate::document::PreviewText { text });
         }
@@ -87,6 +98,27 @@ pub fn parse(data: &[u8]) -> Result<HwpDocument, HwpError> {
     document.resolve_display_texts();
 
     Ok(document)
+}
+
+fn record_missing_optional_part(
+    exists: bool,
+    path: &str,
+    diagnostics: &mut crate::diagnostics::DiagnosticReport,
+) {
+    if !exists {
+        diagnostics.push(
+            crate::diagnostics::DiagnosticItem::new(
+                crate::diagnostics::DiagnosticSeverity::Info,
+                crate::diagnostics::DiagnosticCategory::MissingOptionalPart,
+                format!("Optional HWPX part {path} was not found"),
+            )
+            .with_context(
+                crate::diagnostics::DiagnosticContext::new()
+                    .with_source(path)
+                    .with_component("hwpx"),
+            ),
+        );
+    }
 }
 
 #[cfg(test)]
@@ -117,5 +149,18 @@ mod tests {
         let result = parse(minimal_zip);
         // Should fail because no section files
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn missing_optional_part_records_info_diagnostic() {
+        let mut diagnostics = crate::diagnostics::DiagnosticReport::default();
+
+        record_missing_optional_part(false, "Preview/PrvText.txt", &mut diagnostics);
+
+        assert!(diagnostics.items.iter().any(|item| {
+            item.severity == crate::diagnostics::DiagnosticSeverity::Info
+                && item.category == crate::diagnostics::DiagnosticCategory::MissingOptionalPart
+                && item.context.source.as_deref() == Some("Preview/PrvText.txt")
+        }));
     }
 }

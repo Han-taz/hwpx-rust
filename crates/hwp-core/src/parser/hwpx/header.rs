@@ -5,7 +5,9 @@
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
-use crate::diagnostics::DiagnosticReport;
+use crate::diagnostics::{
+    DiagnosticCategory, DiagnosticContext, DiagnosticItem, DiagnosticReport, DiagnosticSeverity,
+};
 use crate::document::docinfo::char_shape::{
     CharShape, CharShapeAttributes, LanguageCharAttributesI8, LanguageCharAttributesU8,
     LanguageFontInfo,
@@ -120,7 +122,7 @@ fn parse_header_xml_content(
     reader: &mut Reader<&[u8]>,
     doc_info: &mut DocInfo,
     warnings: &mut ParseWarnings,
-    _diagnostics: &mut DiagnosticReport,
+    diagnostics: &mut DiagnosticReport,
 ) -> Result<(), HwpError> {
     let mut in_char_properties = false;
     let mut in_para_shapes = false;
@@ -164,6 +166,13 @@ fn parse_header_xml_content(
                                                 warnings.push(ParseWarning::warning(format!(
                                                     "Invalid charPr height value: {s}"
                                                 )));
+                                                record_header_invalid_value(
+                                                    diagnostics,
+                                                    "hh:charPr",
+                                                    "height",
+                                                    s,
+                                                    format!("Invalid charPr height value: {s}"),
+                                                );
                                             }
                                             1000
                                         });
@@ -414,6 +423,13 @@ fn parse_header_xml_content(
                                                 warnings.push(ParseWarning::warning(format!(
                                                     "Invalid margin intent value: {s}"
                                                 )));
+                                                record_header_invalid_value(
+                                                    diagnostics,
+                                                    "hc:intent",
+                                                    "value",
+                                                    s,
+                                                    format!("Invalid margin intent value: {s}"),
+                                                );
                                             }
                                             0
                                         });
@@ -435,6 +451,13 @@ fn parse_header_xml_content(
                                                 warnings.push(ParseWarning::warning(format!(
                                                     "Invalid margin left value: {s}"
                                                 )));
+                                                record_header_invalid_value(
+                                                    diagnostics,
+                                                    "hc:left",
+                                                    "value",
+                                                    s,
+                                                    format!("Invalid margin left value: {s}"),
+                                                );
                                             }
                                             0
                                         });
@@ -456,6 +479,13 @@ fn parse_header_xml_content(
                                                 warnings.push(ParseWarning::warning(format!(
                                                     "Invalid margin right value: {s}"
                                                 )));
+                                                record_header_invalid_value(
+                                                    diagnostics,
+                                                    "hc:right",
+                                                    "value",
+                                                    s,
+                                                    format!("Invalid margin right value: {s}"),
+                                                );
                                             }
                                             0
                                         });
@@ -529,4 +559,59 @@ fn parse_header_xml_content(
     }
 
     Ok(())
+}
+
+fn record_header_invalid_value(
+    diagnostics: &mut DiagnosticReport,
+    element: &str,
+    attribute: &str,
+    value: &str,
+    message: impl Into<String>,
+) {
+    diagnostics.push(
+        DiagnosticItem::new(
+            DiagnosticSeverity::RecoveredError,
+            DiagnosticCategory::InvalidValue,
+            message,
+        )
+        .with_context(
+            DiagnosticContext::new()
+                .with_source("Contents/header.xml")
+                .with_element(element)
+                .with_attribute(attribute)
+                .with_value(value)
+                .with_component("hwpx::header"),
+        ),
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::diagnostics::{DiagnosticCategory, DiagnosticReport, DiagnosticSeverity};
+
+    #[test]
+    fn invalid_char_height_records_diagnostic() {
+        let xml = r##"
+            <hh:head>
+              <hh:charProperties>
+                <hh:charPr height="huge" textColor="#000000"></hh:charPr>
+              </hh:charProperties>
+            </hh:head>
+        "##;
+        let mut reader = Reader::from_str(xml);
+        reader.config_mut().trim_text(true);
+        let mut doc_info = DocInfo::default();
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = DiagnosticReport::default();
+
+        parse_header_xml_content(&mut reader, &mut doc_info, &mut warnings, &mut diagnostics)
+            .unwrap();
+
+        assert!(diagnostics.items.iter().any(|item| {
+            item.severity == DiagnosticSeverity::RecoveredError
+                && item.category == DiagnosticCategory::InvalidValue
+                && item.context.attribute.as_deref() == Some("height")
+        }));
+    }
 }

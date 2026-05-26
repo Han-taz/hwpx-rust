@@ -5,7 +5,9 @@
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
-use crate::diagnostics::DiagnosticReport;
+use crate::diagnostics::{
+    DiagnosticCategory, DiagnosticContext, DiagnosticItem, DiagnosticReport, DiagnosticSeverity,
+};
 use crate::document::bodytext::list_header::{
     LineBreak, ListHeader, ListHeaderAttribute, TextDirection, VerticalAlign,
 };
@@ -119,10 +121,11 @@ fn parse_section_xml(
     content: &str,
     index: WORD,
     warnings: &mut ParseWarnings,
-    _diagnostics: &mut DiagnosticReport,
+    diagnostics: &mut DiagnosticReport,
 ) -> Result<Section, HwpError> {
     let mut reader = Reader::from_str(content);
     reader.config_mut().trim_text(true);
+    let section_source = format!("Contents/section{index}.xml");
 
     let mut paragraphs = Vec::with_capacity(16);
     let mut current_text = String::new();
@@ -166,6 +169,8 @@ fn parse_section_xml(
     // Stack to save parent table state when entering nested table
     // 중첩 테이블에 진입할 때 부모 테이블 상태를 저장하는 스택
     let mut table_state_stack: Vec<TableState> = Vec::new();
+    let mut unsupported_element_counts: std::collections::BTreeMap<String, usize> =
+        std::collections::BTreeMap::new();
 
     loop {
         match reader.read_event() {
@@ -189,6 +194,15 @@ fn parse_section_xml(
                                     warnings.push(ParseWarning::warning(format!(
                                         "Invalid tab leader value: {value}"
                                     )));
+                                    record_invalid_value(
+                                        diagnostics,
+                                        &section_source,
+                                        index,
+                                        "hp:tab",
+                                        "leader",
+                                        &value,
+                                        format!("Invalid tab leader value: {value}"),
+                                    );
                                     0
                                 });
                             }
@@ -198,6 +212,15 @@ fn parse_section_xml(
                                     warnings.push(ParseWarning::warning(format!(
                                         "Invalid tab width value: {value}"
                                     )));
+                                    record_invalid_value(
+                                        diagnostics,
+                                        &section_source,
+                                        index,
+                                        "hp:tab",
+                                        "width",
+                                        &value,
+                                        format!("Invalid tab width value: {value}"),
+                                    );
                                     0
                                 });
                             }
@@ -250,6 +273,15 @@ fn parse_section_xml(
                                     warnings.push(ParseWarning::warning(format!(
                                         "Invalid cellSpan colSpan value: {value}"
                                     )));
+                                    record_invalid_value(
+                                        diagnostics,
+                                        &section_source,
+                                        index,
+                                        "hp:cellSpan",
+                                        "colSpan",
+                                        &value,
+                                        format!("Invalid cellSpan colSpan value: {value}"),
+                                    );
                                     1
                                 });
                             }
@@ -259,6 +291,15 @@ fn parse_section_xml(
                                     warnings.push(ParseWarning::warning(format!(
                                         "Invalid cellSpan rowSpan value: {value}"
                                     )));
+                                    record_invalid_value(
+                                        diagnostics,
+                                        &section_source,
+                                        index,
+                                        "hp:cellSpan",
+                                        "rowSpan",
+                                        &value,
+                                        format!("Invalid cellSpan rowSpan value: {value}"),
+                                    );
                                     1
                                 });
                             }
@@ -276,6 +317,15 @@ fn parse_section_xml(
                                     warnings.push(ParseWarning::warning(format!(
                                         "Invalid cellAddr colAddr value: {value}"
                                     )));
+                                    record_invalid_value(
+                                        diagnostics,
+                                        &section_source,
+                                        index,
+                                        "hp:cellAddr",
+                                        "colAddr",
+                                        &value,
+                                        format!("Invalid cellAddr colAddr value: {value}"),
+                                    );
                                     0
                                 }));
                             }
@@ -285,6 +335,15 @@ fn parse_section_xml(
                                     warnings.push(ParseWarning::warning(format!(
                                         "Invalid cellAddr rowAddr value: {value}"
                                     )));
+                                    record_invalid_value(
+                                        diagnostics,
+                                        &section_source,
+                                        index,
+                                        "hp:cellAddr",
+                                        "rowAddr",
+                                        &value,
+                                        format!("Invalid cellAddr rowAddr value: {value}"),
+                                    );
                                     0
                                 }));
                             }
@@ -318,6 +377,10 @@ fn parse_section_xml(
                     // Reset hyperlink state
                     hyperlink_state = HyperlinkState::default();
                 }
+                if is_explicitly_unsupported_section_element(local_name) {
+                    let element = local_name_to_string(local_name);
+                    *unsupported_element_counts.entry(element).or_insert(0) += 1;
+                }
             }
             Ok(Event::Start(ref e)) => {
                 let local_name = e.name();
@@ -344,6 +407,17 @@ fn parse_section_xml(
                                                 warnings.push(ParseWarning::warning(format!(
                                                     "Invalid paragraph prIDRef value: {value}"
                                                 )));
+                                                record_invalid_value(
+                                                    diagnostics,
+                                                    &section_source,
+                                                    index,
+                                                    "hp:p",
+                                                    "prIDRef",
+                                                    &value,
+                                                    format!(
+                                                        "Invalid paragraph prIDRef value: {value}"
+                                                    ),
+                                                );
                                                 0
                                             });
                                     }
@@ -354,6 +428,17 @@ fn parse_section_xml(
                                                 warnings.push(ParseWarning::warning(format!(
                                                     "Invalid paragraph styleIDRef value: {value}"
                                                 )));
+                                                record_invalid_value(
+                                                    diagnostics,
+                                                    &section_source,
+                                                    index,
+                                                    "hp:p",
+                                                    "styleIDRef",
+                                                    &value,
+                                                    format!(
+                                                        "Invalid paragraph styleIDRef value: {value}"
+                                                    ),
+                                                );
                                                 0
                                             }) as u8;
                                     }
@@ -419,11 +504,35 @@ fn parse_section_xml(
                         // <hp:fieldBegin type="HYPERLINK" id="...">
                         in_field_begin = true;
                         let mut is_hyperlink = false;
+                        let mut field_type: Option<String> = None;
 
                         for attr in e.attributes().flatten() {
                             let key = attr.key.as_ref();
                             if key == b"type" {
-                                is_hyperlink = attr.value.as_ref() == b"HYPERLINK";
+                                let value = String::from_utf8_lossy(&attr.value).into_owned();
+                                is_hyperlink = value == "HYPERLINK";
+                                field_type = Some(value);
+                            }
+                        }
+
+                        if let Some(value) = field_type {
+                            if value != "HYPERLINK" {
+                                diagnostics.push(
+                                    DiagnosticItem::new(
+                                        DiagnosticSeverity::Unsupported,
+                                        DiagnosticCategory::UnsupportedAttribute,
+                                        format!("Unsupported HWPX fieldBegin type {value}"),
+                                    )
+                                    .with_context(
+                                        DiagnosticContext::new()
+                                            .with_source(section_source.as_str())
+                                            .with_section_index(index)
+                                            .with_element("hp:fieldBegin")
+                                            .with_attribute("type")
+                                            .with_value(value)
+                                            .with_component("hwpx::section"),
+                                    ),
+                                );
                             }
                         }
 
@@ -456,6 +565,10 @@ fn parse_section_xml(
                         }
                     }
                     _ => {}
+                }
+                if is_explicitly_unsupported_section_element(local_name) {
+                    let element = local_name_to_string(local_name);
+                    *unsupported_element_counts.entry(element).or_insert(0) += 1;
                 }
             }
             Ok(Event::Text(ref e)) => {
@@ -663,7 +776,66 @@ fn parse_section_xml(
         }
     }
 
+    for (element, count) in unsupported_element_counts {
+        diagnostics.push(
+            DiagnosticItem::new(
+                DiagnosticSeverity::Unsupported,
+                DiagnosticCategory::UnsupportedElement,
+                format!("Unsupported HWPX element {element} occurred {count} time(s)"),
+            )
+            .with_context(
+                DiagnosticContext::new()
+                    .with_source(section_source.as_str())
+                    .with_section_index(index)
+                    .with_element(element)
+                    .with_component("hwpx::section"),
+            ),
+        );
+    }
+
     Ok(Section { index, paragraphs })
+}
+
+fn record_invalid_value(
+    diagnostics: &mut DiagnosticReport,
+    source: &str,
+    section_index: WORD,
+    element: &str,
+    attribute: &str,
+    value: &str,
+    message: impl Into<String>,
+) {
+    diagnostics.push(
+        DiagnosticItem::new(
+            DiagnosticSeverity::RecoveredError,
+            DiagnosticCategory::InvalidValue,
+            message,
+        )
+        .with_context(
+            DiagnosticContext::new()
+                .with_source(source)
+                .with_section_index(section_index)
+                .with_element(element)
+                .with_attribute(attribute)
+                .with_value(value)
+                .with_component("hwpx::section"),
+        ),
+    );
+}
+
+fn local_name_to_string(name: &[u8]) -> String {
+    String::from_utf8_lossy(name).into_owned()
+}
+
+fn is_explicitly_unsupported_section_element(name: &[u8]) -> bool {
+    name.ends_with(b":chart")
+        || name == b"chart"
+        || name.ends_with(b":ole")
+        || name == b"ole"
+        || name.ends_with(b":equation")
+        || name == b"equation"
+        || name.ends_with(b":video")
+        || name == b"video"
 }
 
 /// Create a paragraph from text content
@@ -1070,6 +1242,89 @@ mod tests {
     // ===== Tab tests =====
 
     #[test]
+    fn invalid_tab_width_records_diagnostic() {
+        let xml = r#"
+            <hp:sec>
+              <hp:p>
+                <hp:run>
+                  <hp:tab width="wide" leader="bad"/>
+                </hp:run>
+              </hp:p>
+            </hp:sec>
+        "#;
+
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = crate::diagnostics::DiagnosticReport::default();
+        let section = parse_section_xml(xml, 0, &mut warnings, &mut diagnostics).unwrap();
+
+        assert_eq!(section.paragraphs.len(), 1);
+        let summary = diagnostics.summary();
+        assert_eq!(summary.by_severity.get("RecoveredError"), Some(&2));
+        assert_eq!(summary.by_category.get("InvalidValue"), Some(&2));
+        assert!(diagnostics
+            .items
+            .iter()
+            .any(|item| item.context.attribute.as_deref() == Some("width")));
+        assert!(diagnostics
+            .items
+            .iter()
+            .any(|item| item.context.attribute.as_deref() == Some("leader")));
+    }
+
+    #[test]
+    fn unsupported_section_element_records_diagnostic() {
+        let xml = r#"
+            <hp:sec>
+              <hp:p>
+                <hp:run>
+                  <hp:chart id="chart1"/>
+                </hp:run>
+              </hp:p>
+            </hp:sec>
+        "#;
+
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = crate::diagnostics::DiagnosticReport::default();
+        let _section = parse_section_xml(xml, 3, &mut warnings, &mut diagnostics).unwrap();
+
+        assert!(diagnostics.items.iter().any(|item| {
+            item.severity == crate::diagnostics::DiagnosticSeverity::Unsupported
+                && item.category == crate::diagnostics::DiagnosticCategory::UnsupportedElement
+                && item.context.section_index == Some(3)
+                && item.context.element.as_deref() == Some("hp:chart")
+        }));
+    }
+
+    #[test]
+    fn unsupported_field_type_records_diagnostic() {
+        let xml = r#"
+            <hp:sec>
+              <hp:p>
+                <hp:run>
+                  <hp:fieldBegin type="DATE" id="0">
+                    <hp:parameters></hp:parameters>
+                  </hp:fieldBegin>
+                  <hp:t>2026-05-26</hp:t>
+                  <hp:fieldEnd beginIDRef="0"/>
+                </hp:run>
+              </hp:p>
+            </hp:sec>
+        "#;
+
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = crate::diagnostics::DiagnosticReport::default();
+        let _section = parse_section_xml(xml, 1, &mut warnings, &mut diagnostics).unwrap();
+
+        assert!(diagnostics.items.iter().any(|item| {
+            item.severity == crate::diagnostics::DiagnosticSeverity::Unsupported
+                && item.category == crate::diagnostics::DiagnosticCategory::UnsupportedAttribute
+                && item.context.element.as_deref() == Some("hp:fieldBegin")
+                && item.context.attribute.as_deref() == Some("type")
+                && item.context.value.as_deref() == Some("DATE")
+        }));
+    }
+
+    #[test]
     fn test_parse_tab_element() {
         // Tab text goes into current_text only (not runs).
         // When runs exist, the paragraph is built from runs — so tab is not in the final text.
@@ -1114,6 +1369,47 @@ mod tests {
     }
 
     // ===== Table tests =====
+
+    #[test]
+    fn invalid_cell_addr_records_diagnostics() {
+        let xml = r#"
+            <hp:sec>
+              <hp:tbl>
+                <hp:tr>
+                  <hp:tc>
+                    <hp:cellAddr colAddr="left" rowAddr="top"/>
+                    <hp:cellSpan colSpan="1" rowSpan="1"/>
+                    <hp:subList>
+                      <hp:p><hp:run><hp:t>Cell</hp:t></hp:run></hp:p>
+                    </hp:subList>
+                  </hp:tc>
+                </hp:tr>
+              </hp:tbl>
+            </hp:sec>
+        "#;
+
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = crate::diagnostics::DiagnosticReport::default();
+        let _section = parse_section_xml(xml, 0, &mut warnings, &mut diagnostics).unwrap();
+
+        let matching: Vec<_> = diagnostics
+            .items
+            .iter()
+            .filter(|item| {
+                item.severity == crate::diagnostics::DiagnosticSeverity::RecoveredError
+                    && item.category == crate::diagnostics::DiagnosticCategory::InvalidValue
+                    && item.context.element.as_deref() == Some("hp:cellAddr")
+            })
+            .collect();
+
+        assert_eq!(matching.len(), 2);
+        assert!(matching
+            .iter()
+            .any(|item| item.context.attribute.as_deref() == Some("colAddr")));
+        assert!(matching
+            .iter()
+            .any(|item| item.context.attribute.as_deref() == Some("rowAddr")));
+    }
 
     #[test]
     fn test_parse_simple_table() {
