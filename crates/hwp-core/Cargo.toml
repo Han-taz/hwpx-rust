@@ -5,7 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Core HWP file parsing library"
-repository = "https://github.com/ohah/hwpjs"
+repository = "https://github.com/Han-taz/hwpx-rust"
 
 [lib]
 name = "hwp_core"

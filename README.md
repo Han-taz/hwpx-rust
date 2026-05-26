@@ -10,6 +10,11 @@
 - **HWP 5.0**: 바이너리 형식 (Compound File Binary Format)
 - **HWPX**: XML 기반 형식 (OWPML 표준, KS X 6101)
 
+| Format | Status | Notes |
+| ------ | ------ | ----- |
+| HWP 5.0 | Maintained / frozen | Existing parser support is kept, but new feature work focuses on HWPX. |
+| HWPX | Active | Primary target for parser reliability and diagnostics improvements. |
+
 ## 프로젝트 구조
 
 ```
@@ -74,6 +79,12 @@ hwp-rs/
 - 텍스트 추출
 - 이미지 추출 (PNG, JPEG, BMP, GIF, WebP, TIFF 지원)
 - 파싱 경고 시스템 (`ParseWarnings`)
+
+## Diagnostics
+
+The parser exposes both legacy string warnings and structured diagnostics. Diagnostics
+identify unsupported elements, recovered invalid values, skipped binary assets, and
+likely data loss so conversion problems are visible instead of silently ignored.
 
 ## Python 사용법
 
@@ -160,14 +171,14 @@ maturin build --release
 ### 테스트
 
 ```bash
-# 전체 테스트
+# CI와 동일한 로컬 검사
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
+cargo audit
 
 # 스냅샷 테스트 업데이트
 cargo insta accept --workspace
-
-# Clippy 린트
-cargo clippy --all-targets --all-features
 ```
 
 ## 참고 프로젝트
