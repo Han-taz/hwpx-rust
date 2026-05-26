@@ -30,9 +30,7 @@ pub fn process_paragraph<R: Renderer>(
     // Process all records in order / 모든 레코드를 순서대로 처리
     for record in &paragraph.records {
         match record {
-            ParagraphRecord::ParaText {
-                data,
-            } => {
+            ParagraphRecord::ParaText { data } => {
                 // ParaText 처리 / Process ParaText
                 // TODO: 글자 모양 적용 로직 구현 (렌더러별로 다름)
                 // Character shape application logic (varies by renderer)
@@ -60,9 +58,7 @@ pub fn process_paragraph<R: Renderer>(
                     parts.push(table_content);
                 }
             }
-            ParagraphRecord::CtrlHeader {
-                data,
-            } => {
+            ParagraphRecord::CtrlHeader { data } => {
                 // 컨트롤 헤더 처리 / Process control header
                 process_ctrl_header(
                     &data.header,

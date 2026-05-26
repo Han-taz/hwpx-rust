@@ -31,9 +31,8 @@ fn test_parse_new_hwpx_file() {
 
                 for (i, para) in section.paragraphs.iter().take(50).enumerate() {
                     for record in &para.records {
-                        if let hwp_core::document::bodytext::ParagraphRecord::ParaText {
-                            data,
-                        } = record
+                        if let hwp_core::document::bodytext::ParagraphRecord::ParaText { data } =
+                            record
                         {
                             if !data.text.trim().is_empty() {
                                 println!("[{i}] {}", data.text.trim());

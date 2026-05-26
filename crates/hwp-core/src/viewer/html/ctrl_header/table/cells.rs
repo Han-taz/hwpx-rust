@@ -65,9 +65,7 @@ pub(crate) fn render_cells(
                     }
 
                     // 중첩된 ShapeComponent: 재귀적으로 탐색
-                    ParagraphRecord::ShapeComponent {
-                        data: sc_data,
-                    } => {
+                    ParagraphRecord::ShapeComponent { data: sc_data } => {
                         let shape_component = &sc_data.shape_component;
                         let nested_children = &sc_data.children;
                         if let Some(height) =
@@ -140,12 +138,11 @@ pub(crate) fn render_cells(
             // ShapeComponent의 children에서 모든 shape 높이 찾기 (재귀적으로) / Find all shape heights in ShapeComponent's children (recursively)
             for record in &para.records {
                 match record {
-                    ParagraphRecord::ShapeComponent {
-                        data: sc_data,
-                    } => {
-                        if let Some(shape_height_mm) =
-                            find_shape_component_height(&sc_data.children, sc_data.shape_component.height)
-                        {
+                    ParagraphRecord::ShapeComponent { data: sc_data } => {
+                        if let Some(shape_height_mm) = find_shape_component_height(
+                            &sc_data.children,
+                            sc_data.shape_component.height,
+                        ) {
                             if max_shape_height_mm.is_none()
                                 || max_shape_height_mm.map_or(true, |h| shape_height_mm > h)
                             {
@@ -344,9 +341,7 @@ pub(crate) fn render_cells(
                                 }
                             }
                         }
-                        ParagraphRecord::ShapeComponent {
-                            data: sc_data,
-                        } => {
+                        ParagraphRecord::ShapeComponent { data: sc_data } => {
                             // 중첩된 ShapeComponent 재귀적으로 탐색 / Recursively search nested ShapeComponent
                             collect_images_from_shape_component(
                                 &sc_data.children,
@@ -376,9 +371,7 @@ pub(crate) fn render_cells(
 
             for record in &para.records {
                 match record {
-                    ParagraphRecord::ShapeComponent {
-                        data: sc_data,
-                    } => {
+                    ParagraphRecord::ShapeComponent { data: sc_data } => {
                         // ShapeComponent의 children에서 이미지 찾기 (재귀적으로) / Find images in ShapeComponent's children (recursively)
                         collect_images_from_shape_component(
                             &sc_data.children,
@@ -390,9 +383,7 @@ pub(crate) fn render_cells(
                             &mut images,
                         );
                     }
-                    ParagraphRecord::CtrlHeader {
-                        data: ch_data,
-                    } => {
+                    ParagraphRecord::CtrlHeader { data: ch_data } => {
                         // CtrlHeader 처리 (그림 개체 등) / Process CtrlHeader (shape objects, etc.)
                         // process_ctrl_header를 호출하여 이미지 수집 (paragraph.rs와 동일한 방식) / Call process_ctrl_header to collect images (same way as paragraph.rs)
                         // children이 비어있으면 cell.paragraphs도 확인 / If children is empty, also check cell.paragraphs
@@ -496,10 +487,7 @@ pub(crate) fn render_cells(
                     // ParaText의 control_char_positions 수집 (원본 WCHAR 인덱스 기준)
                     let mut control_char_positions = Vec::new();
                     for record in &para.records {
-                        if let ParagraphRecord::ParaText {
-                            data: pt_data,
-                        } = record
-                        {
+                        if let ParagraphRecord::ParaText { data: pt_data } = record {
                             control_char_positions = pt_data.control_char_positions.clone();
                             break;
                         }

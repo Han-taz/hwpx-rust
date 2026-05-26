@@ -79,10 +79,7 @@ pub fn render_paragraph(
     // ParaText의 control_char_positions 수집 (원본 WCHAR 인덱스 기준) / Collect control_char_positions (based on original WCHAR indices)
     let mut control_char_positions = Vec::new();
     for record in &paragraph.records {
-        if let ParagraphRecord::ParaText {
-            data,
-        } = record
-        {
+        if let ParagraphRecord::ParaText { data } = record {
             control_char_positions = data.control_char_positions.clone();
             break;
         }
@@ -105,10 +102,7 @@ pub fn render_paragraph(
     // Collect SHAPE_OBJECT anchor positions from ParaText control_char_positions
     let mut shape_object_anchor_positions: Vec<usize> = Vec::new();
     for record in &paragraph.records {
-        if let ParagraphRecord::ParaText {
-            data,
-        } = record
-        {
+        if let ParagraphRecord::ParaText { data } = record {
             for pos in data.control_char_positions.iter() {
                 if pos.code == ControlChar::SHAPE_OBJECT {
                     shape_object_anchor_positions.push(pos.position);
@@ -120,9 +114,7 @@ pub fn render_paragraph(
 
     for record in &paragraph.records {
         match record {
-            ParagraphRecord::ShapeComponent {
-                data: sc_data,
-            } => {
+            ParagraphRecord::ShapeComponent { data: sc_data } => {
                 // ShapeComponent의 children에서 이미지 찾기 / Find images in ShapeComponent's children
                 let shape_component = &sc_data.shape_component;
                 for child in &sc_data.children {
@@ -199,12 +191,15 @@ pub fn render_paragraph(
                     caption: None,
                 });
             }
-            ParagraphRecord::CtrlHeader {
-                data: ch_data,
-            } => {
+            ParagraphRecord::CtrlHeader { data: ch_data } => {
                 // CtrlHeader 처리 / Process CtrlHeader
                 let ctrl_result = ctrl_header::process_ctrl_header(
-                    &ch_data.header, &ch_data.children, &ch_data.paragraphs, document, options, bindata_index,
+                    &ch_data.header,
+                    &ch_data.children,
+                    &ch_data.paragraphs,
+                    document,
+                    options,
+                    bindata_index,
                 );
                 // SHAPE_OBJECT(11)는 "표/그리기 개체" 공통 제어문자이므로, ctrl_id가 "tbl "인 경우에만
                 // ParaText의 SHAPE_OBJECT 위치를 순서대로 매칭하여 anchor를 부여합니다.

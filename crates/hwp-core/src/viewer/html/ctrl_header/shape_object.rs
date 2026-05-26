@@ -35,10 +35,7 @@ pub fn process_shape_object<'a>(
 
     // children에서 찾기 / Search in children
     for record in children {
-        if let ParagraphRecord::ShapeComponent {
-            data: sc_data,
-        } = record
-        {
+        if let ParagraphRecord::ShapeComponent { data: sc_data } = record {
             initial_width = Some(sc_data.shape_component.width);
             initial_height = Some(sc_data.shape_component.height);
             break;
@@ -50,21 +47,15 @@ pub fn process_shape_object<'a>(
         for para in paragraphs {
             for record in &para.records {
                 match record {
-                    ParagraphRecord::ShapeComponent {
-                        data: sc_data,
-                    } => {
+                    ParagraphRecord::ShapeComponent { data: sc_data } => {
                         initial_width = Some(sc_data.shape_component.width);
                         initial_height = Some(sc_data.shape_component.height);
                         break;
                     }
-                    ParagraphRecord::CtrlHeader {
-                        data: ch_data,
-                    } => {
+                    ParagraphRecord::CtrlHeader { data: ch_data } => {
                         // 중첩된 CtrlHeader의 children에서도 찾기 / Also search in nested CtrlHeader's children
                         for nested_record in &ch_data.children {
-                            if let ParagraphRecord::ShapeComponent {
-                                data: sc_data,
-                            } = nested_record
+                            if let ParagraphRecord::ShapeComponent { data: sc_data } = nested_record
                             {
                                 initial_width = Some(sc_data.shape_component.width);
                                 initial_height = Some(sc_data.shape_component.height);
@@ -169,9 +160,7 @@ fn collect_images_from_records(
                     }
                 }
             }
-            ParagraphRecord::ShapeComponent {
-                data: sc_data,
-            } => {
+            ParagraphRecord::ShapeComponent { data: sc_data } => {
                 // 재귀적으로 children에서 이미지 찾기 (shape_component.width/height 전달)
                 collect_images_from_records(
                     &sc_data.children,

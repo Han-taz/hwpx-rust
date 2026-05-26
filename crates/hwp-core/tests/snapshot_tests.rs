@@ -1289,10 +1289,7 @@ fn test_footnote_endnote_debug() {
                     paragraph.para_header.control_mask.has_footnote_endnote()
                 );
                 for record in &paragraph.records {
-                    if let ParagraphRecord::CtrlHeader {
-                        data: ch_data,
-                    } = record
-                    {
+                    if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
                         let header = &ch_data.header;
                         let children = &ch_data.children;
                         let paragraphs = &ch_data.paragraphs;
@@ -1312,10 +1309,7 @@ fn test_footnote_endnote_debug() {
                                 number, children.len(), paragraphs.len()
                             );
                             for child in children {
-                                if let ParagraphRecord::ListHeader {
-                                    data: lh_data,
-                                } = child
-                                {
+                                if let ParagraphRecord::ListHeader { data: lh_data } = child {
                                     eprintln!(
                                         "[TEST] FOOTNOTE ListHeader: paragraphs_count={}",
                                         lh_data.paragraphs.len()
@@ -1349,10 +1343,7 @@ fn test_footnote_endnote_debug() {
                                 number, children.len(), paragraphs.len()
                             );
                             for child in children {
-                                if let ParagraphRecord::ListHeader {
-                                    data: lh_data,
-                                } = child
-                                {
+                                if let ParagraphRecord::ListHeader { data: lh_data } = child {
                                     eprintln!(
                                         "[TEST] ENDNOTE ListHeader: paragraphs_count={}",
                                         lh_data.paragraphs.len()

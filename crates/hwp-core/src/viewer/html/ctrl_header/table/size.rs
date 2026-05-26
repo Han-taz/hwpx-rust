@@ -87,9 +87,7 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
                                 }
 
                                 // 중첩된 ShapeComponent: 재귀적으로 탐색
-                                ParagraphRecord::ShapeComponent {
-                                    data: sc_data,
-                                } => {
+                                ParagraphRecord::ShapeComponent { data: sc_data } => {
                                     let shape_component = &sc_data.shape_component;
                                     let nested_children = &sc_data.children;
                                     if let Some(height) = find_shape_component_height(
@@ -142,9 +140,7 @@ pub(crate) fn content_size(table: &Table, ctrl_header: Option<&CtrlHeaderData>) 
                         // ShapeComponent의 children에서 모든 shape 높이 찾기 (재귀적으로) / Find all shape heights in ShapeComponent's children (recursively)
                         for record in &para.records {
                             match record {
-                                ParagraphRecord::ShapeComponent {
-                                    data: sc_data,
-                                } => {
+                                ParagraphRecord::ShapeComponent { data: sc_data } => {
                                     if let Some(shape_height_mm) = find_shape_component_height(
                                         &sc_data.children,
                                         sc_data.shape_component.height,

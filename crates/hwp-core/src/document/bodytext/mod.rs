@@ -832,14 +832,12 @@ impl Section {
                         let list_header_record =
                             Self::parse_record_from_tree(child, version, original_data)?;
                         // 테이블 셀로 처리하기 위해 paragraphs 추출 / Extract paragraphs for table cell processing
-                        let paragraphs_for_cell = if let ParagraphRecord::ListHeader {
-                            data,
-                        } = &list_header_record
-                        {
-                            data.paragraphs.clone()
-                        } else {
-                            Vec::new()
-                        };
+                        let paragraphs_for_cell =
+                            if let ParagraphRecord::ListHeader { data } = &list_header_record {
+                                data.paragraphs.clone()
+                            } else {
+                                Vec::new()
+                            };
 
                         // libhwp 방식: TABLE 이전/이후의 LIST_HEADER 모두 children에 추가하지 않음
                         // libhwp approach: Don't add LIST_HEADERs (before or after TABLE) to children
@@ -1318,13 +1316,13 @@ impl Section {
                                                             original_data,
                                                         )?;
                                                     // 디버그: ListHeader 내부의 ParaText 확인 / Debug: Check ParaText inside ListHeader
-                                                    if let ParagraphRecord::ParaText {
-                                                        data,
-                                                    } = &parsed_record
+                                                    if let ParagraphRecord::ParaText { data } =
+                                                        &parsed_record
                                                     {
                                                         #[cfg(debug_assertions)]
                                                         eprintln!(
-                                                            "[DEBUG] ListHeader ParaText: {}", data.text
+                                                            "[DEBUG] ListHeader ParaText: {}",
+                                                            data.text
                                                         );
                                                     }
                                                     para_records.push(parsed_record);
@@ -1450,13 +1448,11 @@ impl Section {
                         // 찾은 PARA_HEADER들을 LIST_HEADER의 paragraphs에 추가
                         // Add found PARA_HEADERs to LIST_HEADER's paragraphs
                         if !para_headers_found.is_empty() {
-                            if let ParagraphRecord::ListHeader {
-                                mut data,
-                            } = list_header_with_paragraphs
+                            if let ParagraphRecord::ListHeader { mut data } =
+                                list_header_with_paragraphs
                             {
                                 data.paragraphs.extend(para_headers_found);
-                                list_header_with_paragraphs =
-                                    ParagraphRecord::ListHeader { data };
+                                list_header_with_paragraphs = ParagraphRecord::ListHeader { data };
 
                                 // 처리한 PARA_HEADER들만큼 index 건너뛰기
                                 // Skip processed PARA_HEADERs

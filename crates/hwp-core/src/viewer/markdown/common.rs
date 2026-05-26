@@ -15,7 +15,13 @@ pub(crate) fn format_image_markdown(
     base64_data: &str,
     image_output_dir: Option<&str>,
 ) -> String {
-    format_image_markdown_with_alt(bindata_index, bindata_id, base64_data, image_output_dir, "image")
+    format_image_markdown_with_alt(
+        bindata_index,
+        bindata_id,
+        base64_data,
+        image_output_dir,
+        "image",
+    )
 }
 
 /// Format image markdown with custom alt text

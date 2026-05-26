@@ -315,4 +315,3 @@ fn parse_table_attribute(value: UINT32) -> TableAttribute {
         header_row_repeat,
     }
 }
-

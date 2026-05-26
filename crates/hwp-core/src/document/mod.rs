@@ -498,9 +498,7 @@ impl HwpDocument {
             _formula_no: &mut u32,
         ) {
             match record {
-                ParagraphRecord::CtrlHeader {
-                    data,
-                } => {
+                ParagraphRecord::CtrlHeader { data } => {
                     // Footnote/endnote ctrl headers ("fn  " / "en  "): assign number to all AUTO_NUMBER tokens in this subtree.
                     if data.header.ctrl_id == "fn  " || data.header.ctrl_id == "en  " {
                         let current = if data.header.ctrl_id == "fn  " {
@@ -529,9 +527,7 @@ impl HwpDocument {
                                             }
                                         }
                                     }
-                                    ParagraphRecord::CtrlHeader {
-                                        data,
-                                    } => {
+                                    ParagraphRecord::CtrlHeader { data } => {
                                         fill_auto_numbers_in_records(&mut data.children, value);
                                         for p in data.paragraphs.iter_mut() {
                                             fill_auto_numbers_in_records(&mut p.records, value);

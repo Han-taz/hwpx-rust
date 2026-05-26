@@ -1,8 +1,6 @@
 /// 텍스트 렌더링 모듈 / Text rendering module
 use crate::document::{
-    bodytext::{
-        CharShapeInfo, ParaTextRun, ParagraphRecord,
-    },
+    bodytext::{CharShapeInfo, ParaTextRun, ParagraphRecord},
     HwpDocument,
 };
 
@@ -119,17 +117,37 @@ pub fn render_text(
             let subscript = char_shape.attributes.subscript;
             let styled_text = if italic || underline || strikethrough || superscript || subscript {
                 let mut buf = String::with_capacity(text_for_styling.len() + 40);
-                if italic { buf.push_str("<em>"); }
-                if underline { buf.push_str("<u>"); }
-                if strikethrough { buf.push_str("<s>"); }
-                if superscript { buf.push_str("<sup>"); }
-                if subscript { buf.push_str("<sub>"); }
+                if italic {
+                    buf.push_str("<em>");
+                }
+                if underline {
+                    buf.push_str("<u>");
+                }
+                if strikethrough {
+                    buf.push_str("<s>");
+                }
+                if superscript {
+                    buf.push_str("<sup>");
+                }
+                if subscript {
+                    buf.push_str("<sub>");
+                }
                 buf.push_str(&text_for_styling);
-                if subscript { buf.push_str("</sub>"); }
-                if superscript { buf.push_str("</sup>"); }
-                if strikethrough { buf.push_str("</s>"); }
-                if underline { buf.push_str("</u>"); }
-                if italic { buf.push_str("</em>"); }
+                if subscript {
+                    buf.push_str("</sub>");
+                }
+                if superscript {
+                    buf.push_str("</sup>");
+                }
+                if strikethrough {
+                    buf.push_str("</s>");
+                }
+                if underline {
+                    buf.push_str("</u>");
+                }
+                if italic {
+                    buf.push_str("</em>");
+                }
                 buf
             } else {
                 text_for_styling
@@ -217,23 +235,44 @@ pub fn render_text_runs(runs: &[ParaTextRun], document: &HwpDocument) -> String 
                     let strikethrough = char_shape.attributes.strikethrough > 0;
                     let superscript = char_shape.attributes.superscript;
                     let subscript = char_shape.attributes.subscript;
-                    let styled_text = if italic || underline || strikethrough || superscript || subscript {
-                        let mut buf = String::with_capacity(text_for_styling.len() + 40);
-                        if italic { buf.push_str("<em>"); }
-                        if underline { buf.push_str("<u>"); }
-                        if strikethrough { buf.push_str("<s>"); }
-                        if superscript { buf.push_str("<sup>"); }
-                        if subscript { buf.push_str("<sub>"); }
-                        buf.push_str(&text_for_styling);
-                        if subscript { buf.push_str("</sub>"); }
-                        if superscript { buf.push_str("</sup>"); }
-                        if strikethrough { buf.push_str("</s>"); }
-                        if underline { buf.push_str("</u>"); }
-                        if italic { buf.push_str("</em>"); }
-                        buf
-                    } else {
-                        text_for_styling
-                    };
+                    let styled_text =
+                        if italic || underline || strikethrough || superscript || subscript {
+                            let mut buf = String::with_capacity(text_for_styling.len() + 40);
+                            if italic {
+                                buf.push_str("<em>");
+                            }
+                            if underline {
+                                buf.push_str("<u>");
+                            }
+                            if strikethrough {
+                                buf.push_str("<s>");
+                            }
+                            if superscript {
+                                buf.push_str("<sup>");
+                            }
+                            if subscript {
+                                buf.push_str("<sub>");
+                            }
+                            buf.push_str(&text_for_styling);
+                            if subscript {
+                                buf.push_str("</sub>");
+                            }
+                            if superscript {
+                                buf.push_str("</sup>");
+                            }
+                            if strikethrough {
+                                buf.push_str("</s>");
+                            }
+                            if underline {
+                                buf.push_str("</u>");
+                            }
+                            if italic {
+                                buf.push_str("</em>");
+                            }
+                            buf
+                        } else {
+                            text_for_styling
+                        };
 
                     // span으로 래핑 / Wrap with span
                     if !inline_style.is_empty() {
@@ -336,9 +375,7 @@ pub fn extract_text_and_shapes(
 
     for record in &paragraph.records {
         match record {
-            ParagraphRecord::ParaText {
-                data,
-            } => {
+            ParagraphRecord::ParaText { data } => {
                 text.push_str(&data.text);
             }
             ParagraphRecord::ParaCharShape { shapes } => {
@@ -373,4 +410,3 @@ pub fn runs_have_char_shape_id(runs: &[ParaTextRun]) -> bool {
         )
     })
 }
-

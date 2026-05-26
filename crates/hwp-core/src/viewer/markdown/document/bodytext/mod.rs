@@ -68,10 +68,7 @@ pub fn convert_bodytext_to_markdown(
             // control_mask로 필터링하여 불필요한 순회 방지 / Filter with control_mask to avoid unnecessary iteration
             if has_header_footer || has_footnote_endnote {
                 for record in &paragraph_item.records {
-                    if let ParagraphRecord::CtrlHeader {
-                        data: ch_data,
-                    } = record
-                    {
+                    if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
                         use crate::document::CtrlId;
                         let header = &ch_data.header;
                         let children = &ch_data.children;

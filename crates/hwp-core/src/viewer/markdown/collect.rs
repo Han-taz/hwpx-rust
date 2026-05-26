@@ -46,9 +46,7 @@ pub fn collect_text_and_images_from_paragraph(
                     }
                 }
             }
-            ParagraphRecord::CtrlHeader {
-                data: ch_data,
-            } => {
+            ParagraphRecord::CtrlHeader { data: ch_data } => {
                 // CTRL_HEADER 내부의 paragraphs도 재귀적으로 확인 / Recursively check paragraphs inside CTRL_HEADER
                 for ctrl_para in &ch_data.paragraphs {
                     collect_text_and_images_from_paragraph(

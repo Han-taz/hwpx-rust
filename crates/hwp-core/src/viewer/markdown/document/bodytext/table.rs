@@ -7,12 +7,16 @@ use crate::document::{bodytext::Table, HwpDocument, ParagraphRecord};
 use crate::viewer::shared::BinDataIndex;
 
 /// Sort table cells by (row_address, col_address) — shared helper to avoid duplication
-fn sort_cells(cells: &[crate::document::bodytext::TableCell]) -> Vec<&crate::document::bodytext::TableCell> {
+fn sort_cells(
+    cells: &[crate::document::bodytext::TableCell],
+) -> Vec<&crate::document::bodytext::TableCell> {
     let mut sorted: Vec<_> = cells.iter().collect();
-    sorted.sort_by_key(|cell| (
-        cell.cell_attributes.row_address,
-        cell.cell_attributes.col_address,
-    ));
+    sorted.sort_by_key(|cell| {
+        (
+            cell.cell_attributes.row_address,
+            cell.cell_attributes.col_address,
+        )
+    });
     sorted
 }
 
@@ -57,7 +61,8 @@ fn convert_nested_table_to_text(
         let mut cell_texts = Vec::new();
         for cell in &row_cells {
             // 셀 내용 추출 (재귀적으로 중첩 테이블도 처리)
-            let cell_text = get_nested_cell_content(cell, document, bindata_index, options, tracker);
+            let cell_text =
+                get_nested_cell_content(cell, document, bindata_index, options, tracker);
             if !cell_text.trim().is_empty() {
                 cell_texts.push(cell_text);
             }
@@ -95,8 +100,13 @@ fn get_nested_cell_content(
                 }
                 ParagraphRecord::Table { table } => {
                     // 재귀적으로 중첩 테이블 처리
-                    let nested =
-                        convert_nested_table_to_text(table, document, bindata_index, options, tracker);
+                    let nested = convert_nested_table_to_text(
+                        table,
+                        document,
+                        bindata_index,
+                        options,
+                        tracker,
+                    );
                     if !nested.trim().is_empty() {
                         parts.push(nested);
                     }
@@ -333,7 +343,16 @@ fn convert_table_to_markdown_simple(
 
             if col < col_count {
                 fill_cell_content(
-                    &mut grid, cell, row, col, row_count, col_count, document, bindata_index, options, tracker,
+                    &mut grid,
+                    cell,
+                    row,
+                    col,
+                    row_count,
+                    col_count,
+                    document,
+                    bindata_index,
+                    options,
+                    tracker,
                 );
             }
         }
@@ -344,7 +363,16 @@ fn convert_table_to_markdown_simple(
 
             if row < row_count && col < col_count {
                 fill_cell_content(
-                    &mut grid, cell, row, col, row_count, col_count, document, bindata_index, options, tracker,
+                    &mut grid,
+                    cell,
+                    row,
+                    col,
+                    row_count,
+                    col_count,
+                    document,
+                    bindata_index,
+                    options,
+                    tracker,
                 );
             }
         }
@@ -503,9 +531,7 @@ fn fill_cell_content(
 
         for record in &para.records {
             match record {
-                ParagraphRecord::ParaText {
-                    data: pt_data,
-                } => {
+                ParagraphRecord::ParaText { data: pt_data } => {
                     para_text_records.push((&pt_data.text, &pt_data.control_char_positions));
                 }
                 _ => {
@@ -535,7 +561,8 @@ fn fill_cell_content(
 
                 // 바이트 오프셋 사전 계산 — chars().skip().take()의 O(T*B) 패턴을 O(T+B)로 개선
                 // Pre-compute byte offsets — improves O(T*B) chars().skip().take() to O(T+B)
-                let byte_offsets: Vec<usize> = text.char_indices()
+                let byte_offsets: Vec<usize> = text
+                    .char_indices()
                     .map(|(i, _)| i)
                     .chain(std::iter::once(text.len()))
                     .collect();
@@ -556,7 +583,8 @@ fn fill_cell_content(
                     // position is character index; use pre-computed byte offsets for O(1) slicing
                     if pos.position > last_char_pos && pos.position <= char_count {
                         // 바이트 오프셋으로 텍스트 슬라이싱 / Slice text using byte offsets
-                        let text_before = &text[byte_offsets[last_char_pos]..byte_offsets[pos.position]];
+                        let text_before =
+                            &text[byte_offsets[last_char_pos]..byte_offsets[pos.position]];
                         // trim() 없이 그대로 추가 (정확한 위치 유지) / Add as-is without trim (maintain exact position)
                         para_text_result.push_str(text_before);
                     }
@@ -616,9 +644,7 @@ fn fill_cell_content(
                             has_image = true;
                         }
                     }
-                    ParagraphRecord::ShapeComponent {
-                        data: sc_data,
-                    } => {
+                    ParagraphRecord::ShapeComponent { data: sc_data } => {
                         // SHAPE_COMPONENT의 children을 재귀적으로 처리 / Recursively process SHAPE_COMPONENT's children
                         let shape_parts =
                             crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown(
@@ -653,15 +679,25 @@ fn fill_cell_content(
                         // 중첩 테이블 처리 / Handle nested table
                         if options.use_html == Some(true) {
                             // HTML 모드: 중첩 테이블을 HTML로 렌더링 (재귀)
-                            let nested_table_html =
-                                convert_table_to_html(table, document, bindata_index, options, tracker);
+                            let nested_table_html = convert_table_to_html(
+                                table,
+                                document,
+                                bindata_index,
+                                options,
+                                tracker,
+                            );
                             if !nested_table_html.trim().is_empty() {
                                 cell_parts.push(nested_table_html);
                             }
                         } else {
                             // 마크다운 모드: 텍스트로 변환 (마크다운은 중첩 테이블 미지원)
-                            let nested_table_content =
-                                convert_nested_table_to_text(table, document, bindata_index, options, tracker);
+                            let nested_table_content = convert_nested_table_to_text(
+                                table,
+                                document,
+                                bindata_index,
+                                options,
+                                tracker,
+                            );
                             if !nested_table_content.trim().is_empty() {
                                 cell_parts.push(nested_table_content);
                             }

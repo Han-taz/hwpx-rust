@@ -160,15 +160,13 @@ pub fn process_table<'a>(
         let para_shape_id = para.para_header.para_shape_id as usize;
 
         for record in &para.records {
-            if let ParagraphRecord::ParaText {
-                data: pt_data,
-            } = record
-            {
+            if let ParagraphRecord::ParaText { data: pt_data } = record {
                 if !pt_data.text.trim().is_empty() {
                     caption_text_opt = Some(pt_data.text.clone());
                     caption_control_chars = pt_data.control_char_positions.clone();
                     // AUTO_NUMBER 위치 찾기 / Find AUTO_NUMBER position
-                    caption_auto_number_position_opt = pt_data.control_char_positions
+                    caption_auto_number_position_opt = pt_data
+                        .control_char_positions
                         .iter()
                         .find(|cp| cp.code == ControlChar::AUTO_NUMBER)
                         .map(|cp| cp.position);
@@ -228,10 +226,7 @@ pub fn process_table<'a>(
             }
         } else if found_table {
             // 테이블 다음에 오는 문단에서 텍스트 추출 / Extract text from paragraph after table
-            if let ParagraphRecord::ParaText {
-                data: pt_data,
-            } = child
-            {
+            if let ParagraphRecord::ParaText { data: pt_data } = child {
                 let auto_disp = pt_data.runs.iter().find_map(|run| {
                     if let ParaTextRun::Control {
                         code, display_text, ..
@@ -254,10 +249,7 @@ pub fn process_table<'a>(
                 // ListHeader의 paragraphs에서 텍스트 추출 / Extract text from ListHeader's paragraphs
                 for para in &lh_data.paragraphs {
                     for record in &para.records {
-                        if let ParagraphRecord::ParaText {
-                            data: pt_data,
-                        } = record
-                        {
+                        if let ParagraphRecord::ParaText { data: pt_data } = record {
                             let auto_disp = pt_data.runs.iter().find_map(|run| {
                                 if let ParaTextRun::Control {
                                     code, display_text, ..
@@ -288,10 +280,7 @@ pub fn process_table<'a>(
             }
         } else {
             // 테이블 이전에 오는 문단에서 텍스트 추출 (첫 번째 테이블의 캡션) / Extract text from paragraph before table (caption for first table)
-            if let ParagraphRecord::ParaText {
-                data: pt_data,
-            } = child
-            {
+            if let ParagraphRecord::ParaText { data: pt_data } = child {
                 let auto_disp = pt_data.runs.iter().find_map(|run| {
                     if let ParaTextRun::Control {
                         code, display_text, ..
@@ -313,10 +302,7 @@ pub fn process_table<'a>(
                 // ListHeader의 paragraphs에서 텍스트 추출 / Extract text from ListHeader's paragraphs
                 for para in &lh_data.paragraphs {
                     for record in &para.records {
-                        if let ParagraphRecord::ParaText {
-                            data: pt_data,
-                        } = record
-                        {
+                        if let ParagraphRecord::ParaText { data: pt_data } = record {
                             let auto_disp = pt_data.runs.iter().find_map(|run| {
                                 if let ParaTextRun::Control {
                                     code, display_text, ..

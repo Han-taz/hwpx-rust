@@ -170,10 +170,7 @@ where
             // 머리말/꼬리말/각주/미주 컨트롤 처리 / Process header/footer/footnote/endnote controls
             if has_header_footer || has_footnote_endnote {
                 for record in &paragraph.records {
-                    if let ParagraphRecord::CtrlHeader {
-                        data,
-                    } = record
-                    {
+                    if let ParagraphRecord::CtrlHeader { data } = record {
                         use crate::document::CtrlId;
                         if data.header.ctrl_id.as_str() == CtrlId::HEADER {
                             // 머리말 처리 / Process header

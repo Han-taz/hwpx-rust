@@ -66,7 +66,8 @@ fn convert_text_with_char_shapes<'a>(
         return None;
     }
 
-    let byte_offsets: Vec<usize> = text.char_indices()
+    let byte_offsets: Vec<usize> = text
+        .char_indices()
         .map(|(i, _)| i)
         .chain(std::iter::once(text.len()))
         .collect();
@@ -531,7 +532,8 @@ pub fn convert_para_text_to_markdown_with_hyperlinks(
         return convert_para_text_to_markdown(text, control_positions);
     }
 
-    let byte_offsets: Vec<usize> = text.char_indices()
+    let byte_offsets: Vec<usize> = text
+        .char_indices()
         .map(|(i, _)| i)
         .chain(std::iter::once(text.len()))
         .collect();
@@ -623,7 +625,8 @@ pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
     hyperlinks: &[HyperlinkRegion],
     open_hyperlink: Option<&CrossingHyperlinkState>,
 ) -> CrossingHyperlinkResult {
-    let byte_offsets: Vec<usize> = text.char_indices()
+    let byte_offsets: Vec<usize> = text
+        .char_indices()
         .map(|(i, _)| i)
         .chain(std::iter::once(text.len()))
         .collect();

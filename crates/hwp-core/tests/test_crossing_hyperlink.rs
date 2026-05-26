@@ -25,9 +25,7 @@ fn test_issue144_crossing_hyperlink() {
 
         for record in &para.records {
             match record {
-                ParagraphRecord::ParaText {
-                    data: pt_data,
-                } => {
+                ParagraphRecord::ParaText { data: pt_data } => {
                     println!("ParaText: {:?}", pt_data.text);
                     println!("Control positions: {:?}", pt_data.control_char_positions);
                 }

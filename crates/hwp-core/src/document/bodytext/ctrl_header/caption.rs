@@ -74,4 +74,3 @@ pub fn parse_caption_from_list_header(data: &[u8]) -> Result<Option<Caption>, Hw
         vertical_align: Some(vertical_align),
     }))
 }
-

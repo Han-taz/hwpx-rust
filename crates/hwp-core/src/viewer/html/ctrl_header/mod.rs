@@ -57,7 +57,14 @@ pub fn process_ctrl_header<'a>(
         }
         CtrlId::SHAPE_OBJECT => {
             // 그리기 개체 처리 / Process shape object
-            shape_object::process_shape_object(header, children, paragraphs, document, options, bindata_index)
+            shape_object::process_shape_object(
+                header,
+                children,
+                paragraphs,
+                document,
+                options,
+                bindata_index,
+            )
         }
         CtrlId::SECTION_DEF => {
             // 구역 정의 처리 / Process section definition

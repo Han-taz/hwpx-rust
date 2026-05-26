@@ -220,9 +220,7 @@ pub(crate) fn row_positions(
                     }
 
                     // 중첩된 ShapeComponent: 재귀적으로 탐색
-                    ParagraphRecord::ShapeComponent {
-                        data: sc_data,
-                    } => {
+                    ParagraphRecord::ShapeComponent { data: sc_data } => {
                         let shape_component = &sc_data.shape_component;
                         let nested_children = &sc_data.children;
                         if let Some(height) =
@@ -304,12 +302,11 @@ pub(crate) fn row_positions(
                     // ShapeComponent의 children에서 모든 shape 높이 찾기 (재귀적으로) / Find all shape heights in ShapeComponent's children (recursively)
                     for record in &para.records {
                         match record {
-                            ParagraphRecord::ShapeComponent {
-                                data: sc_data,
-                            } => {
-                                if let Some(shape_height_mm) =
-                                    find_shape_component_height(&sc_data.children, sc_data.shape_component.height)
-                                {
+                            ParagraphRecord::ShapeComponent { data: sc_data } => {
+                                if let Some(shape_height_mm) = find_shape_component_height(
+                                    &sc_data.children,
+                                    sc_data.shape_component.height,
+                                ) {
                                     if max_shape_height_mm.is_none()
                                         || max_shape_height_mm.map_or(true, |h| shape_height_mm > h)
                                     {

@@ -63,8 +63,13 @@ pub(crate) fn convert_shape_component_children_to_markdown(
                 // SHAPE_COMPONENT 내부의 LIST_HEADER는 글상자 텍스트를 포함할 수 있음
                 // LIST_HEADER inside SHAPE_COMPONENT can contain textbox text
                 for para in &lh_data.paragraphs {
-                    let para_md =
-                        convert_paragraph_to_markdown(para, document, bindata_index, &options, tracker);
+                    let para_md = convert_paragraph_to_markdown(
+                        para,
+                        document,
+                        bindata_index,
+                        &options,
+                        tracker,
+                    );
                     if !para_md.is_empty() {
                         parts.push(para_md);
                     }
