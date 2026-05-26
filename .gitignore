@@ -1,6 +1,7 @@
 # Rust
 **/target/
 **/*.rs.bk
+.worktrees/
 
 # Python
 __pycache__/
