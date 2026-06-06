@@ -29,7 +29,7 @@ quick-xml = { version = "0.37", features = ["serialize"] }
 
 [dev-dependencies]
 insta = "1.43.2"
-criterion = "0.5"
+criterion = "0.8"
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }
 toml = "0.8"
 
