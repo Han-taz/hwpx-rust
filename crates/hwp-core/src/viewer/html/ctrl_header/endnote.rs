@@ -8,6 +8,6 @@ pub fn process_endnote<'a>(
     _children: &'a [ParagraphRecord],
     _paragraphs: &[Paragraph],
 ) -> CtrlHeaderResult<'a> {
-    // TODO: 미주 처리 로직 추가 / Add endnote processing logic
+    // Endnote content is rendered by the shared body control path.
     CtrlHeaderResult::new()
 }

@@ -5,15 +5,21 @@ edition = "2021"
 authors = ["kevin <ftkevin12@gmail.com>"]
 license = "MIT"
 description = "Python bindings for HWP/HWPX document parser"
+homepage = "https://github.com/Han-taz/hwpx-rust"
+repository = "https://github.com/Han-taz/hwpx-rust"
+readme = "README.md"
+keywords = ["hwp", "hwpx", "hancom", "parser"]
+publish = false
 
 [lib]
 name = "hwpx"
 crate-type = ["cdylib"]
 
+[features]
+default = ["extension-module"]
+extension-module = ["pyo3/extension-module"]
+
 [dependencies]
-pyo3 = { version = "0.22", features = ["extension-module"] }
+pyo3 = { version = "0.28", features = ["abi3-py38"] }
 hwp-core = { path = "../../crates/hwp-core" }
 serde_json = "1.0"
-
-[build-dependencies]
-pyo3-build-config = "0.22"

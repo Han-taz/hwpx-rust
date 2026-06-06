@@ -2,6 +2,9 @@
 
 Python bindings for HWP/HWPX document parser.
 
+The package is backed by Rust and ships CPython 3.8+ `abi3` wheels. CPU-bound parse
+and conversion APIs release the Python GIL while Rust code is running.
+
 ## Installation
 
 ```bash
@@ -24,11 +27,11 @@ maturin develop
 ```bash
 cd packages/hwpx-python
 
-# Using uv (recommended)
-uv tool run maturin build --release --interpreter python3.12 --out dist
+# Using uv (recommended). Builds a CPython 3.8+ abi3 wheel.
+uv tool run maturin build --release --locked --compatibility pypi --out dist
 
 # Or using maturin directly
-maturin build --release --interpreter python3.12 --out dist
+maturin build --release --locked --compatibility pypi --out dist
 ```
 
 The built wheel will be in the `dist/` directory.
@@ -96,6 +99,14 @@ for item in report["items"]:
 ```
 
 `doc.warnings` remains available for string compatibility.
+
+### Working with untrusted documents
+
+HWP/HWPX input is treated as untrusted. The Rust parser enforces HWPX ZIP, XML, and
+section resource limits and returns structured diagnostics for unsupported or lossy
+content. `hwpx.parse_file()` rejects source files larger than 512 MiB before reading
+them into memory; callers that use `hwpx.parse(bytes)` are responsible for bounding the
+bytes they pass in. See the repository security model for details.
 
 ### Document properties
 

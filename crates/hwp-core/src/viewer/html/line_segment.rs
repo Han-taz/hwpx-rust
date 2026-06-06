@@ -11,16 +11,6 @@ use crate::viewer::HtmlOptions;
 use crate::{HwpDocument, ParaShape};
 use std::collections::HashMap;
 
-/// 하이퍼링크 영역 정보 / Hyperlink region information
-/// NOTE: URL 필드는 현재 렌더링에서 소비되지 않음 (HTML 하이퍼링크 처리가 복잡하여 향후 구현 예정)
-/// The url field is not yet consumed in rendering (deferred: HTML hyperlink processing is complex)
-#[derive(Debug, Clone)]
-pub struct HyperlinkInfo {
-    /// URL (collected but not yet used in rendering — deferred feature)
-    #[allow(dead_code)]
-    pub url: String,
-}
-
 /// 라인 세그먼트 렌더링 콘텐츠 / Line segment rendering content
 pub struct LineSegmentContent<'a> {
     pub segments: &'a [LineSegmentInfo],
@@ -30,8 +20,6 @@ pub struct LineSegmentContent<'a> {
     pub original_text_len: usize,
     pub images: &'a [ImageInfo],
     pub tables: &'a [TableInfo<'a>],
-    /// 하이퍼링크 정보 / Hyperlink information
-    pub hyperlinks: Vec<HyperlinkInfo>,
 }
 
 /// 라인 세그먼트 렌더링 컨텍스트 / Line segment rendering context
@@ -50,6 +38,7 @@ pub struct DocumentRenderState<'a> {
     pub pattern_counter: &'a mut usize,
     pub color_to_pattern: &'a mut HashMap<u32, String>,
     pub bindata_index: &'a crate::viewer::shared::BinDataIndex,
+    pub bindata_lookup: &'a crate::viewer::shared::BinDataItemLookup<'a>,
 }
 
 /// 테이블 정보 구조체 / Table info struct
@@ -71,11 +60,69 @@ pub struct ImageInfo {
     pub url: String,
     /// object_common 속성: 글자처럼 취급 여부 / object_common attribute: treat as letters
     pub like_letters: bool,
-    /// object_common 속성: 줄 간격에 영향 여부 / object_common attribute: affect line spacing
-    #[allow(dead_code)]
-    pub affect_line_spacing: bool,
     /// object_common 속성: 세로 기준 위치 / object_common attribute: vertical reference position
     pub vert_rel_to: Option<VertRelTo>,
+}
+
+// 원본 WCHAR 인덱스(original) -> cleaned_text 인덱스(cleaned) 매핑
+// Map original WCHAR index -> cleaned_text index.
+//
+// control_char_positions.position은 "원본 WCHAR 인덱스" 기준입니다.
+// text 인자는 제어 문자를 대부분 제거한 cleaned_text 입니다.
+fn original_to_cleaned_index(pos: usize, control_chars: &[ControlCharPosition]) -> isize {
+    let mut delta: isize = 0; // cleaned = original + delta
+    for cc in control_chars {
+        if cc.position >= pos {
+            break;
+        }
+        let size = ControlChar::get_size_by_code(cc.code) as isize;
+        let contributes = if ControlChar::is_convertible(cc.code)
+            && cc.code != ControlChar::PARA_BREAK
+            && cc.code != ControlChar::LINE_BREAK
+        {
+            1
+        } else {
+            0
+        } as isize;
+        delta += contributes - size;
+    }
+    delta
+}
+
+fn char_index_to_byte_index(text: &str, char_index: usize) -> usize {
+    if char_index == 0 {
+        return 0;
+    }
+
+    text.char_indices()
+        .nth(char_index)
+        .map(|(byte_index, _)| byte_index)
+        .unwrap_or(text.len())
+}
+
+pub(crate) fn slice_cleaned_by_original_range<'a>(
+    cleaned: &'a str,
+    control_chars: &[ControlCharPosition],
+    start_original: usize,
+    end_original: usize,
+) -> &'a str {
+    let start_delta = original_to_cleaned_index(start_original, control_chars);
+    let end_delta = original_to_cleaned_index(end_original, control_chars);
+
+    let start_cleaned = (start_original as isize + start_delta).max(0) as usize;
+    let end_cleaned = (end_original as isize + end_delta).max(0) as usize;
+
+    if start_cleaned >= end_cleaned {
+        return "";
+    }
+
+    let start_byte = char_index_to_byte_index(cleaned, start_cleaned);
+    let end_byte = char_index_to_byte_index(cleaned, end_cleaned);
+    if start_byte >= end_byte {
+        return "";
+    }
+
+    &cleaned[start_byte..end_byte]
 }
 
 /// 라인 세그먼트를 HTML로 렌더링 / Render line segment to HTML
@@ -180,9 +227,6 @@ pub fn render_line_segments_with_content(
     let original_text_len = content.original_text_len;
     let images = content.images;
     let tables = content.tables;
-    // NOTE: HTML에서 하이퍼링크 처리는 세그먼트 단위 위치 변환이 복잡하여 현재 미사용
-    // HTML hyperlink processing is complex due to segment-level position conversion, currently unused
-    let _hyperlinks = &content.hyperlinks;
 
     let document = context.document;
     let para_shape_class = context.para_shape_class;
@@ -195,52 +239,7 @@ pub fn render_line_segments_with_content(
     // pattern_counter와 color_to_pattern은 이미 &mut이므로 직접 사용 / pattern_counter and color_to_pattern are already &mut, so use directly
 
     let mut result = String::new();
-
-    // 원본 WCHAR 인덱스(original) -> cleaned_text 인덱스(cleaned) 매핑
-    // Map original WCHAR index -> cleaned_text index.
-    //
-    // control_char_positions.position은 "원본 WCHAR 인덱스" 기준입니다.
-    // text(여기 인자)는 제어 문자를 대부분 제거한 cleaned_text 입니다.
-    fn original_to_cleaned_index(pos: usize, control_chars: &[ControlCharPosition]) -> isize {
-        let mut delta: isize = 0; // cleaned = original + delta
-        for cc in control_chars.iter() {
-            if cc.position >= pos {
-                break;
-            }
-            let size = ControlChar::get_size_by_code(cc.code) as isize;
-            let contributes = if ControlChar::is_convertible(cc.code)
-                && cc.code != ControlChar::PARA_BREAK
-                && cc.code != ControlChar::LINE_BREAK
-            {
-                1
-            } else {
-                0
-            } as isize;
-            delta += contributes - size;
-        }
-        delta
-    }
-
-    fn slice_cleaned_by_original_range(
-        cleaned: &str,
-        control_chars: &[ControlCharPosition],
-        start_original: usize,
-        end_original: usize,
-    ) -> String {
-        let start_delta = original_to_cleaned_index(start_original, control_chars);
-        let end_delta = original_to_cleaned_index(end_original, control_chars);
-
-        let start_cleaned = (start_original as isize + start_delta).max(0) as usize;
-        let end_cleaned = (end_original as isize + end_delta).max(0) as usize;
-
-        let cleaned_chars: Vec<char> = cleaned.chars().collect();
-        let s = start_cleaned.min(cleaned_chars.len());
-        let e = end_cleaned.min(cleaned_chars.len());
-        if s >= e {
-            return String::new();
-        }
-        cleaned_chars[s..e].iter().collect()
-    }
+    let mut empty_segments_seen = 0;
 
     for segment in segments {
         let mut content = String::new();
@@ -307,12 +306,6 @@ pub fn render_line_segments_with_content(
         // position 기준 정렬 (render_text에서 다시 정렬하지만, 여기서도 정렬해두면 안정적) / Sort by position
         segment_char_shapes.sort_by_key(|s| s.position);
 
-        // 세그먼트 인덱스 계산 / Calculate segment index
-        let segment_index = segments
-            .iter()
-            .position(|s| std::ptr::eq(s, segment))
-            .unwrap_or(0);
-
         // 텍스트가 비어있는지 확인 / Check if text is empty
         let is_text_empty = segment_text.trim().is_empty();
 
@@ -320,15 +313,7 @@ pub fn render_line_segments_with_content(
         let is_empty_segment = segment.tag.is_empty_segment;
 
         // 빈 세그먼트 카운터 (is_empty_segment 플래그를 사용) / Empty segment counter (using is_empty_segment flag)
-        let mut empty_count = 0;
-        for (idx, seg) in segments.iter().enumerate() {
-            if idx >= segment_index {
-                break;
-            }
-            if seg.tag.is_empty_segment {
-                empty_count += 1;
-            }
-        }
+        let empty_count = empty_segments_seen;
 
         // 이미지와 테이블 렌더링 / Render images and tables
         //
@@ -364,6 +349,7 @@ pub fn render_line_segments_with_content(
                     pattern_counter: state.pattern_counter,
                     color_to_pattern: state.color_to_pattern,
                     bindata_index: state.bindata_index,
+                    bindata_lookup: state.bindata_lookup,
                 };
 
                 let position = TablePosition {
@@ -413,14 +399,14 @@ pub fn render_line_segments_with_content(
             // NOTE: HTML에서 하이퍼링크 처리는 세그먼트 단위 위치 변환이 복잡하여 일단 기본 렌더링 사용
             // HTML hyperlink processing is complex due to segment-level position conversion, so use basic rendering for now
             use crate::viewer::html::text::render_text;
-            let rendered_text = render_text(&segment_text, &segment_char_shapes, document, "");
+            let rendered_text = render_text(segment_text, &segment_char_shapes, document, "");
             content.push_str(&rendered_text);
         }
 
         // 라인 세그먼트 렌더링 / Render line segment
         // ParaShape 정보 가져오기 (para_shape_class에서 ID 추출) / Get ParaShape info (extract ID from para_shape_class)
-        let para_shape = if para_shape_class.starts_with("ps") {
-            if let Ok(para_shape_id) = para_shape_class[2..].parse::<usize>() {
+        let para_shape = if let Some(para_shape_id_text) = para_shape_class.strip_prefix("ps") {
+            if let Ok(para_shape_id) = para_shape_id_text.parse::<usize>() {
                 if para_shape_id < document.doc_info.para_shapes.len() {
                     Some(&document.doc_info.para_shapes[para_shape_id])
                 } else {
@@ -443,7 +429,60 @@ pub fn render_line_segments_with_content(
                 || ((is_empty_segment || is_text_empty) && !images.is_empty())),
             override_size_mm,
         ));
+        if is_empty_segment {
+            empty_segments_seen += 1;
+        }
     }
 
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn control_char(position: usize, code: u8) -> ControlCharPosition {
+        ControlCharPosition {
+            position,
+            code,
+            name: ControlChar::to_name(code),
+        }
+    }
+
+    #[test]
+    fn slices_cleaned_text_by_original_range_on_char_boundaries() {
+        let text = "가나다라마";
+
+        assert_eq!(slice_cleaned_by_original_range(text, &[], 1, 4), "나다라");
+    }
+
+    #[test]
+    fn slices_cleaned_text_by_original_range_after_removed_extended_control() {
+        let text = "가나다라마";
+        let control_chars = [control_char(2, ControlChar::SHAPE_OBJECT)];
+
+        assert_eq!(
+            slice_cleaned_by_original_range(text, &control_chars, 0, 10),
+            "가나"
+        );
+        assert_eq!(
+            slice_cleaned_by_original_range(text, &control_chars, 10, 13),
+            "다라마"
+        );
+    }
+
+    #[test]
+    fn slices_cleaned_text_by_original_range_after_convertible_inline_control() {
+        let text = "가\t나";
+        let control_chars = [control_char(1, ControlChar::TAB)];
+
+        assert_eq!(
+            slice_cleaned_by_original_range(text, &control_chars, 0, 9),
+            "가\t"
+        );
+        assert_eq!(
+            slice_cleaned_by_original_range(text, &control_chars, 9, 10),
+            "나"
+        );
+    }
 }

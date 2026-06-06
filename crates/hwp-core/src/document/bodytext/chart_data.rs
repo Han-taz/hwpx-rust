@@ -374,7 +374,7 @@ impl VtColor {
     }
 
     /// COLORREF 값으로 변환 / Convert to COLORREF value
-    pub fn to_colorref(&self) -> u32 {
+    pub fn to_colorref(self) -> u32 {
         (self.red as u32) | ((self.green as u32) << 8) | ((self.blue as u32) << 16)
     }
 }

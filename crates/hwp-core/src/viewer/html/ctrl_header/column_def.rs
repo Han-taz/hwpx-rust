@@ -8,6 +8,6 @@ pub fn process_column_def<'a>(
     _children: &'a [ParagraphRecord],
     _paragraphs: &[Paragraph],
 ) -> CtrlHeaderResult<'a> {
-    // TODO: 단 정의 처리 로직 추가 / Add column definition processing logic
+    // Column definitions do not emit standalone HTML in this control path.
     CtrlHeaderResult::new()
 }

@@ -37,6 +37,7 @@ pub struct OleAttributes {
     /// - DVASPECT_THUMBNAIL = 2
     /// - DVASPECT_ICON = 4
     /// - DVASPECT_DOCPRINT = 8
+    ///
     /// 자세한 설명은 MSDN의 MFC COleClientItem::m_nDrawAspect 참고
     /// See MSDN MFC COleClientItem::m_nDrawAspect for details
     pub drawing_aspect: u8,

@@ -10,6 +10,7 @@ pub fn render_image(
     width: INT32,
     height: INT32,
 ) -> String {
+    let image_url = super::security::escape_css_string(image_url);
     let left_mm = round_to_2dp(int32_to_mm(left));
     let top_mm = round_to_2dp(int32_to_mm(top));
     let width_mm = round_to_2dp(int32_to_mm(width));
@@ -30,6 +31,7 @@ pub fn render_image_with_style(
     margin_bottom: INT32,
     margin_right: INT32,
 ) -> String {
+    let image_url = super::security::escape_css_string(image_url);
     let left_mm = round_to_2dp(int32_to_mm(left));
     let top_mm = round_to_2dp(int32_to_mm(top));
     let width_mm = round_to_2dp(int32_to_mm(width));
@@ -40,4 +42,23 @@ pub fn render_image_with_style(
     format!(
         r#"<div class="hsR" style="top:{top_mm}mm;left:{left_mm}mm;margin-bottom:{margin_bottom_mm}mm;margin-right:{margin_right_mm}mm;width:{width_mm}mm;height:{height_mm}mm;display:inline-block;position:relative;vertical-align:middle;background-repeat:no-repeat;background-size:contain;background-image:url('{image_url}');"></div>"#
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn image_urls_escape_css_url_string_delimiters() {
+        let html = render_image(
+            "image');background-image:url(javascript:alert(1));/*",
+            0,
+            0,
+            7200,
+            7200,
+        );
+
+        assert!(!html.contains("url('image');background-image"));
+        assert!(html.contains("image\\27 \\29 ;background-image"));
+    }
 }

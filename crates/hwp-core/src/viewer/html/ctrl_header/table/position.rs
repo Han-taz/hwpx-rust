@@ -22,18 +22,20 @@ pub(crate) fn view_box(htb_width: f64, htb_height: f64, padding: f64) -> ViewBox
     }
 }
 
+pub(crate) struct TablePositionInput<'a> {
+    pub hcd_position: Option<(f64, f64)>,
+    pub page_def: Option<&'a PageDef>,
+    pub segment_position: Option<(INT32, INT32)>,
+    pub ctrl_header: Option<&'a CtrlHeaderData>,
+    pub obj_outer_width_mm: Option<f64>,
+    pub para_start_vertical_mm: Option<f64>,
+    pub para_start_column_mm: Option<f64>,
+    pub para_segment_width_mm: Option<f64>,
+    pub first_para_vertical_mm: Option<f64>,
+}
+
 /// 테이블 절대 위치 계산 / Calculate absolute table position
-pub(crate) fn table_position(
-    hcd_position: Option<(f64, f64)>,
-    page_def: Option<&PageDef>,
-    segment_position: Option<(INT32, INT32)>,
-    ctrl_header: Option<&CtrlHeaderData>,
-    obj_outer_width_mm: Option<f64>,
-    para_start_vertical_mm: Option<f64>,
-    para_start_column_mm: Option<f64>,
-    para_segment_width_mm: Option<f64>,
-    first_para_vertical_mm: Option<f64>, // 첫 번째 문단의 vertical_position (가설 O) / First paragraph's vertical_position (Hypothesis O)
-) -> (f64, f64) {
+pub(crate) fn table_position(input: TablePositionInput<'_>) -> (f64, f64) {
     // CtrlHeader에서 필요한 정보 추출 / Extract necessary information from CtrlHeader
     let (offset_x, offset_y, vert_rel_to, horz_rel_to, horz_relative) =
         if let Some(CtrlHeaderData::ObjectCommon {
@@ -41,7 +43,7 @@ pub(crate) fn table_position(
             offset_x,
             offset_y,
             ..
-        }) = ctrl_header
+        }) = input.ctrl_header
         {
             (
                 Some(*offset_x),
@@ -54,9 +56,9 @@ pub(crate) fn table_position(
             (None, None, None, None, None)
         };
 
-    let (base_left, base_top) = if let Some((left, top)) = hcd_position {
+    let (base_left, base_top) = if let Some((left, top)) = input.hcd_position {
         (left.round_to_2dp(), top.round_to_2dp())
-    } else if let Some(pd) = page_def {
+    } else if let Some(pd) = input.page_def {
         let left = (pd.left_margin.to_mm() + pd.binding_margin.to_mm()).round_to_2dp();
         let top = (pd.top_margin.to_mm() + pd.header_margin.to_mm()).round_to_2dp();
         (left, top)
@@ -64,7 +66,7 @@ pub(crate) fn table_position(
         (20.0, 24.99)
     };
 
-    if let Some((segment_col, segment_vert)) = segment_position {
+    if let Some((segment_col, segment_vert)) = input.segment_position {
         // 레거시 코드처럼 vertical_position을 절대 위치로 직접 사용 / Use vertical_position as absolute position directly like legacy code
         // vertical_position은 이미 페이지 기준 절대 위치이므로 base_pos를 더하지 않음 / vertical_position is already absolute position relative to page, so don't add base_pos
         let segment_left_mm = int32_to_mm(segment_col);
@@ -85,21 +87,24 @@ pub(crate) fn table_position(
         };
         let offset_left_mm = offset_x.map(|x| x.to_mm()).unwrap_or(0.0);
         let para_left_mm = if matches!(horz_rel_to, Some(HorzRelTo::Para)) {
-            para_start_column_mm.unwrap_or(0.0)
+            input.para_start_column_mm.unwrap_or(0.0)
         } else {
             0.0
         };
-        let obj_w_mm = obj_outer_width_mm.unwrap_or(0.0);
+        let obj_w_mm = input.obj_outer_width_mm.unwrap_or(0.0);
 
         // 기준 폭 계산 (right/center 정렬에 필요)
         // - paper: 용지 폭
         // - page/column: 본문(content) 폭
         // - para: 현재 LineSeg의 segment_width
         let mut ref_width_mm = match horz_rel_to {
-            Some(HorzRelTo::Paper) => page_def.map(|pd| pd.paper_width.to_mm()).unwrap_or(210.0),
-            Some(HorzRelTo::Para) => para_segment_width_mm.unwrap_or(0.0),
+            Some(HorzRelTo::Paper) => input
+                .page_def
+                .map(|pd| pd.paper_width.to_mm())
+                .unwrap_or(210.0),
+            Some(HorzRelTo::Para) => input.para_segment_width_mm.unwrap_or(0.0),
             Some(HorzRelTo::Page) | Some(HorzRelTo::Column) | None => {
-                if let Some(pd) = page_def {
+                if let Some(pd) = input.page_def {
                     // content width = paper - (left+binding) - right
                     pd.paper_width.to_mm()
                         - (pd.left_margin.to_mm() + pd.binding_margin.to_mm())
@@ -112,7 +117,7 @@ pub(crate) fn table_position(
         // ParaLineSeg.segment_width가 0인 케이스가 있어(빈 문단/앵커 문단),
         // 이 경우에는 content width에서 para_left를 뺀 값으로 폴백한다.
         if matches!(horz_rel_to, Some(HorzRelTo::Para)) && ref_width_mm <= 0.0 {
-            if let Some(pd) = page_def {
+            if let Some(pd) = input.page_def {
                 let content_w = pd.paper_width.to_mm()
                     - (pd.left_margin.to_mm() + pd.binding_margin.to_mm())
                     - pd.right_margin.to_mm();
@@ -145,10 +150,10 @@ pub(crate) fn table_position(
         };
         let offset_top_mm = if let (Some(VertRelTo::Para), Some(offset)) = (vert_rel_to, offset_y) {
             let offset_mm = offset.to_mm();
-            if let Some(para_start) = para_start_vertical_mm {
+            if let Some(para_start) = input.para_start_vertical_mm {
                 // y 계산은 base_top 기준이어야 합니다. (base_left 사용은 버그)
                 para_start - base_top_for_obj
-            } else if let Some(first_para) = first_para_vertical_mm {
+            } else if let Some(first_para) = input.first_para_vertical_mm {
                 let first_para_relative_mm = first_para - base_top_for_obj;
                 first_para_relative_mm + offset_mm
             } else {

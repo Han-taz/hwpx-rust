@@ -28,4 +28,4 @@ Example usage:
 from .hwpx import parse, parse_file, Document
 
 __all__ = ["parse", "parse_file", "Document"]
-__version__ = "0.1.0"
+__version__ = "0.2.0"

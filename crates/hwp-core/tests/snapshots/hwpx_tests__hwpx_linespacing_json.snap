@@ -27,8 +27,162 @@ expression: json
     },
     "id_mappings": null,
     "bin_data": [],
-    "face_names": [],
-    "border_fill": [],
+    "face_names": [
+      {
+        "name": "굴림",
+        "alternative_font_type": null,
+        "alternative_font_name": null,
+        "font_type_info": null,
+        "default_font_name": null
+      },
+      {
+        "name": "바탕",
+        "alternative_font_type": null,
+        "alternative_font_name": null,
+        "font_type_info": null,
+        "default_font_name": null
+      }
+    ],
+    "border_fill": [
+      {
+        "attributes": {
+          "has_3d_effect": false,
+          "has_shadow": false,
+          "slash_shape": 0,
+          "backslash_shape": 0,
+          "slash_broken_line": 0,
+          "backslash_broken_line": false,
+          "slash_rotated_180": false,
+          "backslash_rotated_180": false,
+          "has_center_line": false
+        },
+        "borders": [
+          {
+            "line_type": 0,
+            "width": 0,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0
+            }
+          },
+          {
+            "line_type": 0,
+            "width": 0,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0
+            }
+          },
+          {
+            "line_type": 0,
+            "width": 0,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0
+            }
+          },
+          {
+            "line_type": 0,
+            "width": 0,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0
+            }
+          }
+        ],
+        "diagonal": {
+          "line_type": 1,
+          "thickness": 0,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "fill": {
+          "type": "none"
+        }
+      },
+      {
+        "attributes": {
+          "has_3d_effect": false,
+          "has_shadow": false,
+          "slash_shape": 0,
+          "backslash_shape": 0,
+          "slash_broken_line": 0,
+          "backslash_broken_line": false,
+          "slash_rotated_180": false,
+          "backslash_rotated_180": false,
+          "has_center_line": false
+        },
+        "borders": [
+          {
+            "line_type": 0,
+            "width": 0,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0
+            }
+          },
+          {
+            "line_type": 0,
+            "width": 0,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0
+            }
+          },
+          {
+            "line_type": 0,
+            "width": 0,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0
+            }
+          },
+          {
+            "line_type": 0,
+            "width": 0,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0
+            }
+          }
+        ],
+        "diagonal": {
+          "line_type": 1,
+          "thickness": 0,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "fill": {
+          "type": "solid",
+          "background_color": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "pattern_color": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          },
+          "pattern_type": 0,
+          "alpha": 0
+        }
+      }
+    ],
     "char_shapes": [
       {
         "font_ids": {
@@ -743,8 +897,161 @@ expression: json
         "strikethrough_color": null
       }
     ],
-    "tab_defs": [],
-    "numbering": [],
+    "tab_defs": [
+      {
+        "attributes": {
+          "has_left_auto_tab": false,
+          "has_right_auto_tab": false
+        },
+        "count": 0,
+        "tabs": []
+      },
+      {
+        "attributes": {
+          "has_left_auto_tab": true,
+          "has_right_auto_tab": false
+        },
+        "count": 0,
+        "tabs": []
+      },
+      {
+        "attributes": {
+          "has_left_auto_tab": false,
+          "has_right_auto_tab": true
+        },
+        "count": 0,
+        "tabs": []
+      }
+    ],
+    "numbering": [
+      {
+        "levels": [],
+        "extended_levels": []
+      },
+      {
+        "levels": [
+          {
+            "attributes": {
+              "align_type": "left",
+              "instance_like": true,
+              "auto_outdent": true,
+              "distance_type": "ratio"
+            },
+            "width": 0,
+            "distance": 50,
+            "char_shape_id": 4294967295,
+            "format_length": 3,
+            "format_string": "^1.",
+            "start_number": 1,
+            "level_start_number": null
+          },
+          {
+            "attributes": {
+              "align_type": "left",
+              "instance_like": true,
+              "auto_outdent": true,
+              "distance_type": "ratio"
+            },
+            "width": 0,
+            "distance": 50,
+            "char_shape_id": 4294967295,
+            "format_length": 3,
+            "format_string": "^2.",
+            "start_number": 1,
+            "level_start_number": null
+          },
+          {
+            "attributes": {
+              "align_type": "left",
+              "instance_like": true,
+              "auto_outdent": true,
+              "distance_type": "ratio"
+            },
+            "width": 0,
+            "distance": 50,
+            "char_shape_id": 4294967295,
+            "format_length": 3,
+            "format_string": "^3)",
+            "start_number": 1,
+            "level_start_number": null
+          },
+          {
+            "attributes": {
+              "align_type": "left",
+              "instance_like": true,
+              "auto_outdent": true,
+              "distance_type": "ratio"
+            },
+            "width": 0,
+            "distance": 50,
+            "char_shape_id": 4294967295,
+            "format_length": 3,
+            "format_string": "^4)",
+            "start_number": 1,
+            "level_start_number": null
+          },
+          {
+            "attributes": {
+              "align_type": "left",
+              "instance_like": true,
+              "auto_outdent": true,
+              "distance_type": "ratio"
+            },
+            "width": 0,
+            "distance": 50,
+            "char_shape_id": 4294967295,
+            "format_length": 4,
+            "format_string": "(^5)",
+            "start_number": 1,
+            "level_start_number": null
+          },
+          {
+            "attributes": {
+              "align_type": "left",
+              "instance_like": true,
+              "auto_outdent": true,
+              "distance_type": "ratio"
+            },
+            "width": 0,
+            "distance": 50,
+            "char_shape_id": 4294967295,
+            "format_length": 4,
+            "format_string": "(^6)",
+            "start_number": 1,
+            "level_start_number": null
+          },
+          {
+            "attributes": {
+              "align_type": "left",
+              "instance_like": true,
+              "auto_outdent": true,
+              "distance_type": "ratio"
+            },
+            "width": 0,
+            "distance": 50,
+            "char_shape_id": 4294967295,
+            "format_length": 2,
+            "format_string": "^7",
+            "start_number": 1,
+            "level_start_number": null
+          }
+        ],
+        "extended_levels": [
+          {
+            "format_length": 0,
+            "format_string": ""
+          },
+          {
+            "format_length": 0,
+            "format_string": ""
+          },
+          {
+            "format_length": 0,
+            "format_string": ""
+          }
+        ]
+      }
+    ],
     "bullets": [],
     "para_shapes": [
       {
@@ -774,16 +1081,66 @@ expression: json
         "top_spacing": 0,
         "bottom_spacing": 0,
         "line_spacing_old": 0,
-        "tab_def_id": 0,
+        "tab_def_id": 1,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 130
+      },
+      {
+        "attributes1": {
+          "line_spacing_type_old": "bycharacter",
+          "align": "justify",
+          "line_divide_en": "word",
+          "line_divide_ko": "word",
+          "use_line_grid": true,
+          "blank_min_value": 0,
+          "protect_orphan_line": false,
+          "with_next_paragraph": false,
+          "protect_paragraph": false,
+          "always_page_break_before": false,
+          "vertical_align": "baseline",
+          "line_height_matches_font": false,
+          "header_shape_type": "none",
+          "paragraph_level": 0,
+          "connect_border": false,
+          "ignore_margin": false,
+          "tail_shape": false
+        },
+        "left_margin": 0,
+        "right_margin": 0,
+        "indent": 0,
+        "outdent": 0,
+        "top_spacing": 0,
+        "bottom_spacing": 0,
+        "line_spacing_old": 0,
+        "tab_def_id": 0,
+        "number_bullet_id": 0,
+        "border_fill_id": 2,
+        "border_spacing_left": 0,
+        "border_spacing_right": 0,
+        "border_spacing_top": 0,
+        "border_spacing_bottom": 0,
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -814,52 +1171,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
-      },
-      {
-        "attributes1": {
-          "line_spacing_type_old": "bycharacter",
-          "align": "justify",
-          "line_divide_en": "word",
-          "line_divide_ko": "word",
-          "use_line_grid": false,
-          "blank_min_value": 0,
-          "protect_orphan_line": false,
-          "with_next_paragraph": false,
-          "protect_paragraph": false,
-          "always_page_break_before": false,
-          "vertical_align": "baseline",
-          "line_height_matches_font": false,
-          "header_shape_type": "none",
-          "paragraph_level": 0,
-          "connect_border": false,
-          "ignore_margin": false,
-          "tail_shape": false
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
         },
-        "left_margin": 0,
-        "right_margin": 0,
-        "indent": 0,
-        "outdent": 0,
-        "top_spacing": 0,
-        "bottom_spacing": 0,
-        "line_spacing_old": 0,
-        "tab_def_id": 0,
-        "number_bullet_id": 0,
-        "border_fill_id": 0,
-        "border_spacing_left": 0,
-        "border_spacing_right": 0,
-        "border_spacing_top": 0,
-        "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -890,14 +1215,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -906,14 +1237,14 @@ expression: json
           "line_divide_en": "word",
           "line_divide_ko": "word",
           "use_line_grid": false,
-          "blank_min_value": 0,
+          "blank_min_value": 20,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
           "protect_paragraph": false,
           "always_page_break_before": false,
           "vertical_align": "baseline",
           "line_height_matches_font": false,
-          "header_shape_type": "none",
+          "header_shape_type": "outline",
           "paragraph_level": 0,
           "connect_border": false,
           "ignore_margin": false,
@@ -928,14 +1259,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -944,15 +1281,15 @@ expression: json
           "line_divide_en": "word",
           "line_divide_ko": "word",
           "use_line_grid": false,
-          "blank_min_value": 0,
+          "blank_min_value": 20,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
           "protect_paragraph": false,
           "always_page_break_before": false,
           "vertical_align": "baseline",
           "line_height_matches_font": false,
-          "header_shape_type": "none",
-          "paragraph_level": 0,
+          "header_shape_type": "outline",
+          "paragraph_level": 1,
           "connect_border": false,
           "ignore_margin": false,
           "tail_shape": false
@@ -966,14 +1303,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -982,15 +1325,15 @@ expression: json
           "line_divide_en": "word",
           "line_divide_ko": "word",
           "use_line_grid": false,
-          "blank_min_value": 0,
+          "blank_min_value": 20,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
           "protect_paragraph": false,
           "always_page_break_before": false,
           "vertical_align": "baseline",
           "line_height_matches_font": false,
-          "header_shape_type": "none",
-          "paragraph_level": 0,
+          "header_shape_type": "outline",
+          "paragraph_level": 2,
           "connect_border": false,
           "ignore_margin": false,
           "tail_shape": false
@@ -1004,14 +1347,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -1020,15 +1369,15 @@ expression: json
           "line_divide_en": "word",
           "line_divide_ko": "word",
           "use_line_grid": false,
-          "blank_min_value": 0,
+          "blank_min_value": 20,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
           "protect_paragraph": false,
           "always_page_break_before": false,
           "vertical_align": "baseline",
           "line_height_matches_font": false,
-          "header_shape_type": "none",
-          "paragraph_level": 0,
+          "header_shape_type": "outline",
+          "paragraph_level": 3,
           "connect_border": false,
           "ignore_margin": false,
           "tail_shape": false
@@ -1042,14 +1391,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -1058,15 +1413,15 @@ expression: json
           "line_divide_en": "word",
           "line_divide_ko": "word",
           "use_line_grid": false,
-          "blank_min_value": 0,
+          "blank_min_value": 20,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
           "protect_paragraph": false,
           "always_page_break_before": false,
           "vertical_align": "baseline",
           "line_height_matches_font": false,
-          "header_shape_type": "none",
-          "paragraph_level": 0,
+          "header_shape_type": "outline",
+          "paragraph_level": 4,
           "connect_border": false,
           "ignore_margin": false,
           "tail_shape": false
@@ -1080,14 +1435,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -1096,15 +1457,15 @@ expression: json
           "line_divide_en": "word",
           "line_divide_ko": "word",
           "use_line_grid": false,
-          "blank_min_value": 0,
+          "blank_min_value": 20,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
           "protect_paragraph": false,
           "always_page_break_before": false,
           "vertical_align": "baseline",
           "line_height_matches_font": false,
-          "header_shape_type": "none",
-          "paragraph_level": 0,
+          "header_shape_type": "outline",
+          "paragraph_level": 5,
           "connect_border": false,
           "ignore_margin": false,
           "tail_shape": false
@@ -1118,14 +1479,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
       },
       {
         "attributes1": {
@@ -1134,15 +1501,15 @@ expression: json
           "line_divide_en": "word",
           "line_divide_ko": "word",
           "use_line_grid": false,
-          "blank_min_value": 0,
+          "blank_min_value": 20,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
           "protect_paragraph": false,
           "always_page_break_before": false,
           "vertical_align": "baseline",
           "line_height_matches_font": false,
-          "header_shape_type": "none",
-          "paragraph_level": 0,
+          "header_shape_type": "outline",
+          "paragraph_level": 6,
           "connect_border": false,
           "ignore_margin": false,
           "tail_shape": false
@@ -1156,14 +1523,64 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 160
+      },
+      {
+        "attributes1": {
+          "line_spacing_type_old": "bycharacter",
+          "align": "justify",
+          "line_divide_en": "word",
+          "line_divide_ko": "character",
+          "use_line_grid": false,
+          "blank_min_value": 0,
+          "protect_orphan_line": false,
+          "with_next_paragraph": false,
+          "protect_paragraph": false,
+          "always_page_break_before": false,
+          "vertical_align": "baseline",
+          "line_height_matches_font": false,
+          "header_shape_type": "none",
+          "paragraph_level": 0,
+          "connect_border": false,
+          "ignore_margin": false,
+          "tail_shape": false
+        },
+        "left_margin": 0,
+        "right_margin": 0,
+        "indent": 0,
+        "outdent": 0,
+        "top_spacing": 0,
+        "bottom_spacing": 0,
+        "line_spacing_old": 0,
+        "tab_def_id": 2,
+        "number_bullet_id": 0,
+        "border_fill_id": 2,
+        "border_spacing_left": 0,
+        "border_spacing_right": 0,
+        "border_spacing_top": 0,
+        "border_spacing_bottom": 0,
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 150
       },
       {
         "attributes1": {
@@ -1171,7 +1588,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1194,14 +1611,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 100
       },
       {
         "attributes1": {
@@ -1209,7 +1632,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1232,14 +1655,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "fixed"
+        },
+        "line_spacing": 2000
       },
       {
         "attributes1": {
@@ -1247,7 +1676,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1270,14 +1699,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "marginonly"
+        },
+        "line_spacing": 0
       },
       {
         "attributes1": {
@@ -1285,7 +1720,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1308,14 +1743,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "fixed"
+        },
+        "line_spacing": 4000
       },
       {
         "attributes1": {
@@ -1323,7 +1764,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1346,14 +1787,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 200
       },
       {
         "attributes1": {
@@ -1361,7 +1808,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1384,14 +1831,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "marginonly"
+        },
+        "line_spacing": 2000
       },
       {
         "attributes1": {
@@ -1399,7 +1852,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1422,14 +1875,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "bycharacter"
+        },
+        "line_spacing": 150
       },
       {
         "attributes1": {
@@ -1437,7 +1896,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1460,14 +1919,20 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
+        },
+        "attributes3": {
+          "line_spacing_type": "fixed"
+        },
+        "line_spacing": 3000
       },
       {
         "attributes1": {
@@ -1475,7 +1940,7 @@ expression: json
           "align": "justify",
           "line_divide_en": "word",
           "line_divide_ko": "word",
-          "use_line_grid": false,
+          "use_line_grid": true,
           "blank_min_value": 0,
           "protect_orphan_line": false,
           "with_next_paragraph": false,
@@ -1498,55 +1963,150 @@ expression: json
         "line_spacing_old": 0,
         "tab_def_id": 0,
         "number_bullet_id": 0,
-        "border_fill_id": 0,
+        "border_fill_id": 2,
         "border_spacing_left": 0,
         "border_spacing_right": 0,
         "border_spacing_top": 0,
         "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
-      },
-      {
-        "attributes1": {
-          "line_spacing_type_old": "bycharacter",
-          "align": "justify",
-          "line_divide_en": "word",
-          "line_divide_ko": "word",
-          "use_line_grid": false,
-          "blank_min_value": 0,
-          "protect_orphan_line": false,
-          "with_next_paragraph": false,
-          "protect_paragraph": false,
-          "always_page_break_before": false,
-          "vertical_align": "baseline",
-          "line_height_matches_font": false,
-          "header_shape_type": "none",
-          "paragraph_level": 0,
-          "connect_border": false,
-          "ignore_margin": false,
-          "tail_shape": false
+        "attributes2": {
+          "single_line_input": 0,
+          "auto_spacing_ko_en": false,
+          "auto_spacing_ko_num": false
         },
-        "left_margin": 0,
-        "right_margin": 0,
-        "indent": 0,
-        "outdent": 0,
-        "top_spacing": 0,
-        "bottom_spacing": 0,
-        "line_spacing_old": 0,
-        "tab_def_id": 0,
-        "number_bullet_id": 0,
-        "border_fill_id": 0,
-        "border_spacing_left": 0,
-        "border_spacing_right": 0,
-        "border_spacing_top": 0,
-        "border_spacing_bottom": 0,
-        "attributes2": null,
-        "attributes3": null,
-        "line_spacing": null
+        "attributes3": {
+          "line_spacing_type": "marginonly"
+        },
+        "line_spacing": 1000
       }
     ],
-    "styles": [],
+    "styles": [
+      {
+        "local_name": "바탕글",
+        "english_name": "Normal",
+        "style_type": "paragraph",
+        "next_style_id": 0,
+        "lang_id": 1042,
+        "para_shape_id": 2,
+        "char_shape_id": 5
+      },
+      {
+        "local_name": "본문",
+        "english_name": "Body",
+        "style_type": "paragraph",
+        "next_style_id": 1,
+        "lang_id": 1042,
+        "para_shape_id": 3,
+        "char_shape_id": 1
+      },
+      {
+        "local_name": "개요 1",
+        "english_name": "Outline 1",
+        "style_type": "paragraph",
+        "next_style_id": 2,
+        "lang_id": 1042,
+        "para_shape_id": 4,
+        "char_shape_id": 1
+      },
+      {
+        "local_name": "개요 2",
+        "english_name": "Outline 2",
+        "style_type": "paragraph",
+        "next_style_id": 3,
+        "lang_id": 1042,
+        "para_shape_id": 5,
+        "char_shape_id": 1
+      },
+      {
+        "local_name": "개요 3",
+        "english_name": "Outline 3",
+        "style_type": "paragraph",
+        "next_style_id": 4,
+        "lang_id": 1042,
+        "para_shape_id": 6,
+        "char_shape_id": 1
+      },
+      {
+        "local_name": "개요 4",
+        "english_name": "Outline 4",
+        "style_type": "paragraph",
+        "next_style_id": 5,
+        "lang_id": 1042,
+        "para_shape_id": 7,
+        "char_shape_id": 1
+      },
+      {
+        "local_name": "개요 5",
+        "english_name": "Outline 5",
+        "style_type": "paragraph",
+        "next_style_id": 6,
+        "lang_id": 1042,
+        "para_shape_id": 8,
+        "char_shape_id": 1
+      },
+      {
+        "local_name": "개요 6",
+        "english_name": "Outline 6",
+        "style_type": "paragraph",
+        "next_style_id": 7,
+        "lang_id": 1042,
+        "para_shape_id": 9,
+        "char_shape_id": 1
+      },
+      {
+        "local_name": "개요 7",
+        "english_name": "Outline 7",
+        "style_type": "paragraph",
+        "next_style_id": 8,
+        "lang_id": 1042,
+        "para_shape_id": 10,
+        "char_shape_id": 1
+      },
+      {
+        "local_name": "쪽 번호",
+        "english_name": "Page Number",
+        "style_type": "paragraph",
+        "next_style_id": 9,
+        "lang_id": 1042,
+        "para_shape_id": 2,
+        "char_shape_id": 0
+      },
+      {
+        "local_name": "머리말",
+        "english_name": "Header",
+        "style_type": "paragraph",
+        "next_style_id": 10,
+        "lang_id": 1042,
+        "para_shape_id": 11,
+        "char_shape_id": 2
+      },
+      {
+        "local_name": "각주",
+        "english_name": "Footnote",
+        "style_type": "paragraph",
+        "next_style_id": 11,
+        "lang_id": 1042,
+        "para_shape_id": 0,
+        "char_shape_id": 3
+      },
+      {
+        "local_name": "미주",
+        "english_name": "Endnote",
+        "style_type": "paragraph",
+        "next_style_id": 12,
+        "lang_id": 1042,
+        "para_shape_id": 0,
+        "char_shape_id": 3
+      },
+      {
+        "local_name": "메모",
+        "english_name": "Memo",
+        "style_type": "paragraph",
+        "next_style_id": 13,
+        "lang_id": 1042,
+        "para_shape_id": 1,
+        "char_shape_id": 4
+      }
+    ],
     "doc_data": [],
     "distribute_doc_data": null,
     "compatible_document": null,
@@ -1569,7 +2129,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1590,6 +2150,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 0,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1600,7 +2185,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1621,6 +2206,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 1000,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1631,7 +2241,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 18,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1652,6 +2262,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 2000,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 500,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1662,7 +2297,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1683,6 +2318,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 3500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1693,7 +2353,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 19,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1714,6 +2374,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 4500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 500,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1724,7 +2409,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1745,6 +2430,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 6000,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1755,7 +2465,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 20,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1776,6 +2486,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 7000,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 500,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1786,7 +2521,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1807,6 +2542,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 8500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1817,7 +2577,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 12,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1838,6 +2598,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 9500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1848,7 +2633,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1869,6 +2654,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 10500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1879,7 +2689,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1900,6 +2710,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 11500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1910,7 +2745,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1931,6 +2766,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 12500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1941,7 +2801,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 14,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1962,6 +2822,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 13500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1972,7 +2857,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -1993,6 +2878,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 14500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2003,7 +2913,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 16,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2024,6 +2934,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 15500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 1000,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2034,7 +2969,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2055,6 +2990,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 17500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2065,7 +3025,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 15,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2086,6 +3046,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 18500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 1000,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2096,7 +3081,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2117,6 +3102,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 20500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2127,7 +3137,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 17,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2148,6 +3158,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 21500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 1000,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2158,7 +3193,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2179,6 +3214,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 23500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2189,7 +3249,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 12,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2215,6 +3275,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 24500,
+                    "line_height": 2000,
+                    "text_height": 2000,
+                    "baseline_distance": 1700,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2225,7 +3310,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2246,6 +3331,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 26500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2256,7 +3366,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2282,6 +3392,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 27500,
+                    "line_height": 1500,
+                    "text_height": 1500,
+                    "baseline_distance": 1275,
+                    "line_spacing": -500,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2292,7 +3427,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2313,6 +3448,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 28500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2323,7 +3483,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 14,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2349,6 +3509,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 29500,
+                    "line_height": 2000,
+                    "text_height": 2000,
+                    "baseline_distance": 1700,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -2359,7 +3544,7 @@ expression: json
                 "value": 0,
                 "flags": []
               },
-              "para_shape_id": 0,
+              "para_shape_id": 13,
               "para_style_id": 0,
               "column_divide_type": [],
               "char_shape_count": 0,
@@ -2380,6 +3565,31 @@ expression: json
                   }
                 ],
                 "control_char_positions": []
+              },
+              {
+                "type": "para_line_seg",
+                "segments": [
+                  {
+                    "text_start_position": 0,
+                    "vertical_position": 31500,
+                    "line_height": 1000,
+                    "text_height": 1000,
+                    "baseline_distance": 850,
+                    "line_spacing": 0,
+                    "column_start_position": 0,
+                    "segment_width": 42520,
+                    "tag": {
+                      "is_first_line_of_page": false,
+                      "is_first_line_of_column": false,
+                      "is_empty_segment": false,
+                      "is_first_segment_of_line": true,
+                      "is_last_segment_of_line": true,
+                      "has_auto_hyphenation": false,
+                      "has_indentation": false,
+                      "has_paragraph_header_shape": false
+                    }
+                  }
+                ]
               }
             ]
           }

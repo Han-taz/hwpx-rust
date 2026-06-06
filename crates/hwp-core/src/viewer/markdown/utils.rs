@@ -5,16 +5,16 @@ use crate::document::{HeaderShapeType, HwpDocument};
 /// 개요 번호 추적 구조체 / Outline number tracking structure
 /// 각 레벨별로 번호를 추적하여 개요 번호를 생성
 /// Tracks numbers per level to generate outline numbers
-#[derive(Debug, Clone)]
-pub(crate) struct OutlineNumberTracker {
+#[derive(Debug, Clone, Default)]
+pub struct OutlineNumberTracker {
     /// 각 레벨별 번호 카운터 (인덱스는 레벨-1) / Number counter per level (index is level-1)
     counters: [u32; 7],
 }
 
 impl OutlineNumberTracker {
     /// 새로운 추적기 생성 / Create new tracker
-    pub(crate) fn new() -> Self {
-        Self { counters: [0; 7] }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// 개요 레벨의 번호를 증가시키고 반환 / Increment and return number for outline level

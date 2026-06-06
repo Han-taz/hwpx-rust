@@ -13,16 +13,17 @@ use crate::viewer::markdown::document::bodytext::para_text::{
     convert_para_text_to_markdown_with_hyperlinks, convert_runs_to_markdown,
     runs_have_char_shape_id, CrossingHyperlinkState, HyperlinkRegion,
 };
-use crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown;
+use crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown_with_lookup;
 use crate::viewer::markdown::document::bodytext::shape_component_picture::{
-    convert_hwpx_image_to_markdown, convert_shape_component_picture_to_markdown,
+    convert_hwpx_image_to_markdown_with_lookup,
+    convert_shape_component_picture_to_markdown_with_lookup,
 };
-use crate::viewer::markdown::document::bodytext::table::convert_table_to_markdown;
+use crate::viewer::markdown::document::bodytext::table::convert_table_to_markdown_with_lookup;
 use crate::viewer::markdown::utils::{
     convert_to_outline_with_number, is_text_part, OutlineNumberTracker,
 };
 use crate::viewer::markdown::MarkdownOptions;
-use crate::viewer::shared::BinDataIndex;
+use crate::viewer::shared::{build_bindata_item_lookup, BinDataIndex, BinDataItemLookup};
 
 /// Convert a paragraph to markdown
 /// 문단을 마크다운으로 변환
@@ -30,6 +31,25 @@ pub fn convert_paragraph_to_markdown(
     paragraph: &Paragraph,
     document: &HwpDocument,
     bindata_index: &BinDataIndex,
+    options: &MarkdownOptions,
+    tracker: &mut OutlineNumberTracker,
+) -> String {
+    let bindata_lookup = build_bindata_item_lookup(document);
+    convert_paragraph_to_markdown_with_lookup(
+        paragraph,
+        document,
+        bindata_index,
+        &bindata_lookup,
+        options,
+        tracker,
+    )
+}
+
+pub(crate) fn convert_paragraph_to_markdown_with_lookup(
+    paragraph: &Paragraph,
+    document: &HwpDocument,
+    bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
     options: &MarkdownOptions,
     tracker: &mut OutlineNumberTracker,
 ) -> String {
@@ -174,24 +194,28 @@ pub fn convert_paragraph_to_markdown(
                             {
                                 continue; // 테이블 셀 내부 이미지는 건너뜀
                             }
-                            if let Some(image_md) = convert_shape_component_picture_to_markdown(
-                                shape_component_picture,
-                                document,
-                                bindata_index,
-                                options.image_output_dir.as_deref(),
-                            ) {
+                            if let Some(image_md) =
+                                convert_shape_component_picture_to_markdown_with_lookup(
+                                    shape_component_picture,
+                                    bindata_index,
+                                    bindata_lookup,
+                                    options.image_output_dir.as_deref(),
+                                )
+                            {
                                 parts.push(image_md);
                             }
                         }
                         _ => {
                             // 다른 타입은 기존 방식으로 처리
-                            let shape_parts = convert_shape_component_children_to_markdown(
-                                std::slice::from_ref(child),
-                                document,
-                                bindata_index,
-                                options.image_output_dir.as_deref(),
-                                tracker,
-                            );
+                            let shape_parts =
+                                convert_shape_component_children_to_markdown_with_lookup(
+                                    std::slice::from_ref(child),
+                                    document,
+                                    bindata_index,
+                                    bindata_lookup,
+                                    options.image_output_dir.as_deref(),
+                                    tracker,
+                                );
                             parts.extend(shape_parts);
                         }
                     }
@@ -207,21 +231,23 @@ pub fn convert_paragraph_to_markdown(
                 {
                     continue; // 테이블 셀 내부 이미지는 건너뜀
                 }
-                if let Some(image_md) = convert_shape_component_picture_to_markdown(
+                if let Some(image_md) = convert_shape_component_picture_to_markdown_with_lookup(
                     shape_component_picture,
-                    document,
                     bindata_index,
+                    bindata_lookup,
                     options.image_output_dir.as_deref(),
                 ) {
                     parts.push(image_md);
                 }
             }
-            ParagraphRecord::HwpxImage { binary_item_ref } => {
+            ParagraphRecord::HwpxImage {
+                binary_item_ref, ..
+            } => {
                 // HWPX 이미지 참조 변환 / Convert HWPX image reference
-                if let Some(image_md) = convert_hwpx_image_to_markdown(
+                if let Some(image_md) = convert_hwpx_image_to_markdown_with_lookup(
                     binary_item_ref,
-                    document,
                     bindata_index,
+                    bindata_lookup,
                     options.image_output_dir.as_deref(),
                 ) {
                     parts.push(image_md);
@@ -245,10 +271,11 @@ pub fn convert_paragraph_to_markdown(
                             // 내부 문단들의 텍스트를 수집 / Collect text from inner paragraphs
                             let mut link_texts: Vec<String> = Vec::new();
                             for para in ctrl_paragraphs {
-                                let para_md = convert_paragraph_to_markdown(
+                                let para_md = convert_paragraph_to_markdown_with_lookup(
                                     para,
                                     document,
                                     bindata_index,
+                                    bindata_lookup,
                                     options,
                                     tracker,
                                 );
@@ -260,18 +287,27 @@ pub fn convert_paragraph_to_markdown(
 
                             if !link_text.is_empty() {
                                 // [text](url) 형식으로 마크다운 링크 생성 / Create markdown link as [text](url)
-                                parts.push(format!("[{}]({})", link_text, url));
+                                parts.push(
+                                    crate::viewer::markdown::security::format_link_escaped_label(
+                                        &link_text, &url,
+                                    ),
+                                );
                             } else {
                                 // 텍스트가 없으면 URL만 표시 / If no text, show URL only
-                                parts.push(format!("<{}>", url));
+                                parts.push(
+                                    crate::viewer::markdown::security::format_autolink_or_link(
+                                        &url,
+                                    ),
+                                );
                             }
                         } else {
                             // URL이 없으면 내부 문단만 처리 / If no URL, process inner paragraphs only
                             for para in ctrl_paragraphs {
-                                let para_md = convert_paragraph_to_markdown(
+                                let para_md = convert_paragraph_to_markdown_with_lookup(
                                     para,
                                     document,
                                     bindata_index,
+                                    bindata_lookup,
                                     options,
                                     tracker,
                                 );
@@ -288,10 +324,11 @@ pub fn convert_paragraph_to_markdown(
                 if !should_process_control_header(header) {
                     // CTRL_HEADER 내부의 직접 문단 처리 / Process direct paragraphs inside CTRL_HEADER
                     for para in ctrl_paragraphs {
-                        let para_md = convert_paragraph_to_markdown(
+                        let para_md = convert_paragraph_to_markdown_with_lookup(
                             para,
                             document,
                             bindata_index,
+                            bindata_lookup,
                             options,
                             tracker,
                         );
@@ -305,12 +342,14 @@ pub fn convert_paragraph_to_markdown(
                             ParagraphRecord::ShapeComponentPicture {
                                 shape_component_picture,
                             } => {
-                                if let Some(image_md) = convert_shape_component_picture_to_markdown(
-                                    shape_component_picture,
-                                    document,
-                                    bindata_index,
-                                    options.image_output_dir.as_deref(),
-                                ) {
+                                if let Some(image_md) =
+                                    convert_shape_component_picture_to_markdown_with_lookup(
+                                        shape_component_picture,
+                                        bindata_index,
+                                        bindata_lookup,
+                                        options.image_output_dir.as_deref(),
+                                    )
+                                {
                                     parts.push(image_md);
                                 }
                             }
@@ -384,10 +423,11 @@ pub fn convert_paragraph_to_markdown(
                 // First process Table (prevent images inside table from being placed before table)
                 if let Some(table_idx) = table_index {
                     if let ParagraphRecord::Table { table } = &children_slice[table_idx] {
-                        let table_md = convert_table_to_markdown(
+                        let table_md = convert_table_to_markdown_with_lookup(
                             table,
                             document,
                             bindata_index,
+                            bindata_lookup,
                             options,
                             tracker,
                         );
@@ -423,10 +463,11 @@ pub fn convert_paragraph_to_markdown(
                                     // 표 앞의 LIST_HEADER는 이미 처리됨 / LIST_HEADER before table is already processed
                                     // 표가 없거나 표 셀 내부가 아닌 경우 일반 처리 / General processing if no table or not inside table cell
                                     for para in paragraphs {
-                                        let para_md = convert_paragraph_to_markdown(
+                                        let para_md = convert_paragraph_to_markdown_with_lookup(
                                             para,
                                             document,
                                             bindata_index,
+                                            bindata_lookup,
                                             options,
                                             tracker,
                                         );
@@ -438,10 +479,11 @@ pub fn convert_paragraph_to_markdown(
                             } else {
                                 // 표가 없는 경우 일반 처리 / General processing if no table
                                 for para in paragraphs {
-                                    let para_md = convert_paragraph_to_markdown(
+                                    let para_md = convert_paragraph_to_markdown_with_lookup(
                                         para,
                                         document,
                                         bindata_index,
+                                        bindata_lookup,
                                         options,
                                         tracker,
                                     );
@@ -475,10 +517,10 @@ pub fn convert_paragraph_to_markdown(
                                         } else {
                                             // 표 셀 내부가 아닌 경우 이미지 변환 / Convert image if not inside table cell
                                             if let Some(image_md) =
-                                                convert_shape_component_picture_to_markdown(
+                                                convert_shape_component_picture_to_markdown_with_lookup(
                                                     shape_component_picture,
-                                                    document,
                                                     bindata_index,
+                                                    bindata_lookup,
                                                     options.image_output_dir.as_deref(),
                                                 )
                                             {
@@ -491,10 +533,11 @@ pub fn convert_paragraph_to_markdown(
                                         let paragraphs = &lh_data.paragraphs;
                                         // LIST_HEADER의 paragraphs 처리 (글상자 텍스트) / Process LIST_HEADER's paragraphs (textbox text)
                                         for para in paragraphs {
-                                            let para_md = convert_paragraph_to_markdown(
+                                            let para_md = convert_paragraph_to_markdown_with_lookup(
                                                 para,
                                                 document,
                                                 bindata_index,
+                                                bindata_lookup,
                                                 options,
                                                 tracker,
                                             );
@@ -535,12 +578,14 @@ pub fn convert_paragraph_to_markdown(
                             // 표 셀 내부의 이미지는 표 셀에 이미 포함되므로 여기서는 표시하지 않음
                             // Images inside table cells are already included in table cells, so don't display here
                             if !is_table_cell_image {
-                                if let Some(image_md) = convert_shape_component_picture_to_markdown(
-                                    shape_component_picture,
-                                    document,
-                                    bindata_index,
-                                    options.image_output_dir.as_deref(),
-                                ) {
+                                if let Some(image_md) =
+                                    convert_shape_component_picture_to_markdown_with_lookup(
+                                        shape_component_picture,
+                                        bindata_index,
+                                        bindata_lookup,
+                                        options.image_output_dir.as_deref(),
+                                    )
+                                {
                                     if has_table {
                                         // 표가 있지만 셀 내부가 아닌 경우 (표 위/아래 이미지 등)
                                         // Table exists but not inside cell (e.g., image above/below table)
@@ -604,10 +649,11 @@ pub fn convert_paragraph_to_markdown(
 
                     // 표 셀 내부가 아닌 경우에만 처리 / Only process if not inside table cell
                     if !is_table_cell {
-                        let para_md = convert_paragraph_to_markdown(
+                        let para_md = convert_paragraph_to_markdown_with_lookup(
                             para,
                             document,
                             bindata_index,
+                            bindata_lookup,
                             options,
                             tracker,
                         );
@@ -620,8 +666,14 @@ pub fn convert_paragraph_to_markdown(
             ParagraphRecord::Table { table } => {
                 // HWPX 파서에서 직접 생성된 테이블 처리 / Handle tables directly created by HWPX parser
                 // (CtrlHeader로 감싸지지 않은 테이블)
-                let table_md =
-                    convert_table_to_markdown(table, document, bindata_index, options, tracker);
+                let table_md = convert_table_to_markdown_with_lookup(
+                    table,
+                    document,
+                    bindata_index,
+                    bindata_lookup,
+                    options,
+                    tracker,
+                );
                 if !table_md.is_empty() {
                     parts.push(table_md);
                 }
@@ -701,6 +753,27 @@ pub fn convert_paragraph_to_markdown_with_state(
     paragraph: &Paragraph,
     document: &HwpDocument,
     bindata_index: &BinDataIndex,
+    options: &MarkdownOptions,
+    tracker: &mut OutlineNumberTracker,
+    open_hyperlink: Option<&CrossingHyperlinkState>,
+) -> ParagraphConversionResult {
+    let bindata_lookup = build_bindata_item_lookup(document);
+    convert_paragraph_to_markdown_with_state_and_lookup(
+        paragraph,
+        document,
+        bindata_index,
+        &bindata_lookup,
+        options,
+        tracker,
+        open_hyperlink,
+    )
+}
+
+pub(crate) fn convert_paragraph_to_markdown_with_state_and_lookup(
+    paragraph: &Paragraph,
+    document: &HwpDocument,
+    bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
     options: &MarkdownOptions,
     tracker: &mut OutlineNumberTracker,
     open_hyperlink: Option<&CrossingHyperlinkState>,
@@ -851,23 +924,27 @@ pub fn convert_paragraph_to_markdown_with_state(
                             {
                                 continue;
                             }
-                            if let Some(image_md) = convert_shape_component_picture_to_markdown(
-                                shape_component_picture,
-                                document,
-                                bindata_index,
-                                options.image_output_dir.as_deref(),
-                            ) {
+                            if let Some(image_md) =
+                                convert_shape_component_picture_to_markdown_with_lookup(
+                                    shape_component_picture,
+                                    bindata_index,
+                                    bindata_lookup,
+                                    options.image_output_dir.as_deref(),
+                                )
+                            {
                                 parts.push(image_md);
                             }
                         }
                         _ => {
-                            let shape_parts = convert_shape_component_children_to_markdown(
-                                std::slice::from_ref(child),
-                                document,
-                                bindata_index,
-                                options.image_output_dir.as_deref(),
-                                tracker,
-                            );
+                            let shape_parts =
+                                convert_shape_component_children_to_markdown_with_lookup(
+                                    std::slice::from_ref(child),
+                                    document,
+                                    bindata_index,
+                                    bindata_lookup,
+                                    options.image_output_dir.as_deref(),
+                                    tracker,
+                                );
                             parts.extend(shape_parts);
                         }
                     }
@@ -881,20 +958,22 @@ pub fn convert_paragraph_to_markdown_with_state(
                 {
                     continue;
                 }
-                if let Some(image_md) = convert_shape_component_picture_to_markdown(
+                if let Some(image_md) = convert_shape_component_picture_to_markdown_with_lookup(
                     shape_component_picture,
-                    document,
                     bindata_index,
+                    bindata_lookup,
                     options.image_output_dir.as_deref(),
                 ) {
                     parts.push(image_md);
                 }
             }
-            ParagraphRecord::HwpxImage { binary_item_ref } => {
-                if let Some(image_md) = convert_hwpx_image_to_markdown(
+            ParagraphRecord::HwpxImage {
+                binary_item_ref, ..
+            } => {
+                if let Some(image_md) = convert_hwpx_image_to_markdown_with_lookup(
                     binary_item_ref,
-                    document,
                     bindata_index,
+                    bindata_lookup,
                     options.image_output_dir.as_deref(),
                 ) {
                     parts.push(image_md);
@@ -915,10 +994,11 @@ pub fn convert_paragraph_to_markdown_with_state(
                         if let Some(url) = get_hyperlink_url(header) {
                             let mut link_texts: Vec<String> = Vec::new();
                             for para in ctrl_paragraphs {
-                                let para_md = convert_paragraph_to_markdown(
+                                let para_md = convert_paragraph_to_markdown_with_lookup(
                                     para,
                                     document,
                                     bindata_index,
+                                    bindata_lookup,
                                     options,
                                     tracker,
                                 );
@@ -929,16 +1009,25 @@ pub fn convert_paragraph_to_markdown_with_state(
                             let link_text = link_texts.join(" ").trim().to_string();
 
                             if !link_text.is_empty() {
-                                parts.push(format!("[{}]({})", link_text, url));
+                                parts.push(
+                                    crate::viewer::markdown::security::format_link_escaped_label(
+                                        &link_text, &url,
+                                    ),
+                                );
                             } else {
-                                parts.push(format!("<{}>", url));
+                                parts.push(
+                                    crate::viewer::markdown::security::format_autolink_or_link(
+                                        &url,
+                                    ),
+                                );
                             }
                         } else {
                             for para in ctrl_paragraphs {
-                                let para_md = convert_paragraph_to_markdown(
+                                let para_md = convert_paragraph_to_markdown_with_lookup(
                                     para,
                                     document,
                                     bindata_index,
+                                    bindata_lookup,
                                     options,
                                     tracker,
                                 );
@@ -953,10 +1042,11 @@ pub fn convert_paragraph_to_markdown_with_state(
 
                 if !should_process_control_header(header) {
                     for para in ctrl_paragraphs {
-                        let para_md = convert_paragraph_to_markdown(
+                        let para_md = convert_paragraph_to_markdown_with_lookup(
                             para,
                             document,
                             bindata_index,
+                            bindata_lookup,
                             options,
                             tracker,
                         );
@@ -969,12 +1059,14 @@ pub fn convert_paragraph_to_markdown_with_state(
                             shape_component_picture,
                         } = child
                         {
-                            if let Some(image_md) = convert_shape_component_picture_to_markdown(
-                                shape_component_picture,
-                                document,
-                                bindata_index,
-                                options.image_output_dir.as_deref(),
-                            ) {
+                            if let Some(image_md) =
+                                convert_shape_component_picture_to_markdown_with_lookup(
+                                    shape_component_picture,
+                                    bindata_index,
+                                    bindata_lookup,
+                                    options.image_output_dir.as_deref(),
+                                )
+                            {
                                 parts.push(image_md);
                             }
                         }
@@ -996,10 +1088,11 @@ pub fn convert_paragraph_to_markdown_with_state(
 
                 if let Some(table_idx) = table_index {
                     if let ParagraphRecord::Table { table } = &children[table_idx] {
-                        let table_md = convert_table_to_markdown(
+                        let table_md = convert_table_to_markdown_with_lookup(
                             table,
                             document,
                             bindata_index,
+                            bindata_lookup,
                             options,
                             tracker,
                         );
@@ -1017,10 +1110,11 @@ pub fn convert_paragraph_to_markdown_with_state(
                         ParagraphRecord::ListHeader { data: lh_data } => {
                             let paragraphs = &lh_data.paragraphs;
                             for para in paragraphs {
-                                let para_md = convert_paragraph_to_markdown(
+                                let para_md = convert_paragraph_to_markdown_with_lookup(
                                     para,
                                     document,
                                     bindata_index,
+                                    bindata_lookup,
                                     options,
                                     tracker,
                                 );
@@ -1032,12 +1126,14 @@ pub fn convert_paragraph_to_markdown_with_state(
                         ParagraphRecord::ShapeComponentPicture {
                             shape_component_picture,
                         } => {
-                            if let Some(image_md) = convert_shape_component_picture_to_markdown(
-                                shape_component_picture,
-                                document,
-                                bindata_index,
-                                options.image_output_dir.as_deref(),
-                            ) {
+                            if let Some(image_md) =
+                                convert_shape_component_picture_to_markdown_with_lookup(
+                                    shape_component_picture,
+                                    bindata_index,
+                                    bindata_lookup,
+                                    options.image_output_dir.as_deref(),
+                                )
+                            {
                                 parts.push(image_md);
                             }
                         }
@@ -1065,10 +1161,11 @@ pub fn convert_paragraph_to_markdown_with_state(
                         && table_cell_para_ids.contains(&para.para_header.instance_id);
 
                     if !is_table_cell {
-                        let para_md = convert_paragraph_to_markdown(
+                        let para_md = convert_paragraph_to_markdown_with_lookup(
                             para,
                             document,
                             bindata_index,
+                            bindata_lookup,
                             options,
                             tracker,
                         );
@@ -1079,8 +1176,14 @@ pub fn convert_paragraph_to_markdown_with_state(
                 }
             }
             ParagraphRecord::Table { table } => {
-                let table_md =
-                    convert_table_to_markdown(table, document, bindata_index, options, tracker);
+                let table_md = convert_table_to_markdown_with_lookup(
+                    table,
+                    document,
+                    bindata_index,
+                    bindata_lookup,
+                    options,
+                    tracker,
+                );
                 if !table_md.is_empty() {
                     parts.push(table_md);
                 }

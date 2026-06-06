@@ -86,6 +86,34 @@ The parser exposes both legacy string warnings and structured diagnostics. Diagn
 identify unsupported elements, recovered invalid values, skipped binary assets, and
 likely data loss so conversion problems are visible instead of silently ignored.
 
+## Security and reliability
+
+HWP/HWPX files are treated as untrusted input. The HWPX parser enforces ZIP, XML, and
+section-level resource limits; rejects unsafe ZIP paths; normalizes binary references;
+and sanitizes image output extensions. CI runs Rust tests, clippy, formatting,
+dependency audit, dependency policy checks, CodeQL, Python wheel validation, and
+packaging smoke tests.
+
+See [SECURITY.md](SECURITY.md) and [docs/security-model.md](docs/security-model.md)
+for the threat model, resource limits, and vulnerability reporting process.
+
+Parser fuzzing is configured with `cargo-fuzz` targets for autodetected parsing and
+HWPX-specific parsing. See [docs/fuzzing.md](docs/fuzzing.md) for target details and
+local fuzzing workflow.
+
+Python releases are built as ABI3 wheels and published through PyPI Trusted
+Publishing. See [docs/release.md](docs/release.md) for release and publishing checks.
+
+CI generates LCOV coverage artifacts with `cargo-llvm-cov`; see
+[docs/coverage.md](docs/coverage.md) for local reports and review policy.
+
+## Performance
+
+The repository includes Criterion benchmarks for HWPX parsing and Markdown conversion.
+CI compiles the benchmark target in test mode to catch performance harness breakage
+without depending on noisy shared-runner timings. See
+[docs/performance.md](docs/performance.md) for local benchmark workflow and reporting.
+
 ## Python 사용법
 
 ### 설치
@@ -175,7 +203,12 @@ maturin build --release
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
+cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
+cargo bench -p hwp-core --bench parse_benchmark -- --test
+cargo check --manifest-path fuzz/Cargo.toml --locked
+cargo deny --locked check
 cargo audit
+cargo audit --file fuzz/Cargo.lock
 
 # 스냅샷 테스트 업데이트
 cargo insta accept --workspace

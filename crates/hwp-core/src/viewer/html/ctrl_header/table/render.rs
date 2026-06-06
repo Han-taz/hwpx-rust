@@ -3,13 +3,14 @@ use crate::document::bodytext::{
     ControlChar, ControlCharPosition, LineSegmentInfo, PageDef, Table,
 };
 use crate::types::{Hwpunit16ToMm, HWPUNIT};
+use crate::viewer::html::line_segment::slice_cleaned_by_original_range;
 use crate::viewer::html::styles::{int32_to_mm, round_to_2dp};
-use crate::viewer::shared::BinDataIndex;
+use crate::viewer::shared::{BinDataIndex, BinDataItemLookup};
 use crate::viewer::HtmlOptions;
 use crate::{HwpDocument, INT32};
 
 use super::constants::SVG_PADDING_MM;
-use super::position::{table_position, view_box};
+use super::position::{table_position, view_box, TablePositionInput};
 use super::size::{content_size, htb_size, resolve_container_size};
 use super::{cells, svg};
 
@@ -70,6 +71,7 @@ pub struct TableRenderContext<'a> {
     pub pattern_counter: &'a mut usize,
     pub color_to_pattern: &'a mut std::collections::HashMap<u32, String>,
     pub bindata_index: &'a BinDataIndex,
+    pub bindata_lookup: &'a BinDataItemLookup<'a>,
 }
 
 /// 테이블 위치 정보 / Table position information
@@ -167,26 +169,26 @@ pub fn render_table(
         context.pattern_counter, // 문서 레벨 pattern_counter 전달 / Pass document-level pattern_counter
         context.color_to_pattern, // 문서 레벨 color_to_pattern 전달 / Pass document-level color_to_pattern
     );
-    let cells_html = cells::render_cells(
-        table,
-        ctrl_header_height_mm,
+    let mut cell_context = cells::CellRenderContext {
         document,
-        _options,
-        context.bindata_index,
-        context.pattern_counter,
-        context.color_to_pattern,
-    );
-    let (mut left_mm, mut top_mm) = table_position(
+        options: _options,
+        bindata_index: context.bindata_index,
+        bindata_lookup: context.bindata_lookup,
+        pattern_counter: context.pattern_counter,
+        color_to_pattern: context.color_to_pattern,
+    };
+    let cells_html = cells::render_cells(table, ctrl_header_height_mm, &mut cell_context);
+    let (mut left_mm, mut top_mm) = table_position(TablePositionInput {
         hcd_position,
         page_def,
         segment_position,
         ctrl_header,
-        Some(resolved_size.width),
+        obj_outer_width_mm: Some(resolved_size.width),
         para_start_vertical_mm,
         para_start_column_mm,
         para_segment_width_mm,
         first_para_vertical_mm,
-    );
+    });
 
     // htG 래퍼 생성 (캡션이 있거나 ctrl_header가 있는 경우) / Create htG wrapper (if caption exists or ctrl_header exists)
     // 캡션 유무는 caption_info 존재 여부로 판단 / Determine caption existence by caption_info presence
@@ -365,6 +367,11 @@ pub fn render_table(
                 table_number.map(|n| n.to_string()).unwrap_or_default()
             };
             let caption_body = caption.body.clone();
+            let caption_label_html =
+                crate::viewer::html::security::escape_html_text(&caption_label);
+            let table_num_text_html =
+                crate::viewer::html::security::escape_html_text(&table_num_text);
+            let caption_body_html = crate::viewer::html::security::escape_html_text(&caption_body);
 
             // 캡션 HTML 생성 / Generate caption HTML
             let caption_base_left_mm =
@@ -476,9 +483,9 @@ pub fn render_table(
                         caption_height_mm = caption_height_mm,
                         caption_hls_width_mm = caption_hls_width_mm,
                         cs_class = cs_class,
-                        caption_label = caption_label,
-                        table_num_text = table_num_text,
-                        caption_body = caption_body
+                        caption_label = caption_label_html,
+                        table_num_text = table_num_text_html,
+                        caption_body = caption_body_html
                     )]
                 } else {
                     // 각 LineSegment에 대해 텍스트 분할 및 렌더링 / Split text and render for each LineSegment
@@ -497,52 +504,6 @@ pub fn render_table(
                             .iter()
                             .map(|cc| ControlChar::get_size_by_code(cc.code))
                             .sum::<usize>();
-
-                    // line_segment.rs의 함수와 동일한 로직 사용 / Use same logic as line_segment.rs
-                    // line_segment.rs와 동일한 로직 사용 / Use same logic as line_segment.rs
-                    fn original_to_cleaned_index(
-                        pos: usize,
-                        control_chars: &[ControlCharPosition],
-                    ) -> isize {
-                        let mut delta: isize = 0;
-                        for cc in control_chars.iter() {
-                            if cc.position >= pos {
-                                break;
-                            }
-                            let size = ControlChar::get_size_by_code(cc.code) as isize;
-                            let contributes = if ControlChar::is_convertible(cc.code)
-                                && cc.code != ControlChar::PARA_BREAK
-                                && cc.code != ControlChar::LINE_BREAK
-                            {
-                                1
-                            } else {
-                                0
-                            } as isize;
-                            delta += contributes - size;
-                        }
-                        delta
-                    }
-
-                    fn slice_cleaned_by_original_range(
-                        cleaned: &str,
-                        control_chars: &[ControlCharPosition],
-                        start_original: usize,
-                        end_original: usize,
-                    ) -> String {
-                        let start_delta = original_to_cleaned_index(start_original, control_chars);
-                        let end_delta = original_to_cleaned_index(end_original, control_chars);
-
-                        let start_cleaned = (start_original as isize + start_delta).max(0) as usize;
-                        let end_cleaned = (end_original as isize + end_delta).max(0) as usize;
-
-                        let cleaned_chars: Vec<char> = cleaned.chars().collect();
-                        let s = start_cleaned.min(cleaned_chars.len());
-                        let e = end_cleaned.min(cleaned_chars.len());
-                        if s >= e {
-                            return String::new();
-                        }
-                        cleaned_chars[s..e].iter().collect()
-                    }
 
                     for (idx, segment) in segments.iter().enumerate() {
                         let lh = round_to_2dp(int32_to_mm(segment.baseline_distance));
@@ -590,10 +551,18 @@ pub fn render_table(
                                     let num_text = caption_auto_number_display_text
                                         .as_deref()
                                         .unwrap_or(&table_num_text);
+                                    let before_num =
+                                        crate::viewer::html::security::escape_html_text(
+                                            before_num.trim(),
+                                        );
+                                    let after_num =
+                                        crate::viewer::html::security::escape_html_text(&after_num);
+                                    let num_text =
+                                        crate::viewer::html::security::escape_html_text(num_text);
                                     format!(
                                         r#"<span class="hrt {cs_class}">{before_num}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{num_text}</span></div><span class="hrt {cs_class}">&nbsp;{after_num}</span>"#,
                                         cs_class = cs_class,
-                                        before_num = before_num.trim(),
+                                        before_num = before_num,
                                         caption_height_mm = caption_height_mm,
                                         num_text = num_text,
                                         after_num = after_num
@@ -601,17 +570,25 @@ pub fn render_table(
                                 } else {
                                     // AUTO_NUMBER 위치가 텍스트 범위를 벗어남 / AUTO_NUMBER position out of range
                                     format!(
-                                        r#"<span class="hrt {cs_class}">{caption_label}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{table_num_text}</span></div><span class="hrt {cs_class}">&nbsp;{caption_body}</span>"#
+                                        r#"<span class="hrt {cs_class}">{caption_label}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{table_num_text}</span></div><span class="hrt {cs_class}">&nbsp;{caption_body}</span>"#,
+                                        caption_label = caption_label_html,
+                                        table_num_text = table_num_text_html,
+                                        caption_body = caption_body_html
                                     )
                                 }
                             } else {
                                 // AUTO_NUMBER 위치가 없으면 fallback / Fallback if no AUTO_NUMBER position
                                 format!(
-                                    r#"<span class="hrt {cs_class}">{caption_label}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{table_num_text}</span></div><span class="hrt {cs_class}">&nbsp;{caption_body}</span>"#
+                                    r#"<span class="hrt {cs_class}">{caption_label}&nbsp;</span><div class="haN" style="left:0mm;top:0mm;height:{caption_height_mm}mm;"><span class="hrt {cs_class}">{table_num_text}</span></div><span class="hrt {cs_class}">&nbsp;{caption_body}</span>"#,
+                                    caption_label = caption_label_html,
+                                    table_num_text = table_num_text_html,
+                                    caption_body = caption_body_html
                                 )
                             }
                         } else {
                             // 나머지 segment: body의 나머지 부분만 / Remaining segments: only remaining part of body
+                            let segment_text =
+                                crate::viewer::html::security::escape_html_text(segment_text);
                             format!(r#"<span class="hrt {cs_class}">{segment_text}</span>"#)
                         };
 
@@ -634,9 +611,9 @@ pub fn render_table(
                     caption_height_mm = caption_height_mm,
                     caption_hls_width_mm = caption_hls_width_mm,
                     cs_class = cs_class,
-                    caption_label = caption_label,
-                    table_num_text = table_num_text,
-                    caption_body = caption_body
+                    caption_label = caption_label_html,
+                    table_num_text = table_num_text_html,
+                    caption_body = caption_body_html
                 )]
             };
 
@@ -825,4 +802,143 @@ pub fn render_table(
     };
 
     result_html
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::bodytext::ctrl_header::CaptionAlign;
+    use crate::document::bodytext::list_header::{
+        LineBreak, ListHeader, ListHeaderAttribute, TextDirection, VerticalAlign,
+    };
+    use crate::document::bodytext::table::{
+        CellAttributes, PageBreakBehavior, TableAttribute, TableAttributes, TableCell, TablePadding,
+    };
+    use crate::document::bodytext::Paragraph;
+    use crate::types::HWPUNIT;
+    use crate::viewer::shared::BinDataIndex;
+    use std::collections::HashMap;
+
+    fn test_document() -> HwpDocument {
+        HwpDocument::new(crate::document::FileHeader {
+            signature: "HWP Document File".to_string(),
+            version: 0x05000300,
+            document_flags: 0,
+            license_flags: 0,
+            encrypt_version: 0,
+            kogl_country: 0,
+            reserved: vec![0; 207],
+        })
+    }
+
+    fn minimal_table() -> Table {
+        Table {
+            attributes: TableAttributes {
+                attribute: TableAttribute {
+                    page_break: PageBreakBehavior::NoBreak,
+                    header_row_repeat: false,
+                },
+                row_count: 1,
+                col_count: 1,
+                cell_spacing: 0,
+                padding: TablePadding {
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                },
+                row_sizes: vec![1000],
+                border_fill_id: 0,
+                zones: vec![],
+            },
+            cells: vec![TableCell {
+                list_header: ListHeader {
+                    paragraph_count: 1,
+                    attribute: ListHeaderAttribute {
+                        text_direction: TextDirection::Horizontal,
+                        line_break: LineBreak::Normal,
+                        vertical_align: VerticalAlign::Top,
+                    },
+                },
+                cell_attributes: CellAttributes {
+                    col_address: 0,
+                    row_address: 0,
+                    col_span: 1,
+                    row_span: 1,
+                    width: HWPUNIT(5000),
+                    height: HWPUNIT(1000),
+                    left_margin: 0,
+                    right_margin: 0,
+                    top_margin: 0,
+                    bottom_margin: 0,
+                    border_fill_id: 0,
+                },
+                paragraphs: vec![Paragraph::default()],
+            }],
+        }
+    }
+
+    #[test]
+    fn table_caption_text_is_html_escaped() {
+        let document = test_document();
+        let options = HtmlOptions::default();
+        let bindata_index = BinDataIndex::new();
+        let bindata_lookup = crate::viewer::shared::build_bindata_item_lookup(&document);
+        let mut pattern_counter = 0;
+        let mut color_to_pattern = HashMap::new();
+        let mut context = TableRenderContext {
+            document: &document,
+            ctrl_header: None,
+            page_def: None,
+            options: &options,
+            table_number: Some(1),
+            pattern_counter: &mut pattern_counter,
+            color_to_pattern: &mut color_to_pattern,
+            bindata_index: &bindata_index,
+            bindata_lookup: &bindata_lookup,
+        };
+        let caption = CaptionData {
+            text: CaptionText {
+                label: "<img src=x onerror=alert(1)>".to_string(),
+                number: "1".to_string(),
+                body: "<script>alert(1)</script>".to_string(),
+            },
+            info: CaptionInfo {
+                align: CaptionAlign::Top,
+                is_above: true,
+                gap: Some(0),
+                height_mm: Some(3.53),
+                width: None,
+                include_margin: Some(false),
+                last_width: Some(5000),
+                vertical_align: None,
+            },
+            char_shape_id: 0,
+            para_shape_id: 0,
+            line_segments: vec![],
+            original_text: String::new(),
+            control_char_positions: vec![],
+            auto_number_position: None,
+            auto_number_display_text: None,
+        };
+
+        let html = render_table(
+            &minimal_table(),
+            &mut context,
+            TablePosition {
+                hcd_position: None,
+                segment_position: None,
+                para_start_vertical_mm: None,
+                para_start_column_mm: None,
+                para_segment_width_mm: None,
+                first_para_vertical_mm: None,
+            },
+            Some(&caption),
+        );
+
+        assert!(!html.contains("<img src=x onerror=alert(1)>"));
+        assert!(!html.contains("<script>alert(1)</script>"));
+        assert!(html.contains("&lt;img src=x onerror=alert(1)&gt;"));
+        assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    }
 }

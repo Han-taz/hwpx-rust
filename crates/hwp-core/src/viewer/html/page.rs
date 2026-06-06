@@ -1,20 +1,24 @@
 use crate::document::bodytext::ctrl_header::{CtrlHeaderData, PageNumberPosition};
+use crate::document::bodytext::PageDef;
 use crate::document::HwpDocument;
 use crate::types::RoundTo2dp;
-use crate::{document::bodytext::PageDef, INT32};
+
+pub struct PageRenderContext<'a> {
+    pub page_def: Option<&'a PageDef>,
+    pub hcd_position: Option<(f64, f64)>,
+    pub page_number_position: Option<&'a CtrlHeaderData>,
+    pub page_start_number: u16,
+    pub document: &'a HwpDocument,
+}
 
 /// 페이지를 HTML로 렌더링 / Render page to HTML
 pub fn render_page(
     page_number: usize,
     content: &str,
     tables: &[String],
-    page_def: Option<&PageDef>,
-    _first_segment_pos: Option<(INT32, INT32)>,
-    hcd_position: Option<(f64, f64)>,
-    page_number_position: Option<&CtrlHeaderData>,
-    page_start_number: u16,
-    document: &HwpDocument,
+    context: PageRenderContext<'_>,
 ) -> String {
+    let page_def = context.page_def;
     let width_mm = page_def
         .map(|pd| pd.paper_width.to_mm().round_to_2dp())
         .unwrap_or(210.0); // A4 기본값 / A4 default
@@ -23,7 +27,7 @@ pub fn render_page(
         .unwrap_or(297.0); // A4 기본값 / A4 default
 
     // hcD 위치: PageDef 여백을 직접 사용 / hcD position: use PageDef margins directly
-    let (left_mm, top_mm) = if let Some((left, top)) = hcd_position {
+    let (left_mm, top_mm) = if let Some((left, top)) = context.hcd_position {
         (left.round_to_2dp(), top.round_to_2dp())
     } else {
         // hcd_position이 없으면 PageDef 여백 사용 / Use PageDef margins if hcd_position not available
@@ -56,16 +60,18 @@ pub fn render_page(
         prefix,
         suffix,
         ..
-    }) = page_number_position
+    }) = context.page_number_position
     {
         if flags.position != PageNumberPosition::None {
-            let actual_page_number = (page_start_number as usize + page_number - 1).to_string();
+            let actual_page_number =
+                (context.page_start_number as usize + page_number - 1).to_string();
 
             // prefix/suffix에서 null 문자 제거 (null 문자는 빈 문자열로 처리) / Remove null characters from prefix/suffix (treat null as empty string)
             let prefix_clean: String = prefix.chars().filter(|c| *c != '\0').collect();
             let suffix_clean: String = suffix.chars().filter(|c| *c != '\0').collect();
 
             let page_number_text = format!("{prefix_clean}{actual_page_number}{suffix_clean}");
+            let page_number_html = super::security::escape_html_text(&page_number_text);
 
             // 페이지 크기 계산 / Calculate page size
             let page_width_mm = page_def
@@ -159,8 +165,10 @@ pub fn render_page(
             // CharShape 정보로 텍스트 크기 계산 / Calculate text size from CharShape
             // 원본 HTML에서 cs1 클래스를 사용하므로 shape_id 1 (0-based) 사용 / Use shape_id 1 (0-based) since original HTML uses cs1 class
             let char_shape_id = 1;
-            let (width_mm, height_mm) = if char_shape_id < document.doc_info.char_shapes.len() {
-                if let Some(char_shape) = document.doc_info.char_shapes.get(char_shape_id) {
+            let (width_mm, height_mm) = if char_shape_id
+                < context.document.doc_info.char_shapes.len()
+            {
+                if let Some(char_shape) = context.document.doc_info.char_shapes.get(char_shape_id) {
                     // 폰트 크기 계산 (base_size는 1/100 pt 단위) / Calculate font size (base_size is in 1/100 pt units)
                     let font_size_pt = char_shape.base_size as f64 / 100.0;
                     let font_size_mm = font_size_pt * 0.352778; // 1pt = 0.352778mm
@@ -183,11 +191,58 @@ pub fn render_page(
             };
 
             html.push_str(&format!(
-                r#"<div class="hpN" style="left:{left_mm}mm;top:{top_mm}mm;width:{width_mm}mm;height:{height_mm}mm;"><span class="hrt cs1">{page_number_text}</span></div>"#
+                r#"<div class="hpN" style="left:{left_mm}mm;top:{top_mm}mm;width:{width_mm}mm;height:{height_mm}mm;"><span class="hrt cs1">{page_number_html}</span></div>"#
             ));
         }
     }
 
     html.push_str("</div>");
     html
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::bodytext::ctrl_header::PageNumberPositionFlags;
+
+    fn test_document() -> HwpDocument {
+        HwpDocument::new(crate::document::FileHeader {
+            signature: "HWP Document File".to_string(),
+            version: 0x05000300,
+            document_flags: 0,
+            license_flags: 0,
+            encrypt_version: 0,
+            kogl_country: 0,
+            reserved: vec![0; 207],
+        })
+    }
+
+    #[test]
+    fn page_number_prefix_and_suffix_are_html_escaped() {
+        let page_number_position = CtrlHeaderData::PageNumberPosition {
+            flags: PageNumberPositionFlags {
+                shape: 0,
+                position: PageNumberPosition::BottomCenter,
+            },
+            user_symbol: String::new(),
+            prefix: "<script>".to_string(),
+            suffix: "</script>".to_string(),
+        };
+
+        let html = render_page(
+            1,
+            "",
+            &[],
+            PageRenderContext {
+                page_def: None,
+                hcd_position: None,
+                page_number_position: Some(&page_number_position),
+                page_start_number: 1,
+                document: &test_document(),
+            },
+        );
+
+        assert!(!html.contains("<script>1</script>"));
+        assert!(html.contains("&lt;script&gt;1&lt;/script&gt;"));
+    }
 }

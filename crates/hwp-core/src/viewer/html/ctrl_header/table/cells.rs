@@ -10,7 +10,7 @@ use crate::viewer::html::line_segment::{
 use crate::viewer::html::styles::{int32_to_mm, round_to_2dp};
 use crate::viewer::html::{common, ctrl_header};
 use crate::viewer::html::{image, text};
-use crate::viewer::shared::BinDataIndex;
+use crate::viewer::shared::{BinDataIndex, BinDataItemLookup};
 use crate::viewer::HtmlOptions;
 use crate::{HwpDocument, INT32};
 
@@ -21,15 +21,27 @@ fn cell_margin_to_mm(margin_hwpunit: i16) -> f64 {
     round_to_2dp(int32_to_mm(margin_hwpunit as i32))
 }
 
+pub(crate) struct CellRenderContext<'a> {
+    pub(crate) document: &'a HwpDocument,
+    pub(crate) options: &'a HtmlOptions,
+    pub(crate) bindata_index: &'a BinDataIndex,
+    pub(crate) bindata_lookup: &'a BinDataItemLookup<'a>,
+    pub(crate) pattern_counter: &'a mut usize,
+    pub(crate) color_to_pattern: &'a mut HashMap<u32, String>,
+}
+
 pub(crate) fn render_cells(
     table: &Table,
     ctrl_header_height_mm: Option<f64>,
-    document: &HwpDocument,
-    options: &HtmlOptions,
-    bindata_index: &BinDataIndex,
-    pattern_counter: &mut usize, // 문서 레벨 pattern_counter (문서 전체에서 패턴 ID 공유) / Document-level pattern_counter (share pattern IDs across document)
-    color_to_pattern: &mut HashMap<u32, String>, // 문서 레벨 color_to_pattern (문서 전체에서 패턴 ID 공유) / Document-level color_to_pattern (share pattern IDs across document)
+    context: &mut CellRenderContext<'_>,
 ) -> String {
+    let document = context.document;
+    let options = context.options;
+    let bindata_index = context.bindata_index;
+    let bindata_lookup = context.bindata_lookup;
+    let pattern_counter = &mut *context.pattern_counter;
+    let color_to_pattern = &mut *context.color_to_pattern;
+
     // 각 행의 최대 셀 높이 계산 (실제 셀 높이만 사용) / Calculate max cell height for each row (use only actual cell height)
     let mut max_row_heights: HashMap<usize, f64> = HashMap::new();
 
@@ -231,6 +243,9 @@ pub(crate) fn render_cells(
 
             // 텍스트와 CharShape 추출 / Extract text and CharShape
             let (text, char_shapes) = text::extract_text_and_shapes(para);
+            let runs = text::extract_runs(para);
+            let use_run_renderer = text::paragraph_requires_run_rendering(para);
+            let has_line_segment_content = text::paragraph_has_line_segment_content(para);
 
             // LineSegment 찾기 / Find LineSegment
             let mut line_segments = Vec::new();
@@ -238,7 +253,11 @@ pub(crate) fn render_cells(
                 if let ParagraphRecord::ParaLineSeg { segments } = record {
                     line_segments = segments.clone();
                     // 첫 번째 LineSegment 저장 (hcI top 계산용) / Store first LineSegment (for hcI top calculation)
-                    if first_line_segment.is_none() && !segments.is_empty() {
+                    if !use_run_renderer
+                        && has_line_segment_content
+                        && first_line_segment.is_none()
+                        && !segments.is_empty()
+                    {
                         first_line_segment = segments.first();
                     }
                     break;
@@ -263,9 +282,9 @@ pub(crate) fn render_cells(
                     } = record
                     {
                         let bindata_id = shape_component_picture.picture_info.bindata_id;
-                        let image_url = common::get_image_url(
-                            document,
+                        let image_url = common::get_image_url_with_lookup(
                             bindata_index,
+                            bindata_lookup,
                             bindata_id,
                             options.image_output_dir.as_deref(),
                             options.html_output_dir.as_deref(),
@@ -295,7 +314,6 @@ pub(crate) fn render_cells(
                                     height,
                                     url: image_url,
                                     like_letters: false, // 셀 내부 이미지는 ctrl_header 정보 없음 / Images inside cells have no ctrl_header info
-                                    affect_line_spacing: false,
                                     vert_rel_to: None,
                                 });
                             }
@@ -309,8 +327,8 @@ pub(crate) fn render_cells(
                 children: &[ParagraphRecord],
                 shape_component_width: u32,
                 shape_component_height: u32,
-                document: &HwpDocument,
                 bindata_index: &BinDataIndex,
+                bindata_lookup: &BinDataItemLookup<'_>,
                 options: &HtmlOptions,
                 images: &mut Vec<ImageInfo>,
             ) {
@@ -320,9 +338,9 @@ pub(crate) fn render_cells(
                             shape_component_picture,
                         } => {
                             let bindata_id = shape_component_picture.picture_info.bindata_id;
-                            let image_url = common::get_image_url(
-                                document,
+                            let image_url = common::get_image_url_with_lookup(
                                 bindata_index,
+                                bindata_lookup,
                                 bindata_id,
                                 options.image_output_dir.as_deref(),
                                 options.html_output_dir.as_deref(),
@@ -335,7 +353,6 @@ pub(crate) fn render_cells(
                                         height: shape_component_height,
                                         url: image_url,
                                         like_letters: false, // 셀 내부 이미지는 ctrl_header 정보 없음 / Images inside cells have no ctrl_header info
-                                        affect_line_spacing: false,
                                         vert_rel_to: None,
                                     });
                                 }
@@ -347,8 +364,8 @@ pub(crate) fn render_cells(
                                 &sc_data.children,
                                 sc_data.shape_component.width,
                                 sc_data.shape_component.height,
-                                document,
                                 bindata_index,
+                                bindata_lookup,
                                 options,
                                 images,
                             );
@@ -377,8 +394,8 @@ pub(crate) fn render_cells(
                             &sc_data.children,
                             sc_data.shape_component.width,
                             sc_data.shape_component.height,
-                            document,
                             bindata_index,
+                            bindata_lookup,
                             options,
                             &mut images,
                         );
@@ -397,9 +414,9 @@ pub(crate) fn render_cells(
                             &ch_data.header,
                             &ch_data.children,
                             paragraphs_to_use,
-                            document,
                             options,
                             bindata_index,
+                            bindata_lookup,
                         );
                         images.extend(ctrl_result.images);
                     }
@@ -429,7 +446,7 @@ pub(crate) fn render_cells(
                 };
 
             // LineSegment가 있으면 사용 / Use LineSegment if available
-            if !line_segments.is_empty() {
+            if !line_segments.is_empty() && !use_run_renderer && has_line_segment_content {
                 // SPECIAL CASE (noori BIN0002 등):
                 // 텍스트가 없고 이미지가 있는데, LineSegment.segment_width가 0에 가까우면 hls width가 0으로 출력되어
                 // 이미지 정렬이 깨집니다. 이 경우에도 hce>hcD>hcI>hls 구조는 유지하되,
@@ -475,13 +492,14 @@ pub(crate) fn render_cells(
                     // 좌표는 fixture처럼: top = top_margin_mm + offset_y, left = left_margin_mm + offset_x
                     let abs_left_mm = round_to_2dp(left_margin_mm + obj_off_x_mm);
                     let abs_top_mm = round_to_2dp(top_margin_mm + obj_off_y_mm);
+                    let image_url = crate::viewer::html::security::escape_css_string(&image.url);
                     cell_outside_html.push_str(&format!(
                         r#"<div class="hsR" style="top:{:.2}mm;left:{:.2}mm;width:{:.2}mm;height:{:.2}mm;background-repeat:no-repeat;background-size:contain;background-image:url('{}');"></div>"#,
                         abs_top_mm,
                         abs_left_mm,
                         round_to_2dp(int32_to_mm(image.width as INT32)),
                         round_to_2dp(int32_to_mm(image.height as INT32)),
-                        image.url
+                        image_url
                     ));
                 } else {
                     // ParaText의 control_char_positions 수집 (원본 WCHAR 인덱스 기준)
@@ -500,7 +518,6 @@ pub(crate) fn render_cells(
                         original_text_len: para.para_header.text_char_count as usize,
                         images: &images,
                         tables: &[], // 셀 내부에서는 테이블 없음 / No tables inside cells
-                        hyperlinks: Vec::new(), // 셀 내부에서는 하이퍼링크 처리 안 함 / No hyperlink processing inside cells
                     };
 
                     let context = LineSegmentRenderContext {
@@ -517,6 +534,7 @@ pub(crate) fn render_cells(
                         pattern_counter,
                         color_to_pattern,
                         bindata_index,
+                        bindata_lookup,
                     };
 
                     cell_content.push_str(&render_line_segments_with_content(
@@ -529,8 +547,7 @@ pub(crate) fn render_cells(
             } else if !text.is_empty() {
                 // LineSegment가 없으면 텍스트만 렌더링 / Render text only if no LineSegment
                 // HWPX char_shape_id가 있으면 runs 기반 렌더링 사용 / Use runs-based rendering if HWPX char_shape_id exists
-                let runs = text::extract_runs(para);
-                let rendered_text = if text::runs_have_char_shape_id(&runs) {
+                let rendered_text = if use_run_renderer {
                     text::render_text_runs(&runs, document)
                 } else {
                     text::render_text(&text, &char_shapes, document, &options.css_class_prefix)

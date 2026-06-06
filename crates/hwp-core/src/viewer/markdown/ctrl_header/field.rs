@@ -30,7 +30,7 @@ pub fn convert_field_ctrl_to_markdown(header: &CtrlHeader, text: Option<&str>) -
             }
             // Date field
             dte if dte == "dte" || field_type == "%dte" => {
-                // TODO: Parse date format from command and return formatted date
+                // Date field commands are emitted as a stable placeholder.
                 "[날짜]".to_string()
             }
             // Page number field
@@ -80,11 +80,11 @@ fn convert_hyperlink_to_markdown(command: &str, text: Option<&str>) -> String {
 
     match text {
         Some(display_text) if !display_text.is_empty() => {
-            format!("[{}]({})", display_text.trim(), url)
+            crate::viewer::markdown::security::format_link(display_text.trim(), url)
         }
         _ => {
             // If no text, use the URL as both text and link
-            format!("<{}>", url)
+            crate::viewer::markdown::security::format_autolink_or_link(url)
         }
     }
 }
@@ -109,5 +109,25 @@ mod tests {
     fn test_hyperlink_empty_url() {
         let result = convert_hyperlink_to_markdown("", Some("Text"));
         assert_eq!(result, "");
+    }
+
+    #[test]
+    fn hyperlink_rejects_active_content_scheme() {
+        let result = convert_hyperlink_to_markdown("javascript:alert(1)", Some("Open"));
+
+        assert_eq!(result, "[Open](#)");
+    }
+
+    #[test]
+    fn hyperlink_escapes_markdown_link_text() {
+        let result = convert_hyperlink_to_markdown(
+            "https://example.com/a_(1)",
+            Some("] (javascript:alert(1)) <b>Open</b>"),
+        );
+
+        assert_eq!(
+            result,
+            r"[\] (javascript:alert(1)) &lt;b&gt;Open&lt;/b&gt;](https://example.com/a_(1\))"
+        );
     }
 }

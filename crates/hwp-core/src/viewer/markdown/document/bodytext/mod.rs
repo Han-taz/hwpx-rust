@@ -12,7 +12,7 @@ pub mod table;
 
 use crate::document::{ColumnDivideType, HwpDocument, ParagraphRecord};
 use crate::viewer::markdown::MarkdownOptions;
-use crate::viewer::shared::build_bindata_index;
+use crate::viewer::shared::{build_bindata_index, build_bindata_item_lookup};
 
 pub use para_text::CrossingHyperlinkState;
 pub use paragraph::{
@@ -21,18 +21,20 @@ pub use paragraph::{
 };
 pub use table::convert_table_to_markdown;
 
-/// Convert body text to markdown
-/// 본문 텍스트를 마크다운으로 변환
-pub fn convert_bodytext_to_markdown(
-    document: &HwpDocument,
-    options: &MarkdownOptions,
-) -> (
+type BodytextMarkdownParts = (
     Vec<String>, // headers
     Vec<String>, // body_lines
     Vec<String>, // footers
     Vec<String>, // footnotes
     Vec<String>, // endnotes
-) {
+);
+
+/// Convert body text to markdown
+/// 본문 텍스트를 마크다운으로 변환
+pub fn convert_bodytext_to_markdown(
+    document: &HwpDocument,
+    options: &MarkdownOptions,
+) -> BodytextMarkdownParts {
     // 머리말, 본문, 꼬리말, 각주, 미주를 분리하여 수집 / Collect headers, body, footers, footnotes, and endnotes separately
     let mut headers = Vec::new();
     let mut body_lines = Vec::new();
@@ -43,6 +45,7 @@ pub fn convert_bodytext_to_markdown(
     // Build BinData index once for O(1) lookups throughout conversion
     // BinData 인덱스를 한 번 빌드하여 변환 전체에서 O(1) 조회 사용
     let bindata_index = build_bindata_index(document);
+    let bindata_lookup = build_bindata_item_lookup(document);
 
     // 개요 번호 추적기 생성 / Create outline number tracker
     let mut outline_tracker = crate::viewer::markdown::utils::OutlineNumberTracker::new();
@@ -86,13 +89,15 @@ pub fn convert_bodytext_to_markdown(
                                     found_list_header = true;
                                     // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
                                     for para in &lh_data.paragraphs {
-                                        let para_md = paragraph::convert_paragraph_to_markdown(
-                                            para,
-                                            document,
-                                            &bindata_index,
-                                            options,
-                                            &mut outline_tracker,
-                                        );
+                                        let para_md =
+                                            paragraph::convert_paragraph_to_markdown_with_lookup(
+                                                para,
+                                                document,
+                                                &bindata_index,
+                                                &bindata_lookup,
+                                                options,
+                                                &mut outline_tracker,
+                                            );
                                         if !para_md.is_empty() {
                                             headers.push(para_md);
                                         }
@@ -103,13 +108,15 @@ pub fn convert_bodytext_to_markdown(
                             // If no LIST_HEADER, process paragraphs (for footnotes/endnotes, etc.)
                             if !found_list_header {
                                 for para in ctrl_paragraphs {
-                                    let para_md = paragraph::convert_paragraph_to_markdown(
-                                        para,
-                                        document,
-                                        &bindata_index,
-                                        options,
-                                        &mut outline_tracker,
-                                    );
+                                    let para_md =
+                                        paragraph::convert_paragraph_to_markdown_with_lookup(
+                                            para,
+                                            document,
+                                            &bindata_index,
+                                            &bindata_lookup,
+                                            options,
+                                            &mut outline_tracker,
+                                        );
                                     if !para_md.is_empty() {
                                         headers.push(para_md);
                                     }
@@ -128,13 +135,15 @@ pub fn convert_bodytext_to_markdown(
                                     found_list_header = true;
                                     // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
                                     for para in &lh_data.paragraphs {
-                                        let para_md = paragraph::convert_paragraph_to_markdown(
-                                            para,
-                                            document,
-                                            &bindata_index,
-                                            options,
-                                            &mut outline_tracker,
-                                        );
+                                        let para_md =
+                                            paragraph::convert_paragraph_to_markdown_with_lookup(
+                                                para,
+                                                document,
+                                                &bindata_index,
+                                                &bindata_lookup,
+                                                options,
+                                                &mut outline_tracker,
+                                            );
                                         if !para_md.is_empty() {
                                             footers.push(para_md);
                                         }
@@ -145,13 +154,15 @@ pub fn convert_bodytext_to_markdown(
                             // If no LIST_HEADER, process paragraphs (for footnotes/endnotes, etc.)
                             if !found_list_header {
                                 for para in ctrl_paragraphs {
-                                    let para_md = paragraph::convert_paragraph_to_markdown(
-                                        para,
-                                        document,
-                                        &bindata_index,
-                                        options,
-                                        &mut outline_tracker,
-                                    );
+                                    let para_md =
+                                        paragraph::convert_paragraph_to_markdown_with_lookup(
+                                            para,
+                                            document,
+                                            &bindata_index,
+                                            &bindata_lookup,
+                                            options,
+                                            &mut outline_tracker,
+                                        );
                                     if !para_md.is_empty() {
                                         footers.push(para_md);
                                     }
@@ -164,10 +175,11 @@ pub fn convert_bodytext_to_markdown(
                             // hwplib approach: LIST_HEADER only contains paragraph list header info,
                             // actual text is in ParagraphList (paragraphs)
                             for para in ctrl_paragraphs {
-                                let para_md = paragraph::convert_paragraph_to_markdown(
+                                let para_md = paragraph::convert_paragraph_to_markdown_with_lookup(
                                     para,
                                     document,
                                     &bindata_index,
+                                    &bindata_lookup,
                                     options,
                                     &mut outline_tracker,
                                 );
@@ -184,10 +196,11 @@ pub fn convert_bodytext_to_markdown(
                             // hwplib approach: LIST_HEADER only contains paragraph list header info,
                             // actual text is in ParagraphList (paragraphs)
                             for para in ctrl_paragraphs {
-                                let para_md = paragraph::convert_paragraph_to_markdown(
+                                let para_md = paragraph::convert_paragraph_to_markdown_with_lookup(
                                     para,
                                     document,
                                     &bindata_index,
+                                    &bindata_lookup,
                                     options,
                                     &mut outline_tracker,
                                 );
@@ -224,10 +237,11 @@ pub fn convert_bodytext_to_markdown(
 
                 // Convert paragraph to markdown with cross-paragraph hyperlink support
                 // 문단 경계 하이퍼링크를 지원하여 문단을 마크다운으로 변환
-                let result = paragraph::convert_paragraph_to_markdown_with_state(
+                let result = paragraph::convert_paragraph_to_markdown_with_state_and_lookup(
                     paragraph_item,
                     document,
                     &bindata_index,
+                    &bindata_lookup,
                     options,
                     &mut outline_tracker,
                     open_hyperlink.as_ref(),

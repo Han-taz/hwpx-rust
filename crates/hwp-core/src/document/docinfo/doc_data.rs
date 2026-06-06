@@ -159,13 +159,11 @@ impl ParameterSet {
                     items.push(item);
                     current_offset += item_size;
                 }
-                Err(e) => {
-                    // 파싱 실패 시 경고하고 계속 진행 / Warn and continue on parse failure
+                Err(_e) => {
+                    // 파싱 실패 시 가능한 최소 단위만 건너뛰고 계속 진행 / Continue after skipping a minimal unit on parse failure
                     // 알 수 없는 타입의 경우 ParameterItem::parse에서 이미 처리하므로 여기 도달하지 않아야 함
-                    // Continue on parse error with warning
+                    // Continue on parse error after skipping a minimal unit.
                     // Unknown types should be handled in ParameterItem::parse, so this shouldn't be reached
-                    #[cfg(debug_assertions)]
-                    eprintln!("Failed to parse parameter item: {e}");
                     // 에러가 발생한 경우 최소한 id와 item_type(4바이트)는 건너뛰고 계속 진행
                     // On error, skip at least id and item_type (4 bytes) and continue
                     if current_offset + 4 <= data.len() {
@@ -236,10 +234,6 @@ impl ParameterItem {
                 //
                 // 별도 처리: 알 수 없는 타입의 경우 id와 item_type만 저장하고 데이터는 건너뜀
                 // Special handling: For unknown types, only save id and item_type, skip data
-                #[cfg(debug_assertions)]
-                eprintln!(
-                    "Warning: Unknown parameter item type: {item_type_value} (0x{item_type_value:04x}) - not in spec Table 52, skipping data"
-                );
                 // 알 수 없는 타입의 경우 데이터 크기를 알 수 없으므로, id와 item_type만 반환
                 // For unknown types, we can't determine data size, so return only id and item_type
                 return Ok((
@@ -399,9 +393,7 @@ fn parse_parameter_item_data(
                         offset += set_size;
                         parameter_sets.push(set);
                     }
-                    Err(e) => {
-                        #[cfg(debug_assertions)]
-                        eprintln!("Failed to parse parameter set in array: {e}");
+                    Err(_e) => {
                         break;
                     }
                 }

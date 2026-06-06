@@ -5,6 +5,8 @@
 use crate::document::bodytext::{ColumnDivideType, PageDef, ParagraphRecord};
 use crate::document::Paragraph;
 
+use super::text;
+
 /// 페이지네이션 컨텍스트 / Pagination context
 pub struct PaginationContext {
     /// 이전 문단의 vertical_position (mm)
@@ -135,6 +137,12 @@ pub fn check_object_page_break(
 
 /// 첫 번째 LineSegment의 vertical_position 추출 / Extract first LineSegment's vertical_position
 fn extract_first_vertical_position(paragraph: &Paragraph) -> Option<f64> {
+    if text::paragraph_requires_run_rendering(paragraph)
+        || !text::paragraph_has_line_segment_content(paragraph)
+    {
+        return None;
+    }
+
     for record in &paragraph.records {
         if let ParagraphRecord::ParaLineSeg { segments } = record {
             if let Some(first_segment) = segments.first() {

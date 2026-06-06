@@ -51,7 +51,7 @@ pub(crate) fn render_svg(
     );
 
     format!(
-        r#"<svg class="hs" viewBox="{} {} {} {}" style="left:{}mm;top:{}mm;width:{}mm;height:{}mm;"><defs>{}</defs>{}</svg>"#,
+        r#"<svg class="hs" viewBox="{} {} {} {}" style="left:{}mm;top:{}mm;width:{}mm;height:{}mm;"><defs>{}</defs>{}{}{}</svg>"#,
         view_box.left,
         view_box.top,
         view_box.width,
@@ -61,6 +61,8 @@ pub(crate) fn render_svg(
         view_box.width,
         view_box.height,
         pattern_defs,
-        format!("{fills}{vertical}{horizontal}")
+        fills,
+        vertical,
+        horizontal
     )
 }

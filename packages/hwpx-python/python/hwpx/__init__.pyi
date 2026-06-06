@@ -1,5 +1,32 @@
 """Type stubs for hwpx module"""
-from typing import Any, Dict, Optional
+from typing import Dict, List, Optional, TypedDict
+
+class DiagnosticContext(TypedDict):
+    source: Optional[str]
+    section_index: Optional[int]
+    element: Optional[str]
+    attribute: Optional[str]
+    value: Optional[str]
+    offset: Optional[int]
+    component: Optional[str]
+
+class DiagnosticItem(TypedDict):
+    severity: str
+    category: str
+    message: str
+    context: DiagnosticContext
+    suggestion: Optional[str]
+
+class DiagnosticSummary(TypedDict):
+    total: int
+    max_items: int
+    truncated: bool
+    by_severity: Dict[str, int]
+    by_category: Dict[str, int]
+
+class DiagnosticReport(TypedDict):
+    items: List[DiagnosticItem]
+    summary: DiagnosticSummary
 
 class Document:
     """HWP/HWPX Document wrapper"""
@@ -12,6 +39,11 @@ class Document:
     @property
     def section_count(self) -> int:
         """Get number of sections in the document"""
+        ...
+
+    @property
+    def warnings(self) -> List[str]:
+        """Get parser warning strings"""
         ...
 
     def to_markdown(
@@ -54,12 +86,12 @@ class Document:
         """
         ...
 
-    def diagnostic_report(self) -> Dict[str, Any]:
+    def diagnostic_report(self) -> DiagnosticReport:
         """
         Return structured parser diagnostics.
 
         Returns:
-            Dictionary with keys: items, summary.
+            Dictionary with diagnostic items and summary metadata.
         """
         ...
 

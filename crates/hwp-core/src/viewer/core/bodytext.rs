@@ -6,17 +6,29 @@
 ///
 /// Provides common bodytext processing logic used by all viewers.
 /// Output format is handled through the Renderer trait.
-use crate::document::{ColumnDivideType, CtrlHeader, HwpDocument, Paragraph, ParagraphRecord};
+use crate::document::{ColumnDivideType, HwpDocument, Paragraph, ParagraphRecord};
 use crate::viewer::core::renderer::{DocumentParts, Renderer};
 use crate::viewer::markdown::document::bodytext::CrossingHyperlinkState;
 use crate::viewer::markdown::utils::OutlineNumberTracker;
 use crate::viewer::{html, html::HtmlOptions, MarkdownOptions};
+use std::any::{Any, TypeId};
 
 /// Render paragraph with crossing hyperlink state
 /// 문단 경계 하이퍼링크 상태를 포함하여 문단 렌더링
 struct ParagraphRenderResult {
     content: String,
     new_open_state: Option<CrossingHyperlinkState>,
+}
+
+struct ControlRenderContext<'a, R: Renderer>
+where
+    R::Options: 'static,
+{
+    document: &'a HwpDocument,
+    renderer: &'a R,
+    options: &'a R::Options,
+    parts: &'a mut DocumentParts,
+    tracker: &'a mut dyn TrackerRef,
 }
 
 /// Render paragraph using viewer-specific functions
@@ -63,30 +75,40 @@ where
     // HTML viewer is handled directly in to_html() function, so use default processing here
 
     // Markdown 렌더러인 경우 / If Markdown renderer
-    if std::any::TypeId::of::<R::Options>()
-        == std::any::TypeId::of::<crate::viewer::markdown::MarkdownOptions>()
-    {
+    if TypeId::of::<R::Options>() == TypeId::of::<crate::viewer::markdown::MarkdownOptions>() {
         use crate::viewer::markdown::document::bodytext::paragraph::convert_paragraph_to_markdown_with_state;
         use crate::viewer::shared::build_bindata_index;
-        // 안전하게 타입 캐스팅 / Safely cast type
-        unsafe {
-            let md_options =
-                &*(options as *const R::Options as *const crate::viewer::markdown::MarkdownOptions);
-            let md_tracker = tracker.as_markdown_tracker_mut();
-            let bindata_index = build_bindata_index(document);
-            let result = convert_paragraph_to_markdown_with_state(
-                paragraph,
-                document,
-                &bindata_index,
-                md_options,
-                md_tracker,
-                open_hyperlink,
-            );
+        let Some(md_options) =
+            (options as &dyn Any).downcast_ref::<crate::viewer::markdown::MarkdownOptions>()
+        else {
             return ParagraphRenderResult {
-                content: result.markdown,
-                new_open_state: result.new_open_state,
+                content: crate::viewer::core::paragraph::process_paragraph(
+                    paragraph, document, renderer, options,
+                ),
+                new_open_state: None,
             };
-        }
+        };
+        let Some(md_tracker) = tracker.markdown_tracker_mut() else {
+            return ParagraphRenderResult {
+                content: crate::viewer::core::paragraph::process_paragraph(
+                    paragraph, document, renderer, options,
+                ),
+                new_open_state: None,
+            };
+        };
+        let bindata_index = build_bindata_index(document);
+        let result = convert_paragraph_to_markdown_with_state(
+            paragraph,
+            document,
+            &bindata_index,
+            md_options,
+            md_tracker,
+            open_hyperlink,
+        );
+        return ParagraphRenderResult {
+            content: result.markdown,
+            new_open_state: result.new_open_state,
+        };
     }
 
     // 기본: 공통 paragraph 처리 사용 / Default: Use common paragraph processing
@@ -102,7 +124,7 @@ where
 trait TrackerRef {
     /// Get mutable reference to Markdown tracker
     /// Markdown 추적기의 가변 참조 가져오기
-    unsafe fn as_markdown_tracker_mut(&mut self) -> &mut OutlineNumberTracker;
+    fn markdown_tracker_mut(&mut self) -> Option<&mut OutlineNumberTracker>;
 }
 
 /// Enum to hold tracker by renderer type
@@ -115,10 +137,10 @@ enum Tracker {
 }
 
 impl TrackerRef for Tracker {
-    unsafe fn as_markdown_tracker_mut(&mut self) -> &mut OutlineNumberTracker {
+    fn markdown_tracker_mut(&mut self) -> Option<&mut OutlineNumberTracker> {
         match self {
-            Tracker::Markdown(tracker) => tracker,
-            _ => unreachable!("as_markdown_tracker_mut called on non-Markdown variant"),
+            Tracker::Markdown(tracker) => Some(tracker),
+            Tracker::Html(()) => None,
         }
     }
 }
@@ -142,11 +164,9 @@ where
     // 개요 번호 추적기 생성 (렌더러별로 다름) / Create outline number tracker (varies by renderer)
     // 문서 전체에 걸쳐 상태를 유지해야 하므로 한 번만 생성 / Created only once to maintain state across entire document
     // 새로운 HTML 뷰어는 tracker를 사용하지 않음 / New HTML viewer does not use tracker
-    let mut tracker: Tracker = if std::any::TypeId::of::<R::Options>()
-        == std::any::TypeId::of::<HtmlOptions>()
-    {
+    let mut tracker: Tracker = if TypeId::of::<R::Options>() == TypeId::of::<HtmlOptions>() {
         Tracker::Html(())
-    } else if std::any::TypeId::of::<R::Options>() == std::any::TypeId::of::<MarkdownOptions>() {
+    } else if TypeId::of::<R::Options>() == TypeId::of::<MarkdownOptions>() {
         Tracker::Markdown(OutlineNumberTracker::new())
     } else {
         // 기본 렌더러는 tracker가 필요 없을 수 있음 / Default renderer may not need tracker
@@ -174,58 +194,48 @@ where
                         use crate::document::CtrlId;
                         if data.header.ctrl_id.as_str() == CtrlId::HEADER {
                             // 머리말 처리 / Process header
-                            process_header(
-                                &data.header,
-                                &data.children,
-                                &data.paragraphs,
+                            let mut context = ControlRenderContext {
                                 document,
                                 renderer,
                                 options,
-                                &mut parts,
-                                &mut tracker,
-                            );
+                                parts: &mut parts,
+                                tracker: &mut tracker,
+                            };
+                            process_header(&data.children, &data.paragraphs, &mut context);
                         } else if data.header.ctrl_id.as_str() == CtrlId::FOOTER {
                             // 꼬리말 처리 / Process footer
-                            process_footer(
-                                &data.header,
-                                &data.children,
-                                &data.paragraphs,
+                            let mut context = ControlRenderContext {
                                 document,
                                 renderer,
                                 options,
-                                &mut parts,
-                                &mut tracker,
-                            );
+                                parts: &mut parts,
+                                tracker: &mut tracker,
+                            };
+                            process_footer(&data.children, &data.paragraphs, &mut context);
                         } else if data.header.ctrl_id.as_str() == CtrlId::FOOTNOTE {
                             // 각주 처리 / Process footnote
                             let footnote_id = footnote_counter;
                             footnote_counter += 1;
-                            process_footnote(
-                                footnote_id,
-                                &data.header,
-                                &data.children,
-                                &data.paragraphs,
+                            let mut context = ControlRenderContext {
                                 document,
                                 renderer,
                                 options,
-                                &mut parts,
-                                &mut tracker,
-                            );
+                                parts: &mut parts,
+                                tracker: &mut tracker,
+                            };
+                            process_footnote(footnote_id, &data.paragraphs, &mut context);
                         } else if data.header.ctrl_id.as_str() == CtrlId::ENDNOTE {
                             // 미주 처리 / Process endnote
                             let endnote_id = endnote_counter;
                             endnote_counter += 1;
-                            process_endnote(
-                                endnote_id,
-                                &data.header,
-                                &data.children,
-                                &data.paragraphs,
+                            let mut context = ControlRenderContext {
                                 document,
                                 renderer,
                                 options,
-                                &mut parts,
-                                &mut tracker,
-                            );
+                                parts: &mut parts,
+                                tracker: &mut tracker,
+                            };
+                            process_endnote(endnote_id, &data.paragraphs, &mut context);
                         }
                         // 테이블은 paragraph.rs에서 처리 / Table is processed in paragraph.rs
                     }
@@ -281,14 +291,9 @@ fn is_page_break_line<R: Renderer>(line: &str, _renderer: &R) -> bool {
 /// Process header
 /// 머리말 처리
 fn process_header<R: Renderer>(
-    _header: &CtrlHeader,
     children: &[ParagraphRecord],
     ctrl_paragraphs: &[Paragraph],
-    document: &HwpDocument,
-    renderer: &R,
-    options: &R::Options,
-    parts: &mut DocumentParts,
-    tracker: &mut dyn TrackerRef,
+    context: &mut ControlRenderContext<'_, R>,
 ) where
     R::Options: 'static,
 {
@@ -303,10 +308,15 @@ fn process_header<R: Renderer>(
             // 기존 뷰어 함수를 직접 호출 (글자 모양, 개요 번호 등 복잡한 처리를 위해)
             // Call existing viewer functions directly (for complex processing like character shapes, outline numbers, etc.)
             for para in paragraphs {
-                let para_content =
-                    render_paragraph_with_viewer(para, document, renderer, options, tracker);
+                let para_content = render_paragraph_with_viewer(
+                    para,
+                    context.document,
+                    context.renderer,
+                    context.options,
+                    context.tracker,
+                );
                 if !para_content.is_empty() {
-                    parts.headers.push(para_content);
+                    context.parts.headers.push(para_content);
                 }
             }
         }
@@ -314,10 +324,15 @@ fn process_header<R: Renderer>(
     // LIST_HEADER가 없으면 paragraphs 처리 / If no LIST_HEADER, process paragraphs
     if !found_list_header {
         for para in ctrl_paragraphs {
-            let para_content =
-                render_paragraph_with_viewer(para, document, renderer, options, tracker);
+            let para_content = render_paragraph_with_viewer(
+                para,
+                context.document,
+                context.renderer,
+                context.options,
+                context.tracker,
+            );
             if !para_content.is_empty() {
-                parts.headers.push(para_content);
+                context.parts.headers.push(para_content);
             }
         }
     }
@@ -326,14 +341,9 @@ fn process_header<R: Renderer>(
 /// Process footer
 /// 꼬리말 처리
 fn process_footer<R: Renderer>(
-    _header: &CtrlHeader,
     children: &[ParagraphRecord],
     ctrl_paragraphs: &[Paragraph],
-    document: &HwpDocument,
-    renderer: &R,
-    options: &R::Options,
-    parts: &mut DocumentParts,
-    tracker: &mut dyn TrackerRef,
+    context: &mut ControlRenderContext<'_, R>,
 ) where
     R::Options: 'static,
 {
@@ -346,10 +356,15 @@ fn process_footer<R: Renderer>(
             found_list_header = true;
             // LIST_HEADER 내부의 문단 처리 / Process paragraphs inside LIST_HEADER
             for para in paragraphs {
-                let para_content =
-                    render_paragraph_with_viewer(para, document, renderer, options, tracker);
+                let para_content = render_paragraph_with_viewer(
+                    para,
+                    context.document,
+                    context.renderer,
+                    context.options,
+                    context.tracker,
+                );
                 if !para_content.is_empty() {
-                    parts.footers.push(para_content);
+                    context.parts.footers.push(para_content);
                 }
             }
         }
@@ -357,10 +372,15 @@ fn process_footer<R: Renderer>(
     // LIST_HEADER가 없으면 paragraphs 처리 / If no LIST_HEADER, process paragraphs
     if !found_list_header {
         for para in ctrl_paragraphs {
-            let para_content =
-                render_paragraph_with_viewer(para, document, renderer, options, tracker);
+            let para_content = render_paragraph_with_viewer(
+                para,
+                context.document,
+                context.renderer,
+                context.options,
+                context.tracker,
+            );
             if !para_content.is_empty() {
-                parts.footers.push(para_content);
+                context.parts.footers.push(para_content);
             }
         }
     }
@@ -370,43 +390,51 @@ fn process_footer<R: Renderer>(
 /// 각주 처리
 fn process_footnote<R: Renderer>(
     footnote_id: u32,
-    _header: &CtrlHeader,
-    _children: &[ParagraphRecord],
     ctrl_paragraphs: &[Paragraph],
-    document: &HwpDocument,
-    renderer: &R,
-    options: &R::Options,
-    parts: &mut DocumentParts,
-    tracker: &mut dyn TrackerRef,
+    context: &mut ControlRenderContext<'_, R>,
 ) where
     R::Options: 'static,
 {
-    // 각주 번호 형식 (TODO: FootnoteShape에서 가져오기)
-    // Footnote number format (TODO: Get from FootnoteShape)
+    // Footnote references use the parsed control id when shape metadata is unavailable here.
     let footnote_number = format!("{footnote_id}");
 
     // 본문에 각주 참조 링크 삽입 / Insert footnote reference link in body
-    if !parts.body_lines.is_empty() {
-        let last_idx = parts.body_lines.len() - 1;
-        let last_line = &mut parts.body_lines[last_idx];
+    if !context.parts.body_lines.is_empty() {
+        let last_idx = context.parts.body_lines.len() - 1;
+        let last_line = &mut context.parts.body_lines[last_idx];
         // 렌더러별로 각주 참조 링크 추가 방법이 다름
         // Method to add footnote reference link varies by renderer
-        let footnote_ref = renderer.render_footnote_ref(footnote_id, &footnote_number, options);
-        *last_line = append_to_last_paragraph(last_line, &footnote_ref, renderer);
+        let footnote_ref =
+            context
+                .renderer
+                .render_footnote_ref(footnote_id, &footnote_number, context.options);
+        *last_line = append_to_last_paragraph(last_line, &footnote_ref, context.renderer);
     } else {
         // 본문이 비어있으면 새 문단으로 추가 / Add as new paragraph if body is empty
-        let footnote_ref = renderer.render_footnote_ref(footnote_id, &footnote_number, options);
-        parts
+        let footnote_ref =
+            context
+                .renderer
+                .render_footnote_ref(footnote_id, &footnote_number, context.options);
+        context
+            .parts
             .body_lines
-            .push(renderer.render_paragraph(&footnote_ref));
+            .push(context.renderer.render_paragraph(&footnote_ref));
     }
 
     // 각주 내용 수집 / Collect footnote content
     for para in ctrl_paragraphs {
-        let para_content = render_paragraph_with_viewer(para, document, renderer, options, tracker);
+        let para_content = render_paragraph_with_viewer(
+            para,
+            context.document,
+            context.renderer,
+            context.options,
+            context.tracker,
+        );
         if !para_content.is_empty() {
             let footnote_ref_id = format!("footnote-{footnote_id}-ref");
-            let footnote_back = renderer.render_footnote_back(&footnote_ref_id, options);
+            let footnote_back = context
+                .renderer
+                .render_footnote_back(&footnote_ref_id, context.options);
             let footnote_id_str = format!("footnote-{footnote_id}");
 
             // 렌더러별 각주 컨테이너 형식 (HTML: <div>, Markdown: 일반 텍스트)
@@ -415,10 +443,10 @@ fn process_footnote<R: Renderer>(
                 &footnote_id_str,
                 &footnote_back,
                 &para_content,
-                renderer,
-                options,
+                context.renderer,
+                context.options,
             );
-            parts.footnotes.push(footnote_container);
+            context.parts.footnotes.push(footnote_container);
         }
     }
 }
@@ -427,49 +455,57 @@ fn process_footnote<R: Renderer>(
 /// 미주 처리
 fn process_endnote<R: Renderer>(
     endnote_id: u32,
-    _header: &CtrlHeader,
-    _children: &[ParagraphRecord],
     ctrl_paragraphs: &[Paragraph],
-    document: &HwpDocument,
-    renderer: &R,
-    options: &R::Options,
-    parts: &mut DocumentParts,
-    tracker: &mut dyn TrackerRef,
+    context: &mut ControlRenderContext<'_, R>,
 ) where
     R::Options: 'static,
 {
-    // 미주 번호 형식 (TODO: FootnoteShape에서 가져오기)
-    // Endnote number format (TODO: Get from FootnoteShape)
+    // Endnote references use the parsed control id when shape metadata is unavailable here.
     let endnote_number = format!("{endnote_id}");
 
     // 본문에 미주 참조 링크 삽입 / Insert endnote reference link in body
-    if !parts.body_lines.is_empty() {
-        let last_idx = parts.body_lines.len() - 1;
-        let last_line = &mut parts.body_lines[last_idx];
-        let endnote_ref = renderer.render_endnote_ref(endnote_id, &endnote_number, options);
-        *last_line = append_to_last_paragraph(last_line, &endnote_ref, renderer);
+    if !context.parts.body_lines.is_empty() {
+        let last_idx = context.parts.body_lines.len() - 1;
+        let last_line = &mut context.parts.body_lines[last_idx];
+        let endnote_ref =
+            context
+                .renderer
+                .render_endnote_ref(endnote_id, &endnote_number, context.options);
+        *last_line = append_to_last_paragraph(last_line, &endnote_ref, context.renderer);
     } else {
         // 본문이 비어있으면 새 문단으로 추가 / Add as new paragraph if body is empty
-        let endnote_ref = renderer.render_endnote_ref(endnote_id, &endnote_number, options);
-        parts
+        let endnote_ref =
+            context
+                .renderer
+                .render_endnote_ref(endnote_id, &endnote_number, context.options);
+        context
+            .parts
             .body_lines
-            .push(renderer.render_paragraph(&endnote_ref));
+            .push(context.renderer.render_paragraph(&endnote_ref));
     }
 
     // 미주 내용 수집 / Collect endnote content
     for para in ctrl_paragraphs {
-        let para_content = render_paragraph_with_viewer(para, document, renderer, options, tracker);
+        let para_content = render_paragraph_with_viewer(
+            para,
+            context.document,
+            context.renderer,
+            context.options,
+            context.tracker,
+        );
         if !para_content.is_empty() {
             let endnote_ref_id = format!("endnote-{endnote_id}-ref");
-            let endnote_back = renderer.render_endnote_back(&endnote_ref_id, options);
+            let endnote_back = context
+                .renderer
+                .render_endnote_back(&endnote_ref_id, context.options);
             let endnote_id_str = format!("endnote-{endnote_id}");
 
-            parts.endnotes.push(format_endnote_container(
+            context.parts.endnotes.push(format_endnote_container(
                 &endnote_id_str,
                 &endnote_back,
                 &para_content,
-                renderer,
-                options,
+                context.renderer,
+                context.options,
             ));
         }
     }
@@ -501,20 +537,17 @@ where
 {
     // 타입 체크를 통해 렌더러별 포맷 적용 / Apply renderer-specific format through type checking
     // HTML 렌더러인 경우 / If HTML renderer
-    if std::any::TypeId::of::<R::Options>() == std::any::TypeId::of::<HtmlOptions>() {
-        unsafe {
-            let html_options = &*(options as *const R::Options as *const html::HtmlOptions);
-            return format!(
-                r#"      <div id="{}" class="{}footnote">"#,
-                id, html_options.css_class_prefix
-            ) + &format!(r#"        {back_link}"#)
-                + content
-                + "      </div>";
-        }
+    if let Some(html_options) = (options as &dyn Any).downcast_ref::<html::HtmlOptions>() {
+        return format!(
+            r#"      <div id="{}" class="{}footnote">"#,
+            id, html_options.css_class_prefix
+        ) + &format!(r#"        {back_link}"#)
+            + content
+            + "      </div>";
     }
 
     // Markdown 렌더러인 경우 / If Markdown renderer
-    if std::any::TypeId::of::<R::Options>() == std::any::TypeId::of::<MarkdownOptions>() {
+    if TypeId::of::<R::Options>() == TypeId::of::<MarkdownOptions>() {
         // 마크다운에서는 각주를 [^1]: 형식으로 표시
         // In markdown, footnotes are shown as [^1]:
         return format!("{back_link}{content}");
@@ -538,20 +571,17 @@ where
 {
     // 타입 체크를 통해 렌더러별 포맷 적용 / Apply renderer-specific format through type checking
     // HTML 렌더러인 경우 / If HTML renderer
-    if std::any::TypeId::of::<R::Options>() == std::any::TypeId::of::<HtmlOptions>() {
-        unsafe {
-            let html_options = &*(options as *const R::Options as *const html::HtmlOptions);
-            return format!(
-                r#"      <div id="{}" class="{}endnote">"#,
-                id, html_options.css_class_prefix
-            ) + &format!(r#"        {back_link}"#)
-                + content
-                + "      </div>";
-        }
+    if let Some(html_options) = (options as &dyn Any).downcast_ref::<html::HtmlOptions>() {
+        return format!(
+            r#"      <div id="{}" class="{}endnote">"#,
+            id, html_options.css_class_prefix
+        ) + &format!(r#"        {back_link}"#)
+            + content
+            + "      </div>";
     }
 
     // Markdown 렌더러인 경우 / If Markdown renderer
-    if std::any::TypeId::of::<R::Options>() == std::any::TypeId::of::<MarkdownOptions>() {
+    if TypeId::of::<R::Options>() == TypeId::of::<MarkdownOptions>() {
         // 마크다운에서는 미주를 [^1]: 형식으로 표시
         // In markdown, endnotes are shown as [^1]:
         return format!("{back_link}{content}");

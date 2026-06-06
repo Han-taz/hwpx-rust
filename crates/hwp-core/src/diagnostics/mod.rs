@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+pub const MAX_DIAGNOSTIC_ITEMS: usize = 10_000;
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DiagnosticReport {
     pub items: Vec<DiagnosticItem>,
@@ -33,6 +35,7 @@ pub enum DiagnosticCategory {
     RecoveredXml,
     SkippedBinary,
     RendererLossHint,
+    DiagnosticLimit,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -49,12 +52,27 @@ pub struct DiagnosticContext {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DiagnosticSummary {
     pub total: usize,
+    pub max_items: usize,
+    pub truncated: bool,
     pub by_severity: BTreeMap<String, usize>,
     pub by_category: BTreeMap<String, usize>,
 }
 
 impl DiagnosticReport {
     pub fn push(&mut self, item: DiagnosticItem) {
+        if self.items.len() >= MAX_DIAGNOSTIC_ITEMS {
+            return;
+        }
+
+        if self.items.len() == MAX_DIAGNOSTIC_ITEMS - 1 {
+            self.items.push(DiagnosticItem::new(
+                DiagnosticSeverity::Warning,
+                DiagnosticCategory::DiagnosticLimit,
+                "Additional parser diagnostics suppressed after reaching the diagnostic item limit",
+            ));
+            return;
+        }
+
         self.items.push(item);
     }
 
@@ -69,6 +87,11 @@ impl DiagnosticReport {
     pub fn summary(&self) -> DiagnosticSummary {
         let mut summary = DiagnosticSummary {
             total: self.items.len(),
+            max_items: MAX_DIAGNOSTIC_ITEMS,
+            truncated: self
+                .items
+                .iter()
+                .any(|item| item.category == DiagnosticCategory::DiagnosticLimit),
             by_severity: BTreeMap::new(),
             by_category: BTreeMap::new(),
         };
@@ -136,6 +159,7 @@ impl DiagnosticCategory {
             Self::RecoveredXml => "RecoveredXml",
             Self::SkippedBinary => "SkippedBinary",
             Self::RendererLossHint => "RendererLossHint",
+            Self::DiagnosticLimit => "DiagnosticLimit",
         }
     }
 }
@@ -211,7 +235,10 @@ mod tests {
         ));
 
         let summary = report.summary();
+        let value = serde_json::to_value(&summary).expect("summary should serialize");
         assert_eq!(summary.total, 2);
+        assert_eq!(value["max_items"], MAX_DIAGNOSTIC_ITEMS);
+        assert_eq!(value["truncated"], false);
         assert_eq!(summary.by_severity.get("RecoveredError"), Some(&1));
         assert_eq!(summary.by_severity.get("DataLoss"), Some(&1));
         assert_eq!(summary.by_category.get("InvalidValue"), Some(&1));
@@ -231,5 +258,42 @@ mod tests {
         assert!(value.get("items").is_some());
         assert_eq!(value["items"][0]["severity"], "Unsupported");
         assert_eq!(value["items"][0]["category"], "UnsupportedElement");
+    }
+
+    #[test]
+    fn diagnostic_report_caps_items_and_records_suppression() {
+        let mut report = DiagnosticReport::default();
+
+        for index in 0..(MAX_DIAGNOSTIC_ITEMS + 10) {
+            report.push(DiagnosticItem::new(
+                DiagnosticSeverity::RecoveredError,
+                DiagnosticCategory::InvalidValue,
+                format!("invalid value {index}"),
+            ));
+        }
+
+        assert_eq!(report.len(), MAX_DIAGNOSTIC_ITEMS);
+        assert_eq!(
+            report.items[MAX_DIAGNOSTIC_ITEMS - 1].category,
+            DiagnosticCategory::DiagnosticLimit
+        );
+        assert_eq!(
+            report.items[MAX_DIAGNOSTIC_ITEMS - 1].severity,
+            DiagnosticSeverity::Warning
+        );
+        assert!(report.items[MAX_DIAGNOSTIC_ITEMS - 1]
+            .message
+            .contains("Additional parser diagnostics suppressed"));
+
+        let summary = report.summary();
+        let value = serde_json::to_value(&summary).expect("summary should serialize");
+        assert_eq!(summary.total, MAX_DIAGNOSTIC_ITEMS);
+        assert_eq!(value["max_items"], MAX_DIAGNOSTIC_ITEMS);
+        assert_eq!(value["truncated"], true);
+        assert_eq!(summary.by_category.get("DiagnosticLimit"), Some(&1));
+        assert_eq!(
+            summary.by_category.get("InvalidValue"),
+            Some(&(MAX_DIAGNOSTIC_ITEMS - 1))
+        );
     }
 }

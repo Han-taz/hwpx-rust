@@ -113,11 +113,7 @@ impl BinData {
                                     let _compressed_size = buffer.len();
                                     let decompressed_buffer = match decompress_deflate(&buffer) {
                                         Ok(decompressed) => decompressed,
-                                        Err(e) => {
-                                            #[cfg(debug_assertions)]
-                                            eprintln!(
-                                                "Warning: Failed to decompress BinData stream '{path}' (id={binary_data_id}): {e}. Using raw data."
-                                            );
+                                        Err(_e) => {
                                             buffer.clone() // 압축 해제 실패 시 원본 데이터 사용
                                         }
                                     };

@@ -11,7 +11,7 @@ impl Renderer for MarkdownRenderer {
 
     // ===== Text Styling =====
     fn render_text(&self, text: &str, _styles: &TextStyles) -> String {
-        // TODO: 스타일 적용 (마크다운에서는 제한적)
+        // Markdown styles are applied through dedicated renderer methods.
         text.to_string()
     }
 
@@ -59,12 +59,20 @@ impl Renderer for MarkdownRenderer {
         options: &Self::Options,
     ) -> String {
         // 기존 테이블 변환 함수 사용
-        use crate::viewer::markdown::document::bodytext::table::convert_table_to_markdown;
+        use crate::viewer::markdown::document::bodytext::table::convert_table_to_markdown_with_lookup;
         use crate::viewer::markdown::utils::OutlineNumberTracker;
-        use crate::viewer::shared::build_bindata_index;
+        use crate::viewer::shared::{build_bindata_index, build_bindata_item_lookup};
         let mut tracker = OutlineNumberTracker::new();
         let bindata_index = build_bindata_index(document);
-        convert_table_to_markdown(table, document, &bindata_index, options, &mut tracker)
+        let bindata_lookup = build_bindata_item_lookup(document);
+        convert_table_to_markdown_with_lookup(
+            table,
+            document,
+            &bindata_index,
+            &bindata_lookup,
+            options,
+            &mut tracker,
+        )
     }
 
     fn render_image(
@@ -75,15 +83,11 @@ impl Renderer for MarkdownRenderer {
     ) -> Option<String> {
         // bindata_id로 직접 이미지 렌더링 / Render image directly by bindata_id
         use crate::viewer::markdown::common::format_image_markdown;
-        use crate::viewer::shared::build_bindata_index;
+        use crate::viewer::shared::{build_bindata_index, build_bindata_item_lookup};
 
         // BinData에서 이미지 데이터 가져오기 / Get image data from BinData
-        if let Some(bin_item) = document
-            .bin_data
-            .items
-            .iter()
-            .find(|item| item.index == image_id)
-        {
+        let bindata_lookup = build_bindata_item_lookup(document);
+        if let Some(bin_item) = bindata_lookup.by_id(image_id) {
             let bindata_index = build_bindata_index(document);
             let image_markdown = format_image_markdown(
                 &bindata_index,
@@ -179,7 +183,7 @@ impl Renderer for MarkdownRenderer {
     }
 
     fn render_outline_number(&self, _level: u8, _number: u32, content: &str) -> String {
-        // TODO: 개요 번호 형식 적용
+        // Numbering state is tracked by callers; this renderer returns content unchanged.
         content.to_string()
     }
 }

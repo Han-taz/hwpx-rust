@@ -1,8 +1,7 @@
 use super::common;
 use super::ctrl_header;
 use super::line_segment::{
-    DocumentRenderState, HyperlinkInfo, ImageInfo, LineSegmentContent, LineSegmentRenderContext,
-    TableInfo,
+    DocumentRenderState, ImageInfo, LineSegmentContent, LineSegmentRenderContext, TableInfo,
 };
 use super::pagination::{self, PaginationContext, PaginationResult};
 use super::text;
@@ -33,6 +32,7 @@ pub struct ParagraphRenderContext<'a> {
     pub options: &'a HtmlOptions,
     pub position: ParagraphPosition<'a>,
     pub bindata_index: &'a crate::viewer::shared::BinDataIndex,
+    pub bindata_lookup: &'a crate::viewer::shared::BinDataItemLookup<'a>,
 }
 
 /// 문단 렌더링 상태 / Paragraph rendering state
@@ -54,6 +54,7 @@ pub fn render_paragraph(
     let document = context.document;
     let options = context.options;
     let bindata_index = context.bindata_index;
+    let bindata_lookup = context.bindata_lookup;
     let hcd_position = context.position.hcd_position;
     let page_def = context.position.page_def;
     let first_para_vertical_mm = context.position.first_para_vertical_mm;
@@ -75,6 +76,8 @@ pub fn render_paragraph(
 
     // 텍스트와 CharShape 추출 / Extract text and CharShape
     let (text, char_shapes) = text::extract_text_and_shapes(paragraph);
+    let runs = text::extract_runs(paragraph);
+    let use_run_renderer = text::paragraph_requires_run_rendering(paragraph);
 
     // ParaText의 control_char_positions 수집 (원본 WCHAR 인덱스 기준) / Collect control_char_positions (based on original WCHAR indices)
     let mut control_char_positions = Vec::new();
@@ -123,9 +126,9 @@ pub fn render_paragraph(
                     } = child
                     {
                         let bindata_id = shape_component_picture.picture_info.bindata_id;
-                        let image_url = common::get_image_url(
-                            document,
+                        let image_url = common::get_image_url_with_lookup(
                             bindata_index,
+                            bindata_lookup,
                             bindata_id,
                             options.image_output_dir.as_deref(),
                             options.html_output_dir.as_deref(),
@@ -137,7 +140,6 @@ pub fn render_paragraph(
                                 height: shape_component.height,
                                 url: image_url,
                                 like_letters: false, // ShapeComponent에서 직접 온 이미지는 ctrl_header 정보 없음 / Images from ShapeComponent directly have no ctrl_header info
-                                affect_line_spacing: false,
                                 vert_rel_to: None,
                             });
                         }
@@ -148,9 +150,9 @@ pub fn render_paragraph(
                 shape_component_picture,
             } => {
                 let bindata_id = shape_component_picture.picture_info.bindata_id;
-                let image_url = common::get_image_url(
-                    document,
+                let image_url = common::get_image_url_with_lookup(
                     bindata_index,
+                    bindata_lookup,
                     bindata_id,
                     options.image_output_dir.as_deref(),
                     options.html_output_dir.as_deref(),
@@ -178,7 +180,6 @@ pub fn render_paragraph(
                         height,
                         url: image_url,
                         like_letters: false, // ShapeComponentPicture에서 직접 온 이미지는 ctrl_header 정보 없음 / Images from ShapeComponentPicture directly have no ctrl_header info
-                        affect_line_spacing: false,
                         vert_rel_to: None,
                     });
                 }
@@ -197,9 +198,9 @@ pub fn render_paragraph(
                     &ch_data.header,
                     &ch_data.children,
                     &ch_data.paragraphs,
-                    document,
                     options,
                     bindata_index,
+                    bindata_lookup,
                 );
                 // SHAPE_OBJECT(11)는 "표/그리기 개체" 공통 제어문자이므로, ctrl_id가 "tbl "인 경우에만
                 // ParaText의 SHAPE_OBJECT 위치를 순서대로 매칭하여 anchor를 부여합니다.
@@ -252,7 +253,9 @@ pub fn render_paragraph(
     };
 
     // LineSegment가 있으면 사용 / Use LineSegment if available
-    if !line_segments.is_empty() {
+    let has_line_segment_content = text::paragraph_has_line_segment_content(paragraph);
+
+    if !line_segments.is_empty() && !use_run_renderer && has_line_segment_content {
         // like_letters=true인 테이블과 false인 테이블 분리 / Separate tables with like_letters=true and false
         let mut absolute_tables = Vec::new();
         for table_info in tables.iter() {
@@ -313,30 +316,6 @@ pub fn render_paragraph(
         // 테이블 번호 시작값: 현재 table_counter 사용 (문서 레벨에서 관리) / Table number start value: use current table_counter (managed at document level)
         let table_counter_start = *state.table_counter;
 
-        // 하이퍼링크 CtrlHeader에서 URL 수집 / Collect URLs from hyperlink CtrlHeaders
-        let mut hyperlinks: Vec<HyperlinkInfo> = Vec::new();
-        for record in &paragraph.records {
-            if let ParagraphRecord::CtrlHeader { data: ch_data } = record {
-                if let CtrlHeaderData::Field {
-                    field_type,
-                    command,
-                    ..
-                } = &ch_data.header.data
-                {
-                    // 하이퍼링크 필드 체크 / Check hyperlink field
-                    if (field_type == "hlk" || field_type == "%hlk") && !command.is_empty() {
-                        // URL 형식: "url;extra;params;" - 첫 번째 부분만 추출 / URL format: "url;extra;params;" - extract first part only
-                        let url = command.split(';').next().unwrap_or(command);
-                        if !url.is_empty() {
-                            hyperlinks.push(HyperlinkInfo {
-                                url: url.to_string(),
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
         let content = LineSegmentContent {
             segments: &line_segments,
             text: &text,
@@ -345,7 +324,6 @@ pub fn render_paragraph(
             original_text_len: paragraph.para_header.text_char_count as usize,
             images: &inline_images, // like_letters=true인 이미지만 line_segment에 포함 / Include only images with like_letters=true in line_segment
             tables: inline_table_infos.as_slice(), // like_letters=true인 테이블 포함 / Include tables with like_letters=true
-            hyperlinks,
         };
 
         let context = LineSegmentRenderContext {
@@ -362,6 +340,7 @@ pub fn render_paragraph(
             pattern_counter: state.pattern_counter,
             color_to_pattern: state.color_to_pattern,
             bindata_index,
+            bindata_lookup,
         };
 
         result.push_str(&super::line_segment::render_line_segments_with_content(
@@ -454,18 +433,20 @@ pub fn render_paragraph(
             // 테이블 위치 계산 (정확한 위치) / Calculate table position (exact position)
             // table_position은 pub(crate)이므로 같은 크레이트 내에서 접근 가능
             // table_position is pub(crate), so accessible within the same crate
-            use crate::viewer::html::ctrl_header::table::position::table_position;
-            let (_left_mm, top_mm) = table_position(
+            use crate::viewer::html::ctrl_header::table::position::{
+                table_position, TablePositionInput,
+            };
+            let (_left_mm, top_mm) = table_position(TablePositionInput {
                 hcd_position,
                 page_def,
-                None, // like_letters=false인 테이블은 segment_position 없음 / No segment_position for like_letters=false tables
-                table_info.ctrl_header,
-                Some(resolved_size.width), // obj_outer_width_mm: 테이블 너비 사용 / Use table width
-                ref_para_vertical_abs_mm,
+                segment_position: None, // like_letters=false인 테이블은 segment_position 없음 / No segment_position for like_letters=false tables
+                ctrl_header: table_info.ctrl_header,
+                obj_outer_width_mm: Some(resolved_size.width), // 테이블 너비 사용 / Use table width
+                para_start_vertical_mm: ref_para_vertical_abs_mm,
                 para_start_column_mm,
                 para_segment_width_mm,
-                first_para_vertical_abs_mm,
-            );
+                first_para_vertical_mm: first_para_vertical_abs_mm,
+            });
 
             // 페이지네이션 체크 (렌더링 직전) / Check pagination (before rendering)
             let table_result =
@@ -485,6 +466,7 @@ pub fn render_paragraph(
                 pattern_counter: state.pattern_counter,
                 color_to_pattern: state.color_to_pattern,
                 bindata_index,
+                bindata_lookup,
             };
 
             let position = TablePosition {
@@ -508,8 +490,7 @@ pub fn render_paragraph(
     } else if !text.is_empty() {
         // LineSegment가 없으면 텍스트만 렌더링 / Render text only if no LineSegment
         // HWPX char_shape_id가 있으면 runs 기반 렌더링 사용 / Use runs-based rendering if HWPX char_shape_id exists
-        let runs = text::extract_runs(paragraph);
-        let rendered_text = if text::runs_have_char_shape_id(&runs) {
+        let rendered_text = if use_run_renderer {
             text::render_text_runs(&runs, document)
         } else {
             text::render_text(&text, &char_shapes, document, &options.css_class_prefix)

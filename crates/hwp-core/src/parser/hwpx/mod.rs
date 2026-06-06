@@ -19,12 +19,17 @@
 pub mod bindata;
 pub mod container;
 pub mod header;
+pub(crate) mod package;
 pub mod section;
+pub(crate) mod xml_attr;
+pub(crate) mod xml_budget;
 
 use crate::document::HwpDocument;
 use crate::error::HwpError;
 
 use container::HwpxContainer;
+
+const MAX_HWPX_PREVIEW_TEXT_SIZE: u64 = 8 * 1024 * 1024;
 
 /// Parse HWPX file from byte array
 ///
@@ -89,8 +94,21 @@ pub fn parse(data: &[u8]) -> Result<HwpDocument, HwpError> {
         &mut document.diagnostics,
     );
     if has_preview_text {
-        if let Ok(text) = container.read_file_string("Preview/PrvText.txt") {
-            document.preview_text = Some(crate::document::PreviewText { text });
+        match container.read_file_string_with_limit(
+            "Preview/PrvText.txt",
+            MAX_HWPX_PREVIEW_TEXT_SIZE,
+            "HWPX preview text byte size",
+        ) {
+            Ok(text) => {
+                document.preview_text = Some(crate::document::PreviewText { text });
+            }
+            Err(err) => {
+                record_invalid_optional_part(
+                    "Preview/PrvText.txt",
+                    &err,
+                    &mut document.diagnostics,
+                );
+            }
         }
     }
 
@@ -121,9 +139,64 @@ fn record_missing_optional_part(
     }
 }
 
+fn record_invalid_optional_part(
+    path: &str,
+    error: &HwpError,
+    diagnostics: &mut crate::diagnostics::DiagnosticReport,
+) {
+    let message = match error {
+        HwpError::ResourceLimitExceeded { .. } => {
+            format!("Optional HWPX part {path} exceeded a parser resource limit and was skipped: {error}")
+        }
+        _ => {
+            format!("Optional HWPX part {path} could not be read and was skipped: {error}")
+        }
+    };
+
+    diagnostics.push(
+        crate::diagnostics::DiagnosticItem::new(
+            crate::diagnostics::DiagnosticSeverity::Warning,
+            crate::diagnostics::DiagnosticCategory::InvalidValue,
+            message,
+        )
+        .with_context(
+            crate::diagnostics::DiagnosticContext::new()
+                .with_source(path)
+                .with_component("hwpx"),
+        ),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diagnostics::{DiagnosticCategory, DiagnosticSeverity};
+    use std::io::{Cursor, Write};
+    use zip::{write::SimpleFileOptions, ZipWriter};
+
+    fn zip_with_files(files: &[(&str, &[u8])]) -> Vec<u8> {
+        let cursor = Cursor::new(Vec::new());
+        let mut zip = ZipWriter::new(cursor);
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+
+        for (path, data) in files {
+            zip.start_file(*path, options)
+                .expect("test ZIP entry should start");
+            zip.write_all(data)
+                .expect("test ZIP entry should be writable");
+        }
+
+        zip.finish().expect("test ZIP should finish").into_inner()
+    }
+
+    fn minimal_hwpx_with_preview(preview_text: &[u8]) -> Vec<u8> {
+        zip_with_files(&[
+            ("Contents/header.xml", br#"<hh:head/>"#),
+            ("Contents/section0.xml", br#"<hs:sec/>"#),
+            ("Preview/PrvText.txt", preview_text),
+        ])
+    }
 
     #[test]
     fn test_parse_invalid_data() {
@@ -161,6 +234,38 @@ mod tests {
             item.severity == crate::diagnostics::DiagnosticSeverity::Info
                 && item.category == crate::diagnostics::DiagnosticCategory::MissingOptionalPart
                 && item.context.source.as_deref() == Some("Preview/PrvText.txt")
+        }));
+    }
+
+    #[test]
+    fn invalid_preview_text_records_diagnostic_without_failing_parse() {
+        let data = minimal_hwpx_with_preview(b"\xff");
+
+        let document = parse(&data).expect("invalid optional preview text should be skipped");
+
+        assert!(document.preview_text.is_none());
+        assert!(document.diagnostics.items.iter().any(|item| {
+            item.severity == DiagnosticSeverity::Warning
+                && item.category == DiagnosticCategory::InvalidValue
+                && item.context.source.as_deref() == Some("Preview/PrvText.txt")
+                && item.context.component.as_deref() == Some("hwpx")
+                && item.message.contains("Preview/PrvText.txt")
+        }));
+    }
+
+    #[test]
+    fn oversized_preview_text_is_skipped_with_diagnostic() {
+        let oversized_preview = vec![b'a'; (8 * 1024 * 1024) + 1];
+        let data = minimal_hwpx_with_preview(&oversized_preview);
+
+        let document = parse(&data).expect("oversized optional preview text should be skipped");
+
+        assert!(document.preview_text.is_none());
+        assert!(document.diagnostics.items.iter().any(|item| {
+            item.severity == DiagnosticSeverity::Warning
+                && item.category == DiagnosticCategory::InvalidValue
+                && item.context.source.as_deref() == Some("Preview/PrvText.txt")
+                && item.message.contains("resource limit")
         }));
     }
 }

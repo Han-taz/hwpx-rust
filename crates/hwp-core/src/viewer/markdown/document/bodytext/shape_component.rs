@@ -4,8 +4,8 @@
 /// 스펙 문서 매핑: 표 57 - 본문의 데이터 레코드, SHAPE_COMPONENT (HWPTAG_BEGIN + 60)
 /// Spec mapping: Table 57 - BodyText data records, SHAPE_COMPONENT (HWPTAG_BEGIN + 60)
 use crate::document::{HwpDocument, ParagraphRecord};
-use crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown;
-use crate::viewer::shared::BinDataIndex;
+use crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown_with_lookup;
+use crate::viewer::shared::{BinDataIndex, BinDataItemLookup};
 
 /// Convert ShapeComponent children to markdown
 /// ShapeComponent의 자식들을 마크다운으로 변환
@@ -19,14 +19,15 @@ use crate::viewer::shared::BinDataIndex;
 ///
 /// # Returns / 반환값
 /// 마크다운 문자열 리스트 / List of markdown strings
-pub(crate) fn convert_shape_component_children_to_markdown(
+pub(crate) fn convert_shape_component_children_to_markdown_with_lookup(
     children: &[ParagraphRecord],
     document: &HwpDocument,
     bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
     image_output_dir: Option<&str>,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> Vec<String> {
-    use crate::viewer::markdown::document::bodytext::paragraph::convert_paragraph_to_markdown;
+    use crate::viewer::markdown::document::bodytext::paragraph::convert_paragraph_to_markdown_with_lookup;
     use crate::viewer::markdown::MarkdownOptions;
 
     let mut parts = Vec::new();
@@ -49,10 +50,10 @@ pub(crate) fn convert_shape_component_children_to_markdown(
                 shape_component_picture,
             } => {
                 // 그림 개체를 마크다운 이미지로 변환 / Convert picture shape component to markdown image
-                if let Some(image_md) = convert_shape_component_picture_to_markdown(
+                if let Some(image_md) = convert_shape_component_picture_to_markdown_with_lookup(
                     shape_component_picture,
-                    document,
                     bindata_index,
+                    bindata_lookup,
                     image_output_dir,
                 ) {
                     parts.push(image_md);
@@ -63,10 +64,11 @@ pub(crate) fn convert_shape_component_children_to_markdown(
                 // SHAPE_COMPONENT 내부의 LIST_HEADER는 글상자 텍스트를 포함할 수 있음
                 // LIST_HEADER inside SHAPE_COMPONENT can contain textbox text
                 for para in &lh_data.paragraphs {
-                    let para_md = convert_paragraph_to_markdown(
+                    let para_md = convert_paragraph_to_markdown_with_lookup(
                         para,
                         document,
                         bindata_index,
+                        bindata_lookup,
                         &options,
                         tracker,
                     );

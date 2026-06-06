@@ -18,6 +18,7 @@ mod common;
 mod ctrl_header;
 pub mod document;
 mod renderer;
+pub(crate) mod security;
 pub mod utils;
 
 use crate::document::HwpDocument;

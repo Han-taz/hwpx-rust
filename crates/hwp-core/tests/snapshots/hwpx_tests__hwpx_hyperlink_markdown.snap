@@ -1,6 +1,6 @@
 ---
 source: crates/hwp-core/tests/hwpx_tests.rs
-assertion_line: 91
+assertion_line: 92
 expression: markdown
 ---
 # HWP 문서
@@ -95,13 +95,13 @@ expression: markdown
 
 ~~※ 이메일 등 기타 방법으로 제출된 과제는 인정되지 않음~~
 
-~~○~~~~**(제출방법)**~~~~국가 AI컴퓨팅자원 지원포털(~~[~~https://aiinfrahub.kr)에서~~](https://aiinfrahub.kr)에서)~~접수~~
+~~○~~~~**(제출방법)**~~~~국가 AI컴퓨팅자원 지원포털(~~[~~https://aiinfrahub.kr)에서~~](https://aiinfrahub.kr\)에서)~~접수~~
 
 ~~※ 사업공고 확인하여 신청서 다운로드 및 작성 후 ‘신청하기’를 통해 접수~~
 
 ~~※ 총괄 책임자 이메일로 신청하며, 추후 해당 이메일을 통해 선정결과 통보 예정~~
 
-~~○~~~~**(제출자료)**~~~~과제 요약서[붙임1] 1부~~
+~~○~~~~**(제출자료)**~~~~과제 요약서\[붙임1\] 1부~~
 
 ~~**6. 유의사항**~~
 
@@ -111,7 +111,7 @@ expression: markdown
 <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
   <tr>
     <td></td>
-    <td rowspan="2">< 목적 외 사용 등 부당행위의 의미와 종류></td>
+    <td rowspan="2">&lt; 목적 외 사용 등 부당행위의 의미와 종류&gt;</td>
     <td></td>
   </tr>
   <tr>

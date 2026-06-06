@@ -5,10 +5,11 @@ use super::paragraph::{
 };
 use super::styles;
 use super::styles::round_to_2dp;
+use super::text;
 use super::HtmlOptions;
 use crate::document::bodytext::ctrl_header::{CtrlHeaderData, CtrlId};
-use crate::document::bodytext::{PageDef, ParagraphRecord};
-use crate::document::HwpDocument;
+use crate::document::bodytext::{LineSegmentInfo, PageDef, ParagraphRecord};
+use crate::document::{HwpDocument, Paragraph};
 use crate::types::RoundTo2dp;
 use crate::INT32;
 
@@ -17,6 +18,31 @@ struct HtmlPreScanResult<'a> {
     page_def: Option<&'a PageDef>,
     page_number_position: Option<&'a CtrlHeaderData>,
     para_vertical_positions: Vec<f64>,
+}
+
+fn layout_line_segments(paragraph: &Paragraph) -> Option<&[LineSegmentInfo]> {
+    if text::paragraph_requires_run_rendering(paragraph)
+        || !text::paragraph_has_line_segment_content(paragraph)
+    {
+        return None;
+    }
+
+    paragraph.records.iter().find_map(|record| {
+        if let ParagraphRecord::ParaLineSeg { segments } = record {
+            Some(segments.as_slice())
+        } else {
+            None
+        }
+    })
+}
+
+fn first_layout_line_segment(paragraph: &Paragraph) -> Option<&LineSegmentInfo> {
+    layout_line_segments(paragraph).and_then(|segments| segments.first())
+}
+
+fn first_layout_vertical_mm(paragraph: &Paragraph) -> Option<f64> {
+    first_layout_line_segment(paragraph)
+        .map(|segment| segment.vertical_position as f64 * 25.4 / 7200.0)
 }
 
 /// 단일 순회로 세 가지 결과를 수집 / Collect three results in a single traversal
@@ -63,12 +89,12 @@ fn pre_scan(document: &HwpDocument) -> HtmlPreScanResult<'_> {
                 }
 
                 // vertical_position 수집 (header/footer·footnote/endnote 제외) / Collect vertical_position (exclude header/footer·footnote/endnote)
-                if !has_header_footer && !has_footnote_endnote {
-                    if let ParagraphRecord::ParaLineSeg { segments } = record {
-                        if let Some(seg) = segments.first() {
-                            para_vertical_positions
-                                .push(seg.vertical_position as f64 * 25.4 / 7200.0);
-                        }
+                if !has_header_footer
+                    && !has_footnote_endnote
+                    && matches!(record, ParagraphRecord::ParaLineSeg { .. })
+                {
+                    if let Some(seg) = first_layout_line_segment(paragraph) {
+                        para_vertical_positions.push(seg.vertical_position as f64 * 25.4 / 7200.0);
                     }
                 }
             }
@@ -95,6 +121,7 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
     // Build BinData index once for O(1) lookups throughout conversion
     // BinData 인덱스를 한 번 빌드하여 변환 전체에서 O(1) 조회 사용
     let bindata_index = crate::viewer::shared::build_bindata_index(document);
+    let bindata_lookup = crate::viewer::shared::build_bindata_item_lookup(document);
 
     let mut html = String::new();
 
@@ -190,16 +217,7 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
             );
 
             // LineSegment의 vertical_position 추출 (기존 로직 유지) / Extract vertical_position from LineSegment (keep existing logic)
-            let mut first_vertical_mm: Option<f64> = None;
-            for record in &paragraph.records {
-                if let ParagraphRecord::ParaLineSeg { segments } = record {
-                    if let Some(first_segment) = segments.first() {
-                        first_vertical_mm =
-                            Some(first_segment.vertical_position as f64 * 25.4 / 7200.0);
-                    }
-                    break;
-                }
-            }
+            let first_vertical_mm = first_layout_vertical_mm(paragraph);
 
             let has_page_break = para_result.has_page_break;
 
@@ -243,12 +261,13 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
                     page_number,
                     &page_content,
                     &page_tables,
-                    current_page_def,
-                    first_segment_pos,
-                    hcd_pos,
-                    page_number_position,
-                    page_start_number,
-                    document,
+                    page::PageRenderContext {
+                        page_def: current_page_def,
+                        hcd_position: hcd_pos,
+                        page_number_position,
+                        page_start_number,
+                        document,
+                    },
                 ));
                 page_number += 1;
                 page_content.clear();
@@ -283,42 +302,21 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
                     hcd_position = Some((left_margin_mm, top_margin_mm));
 
                     // LineSegment 위치 저장 (참고용) / Store LineSegment position (for reference)
-                    for record in &paragraph.records {
-                        if let ParagraphRecord::ParaLineSeg { segments } = record {
-                            if let Some(first_segment) = segments.first() {
-                                first_segment_pos = Some((
-                                    first_segment.column_start_position,
-                                    first_segment.vertical_position,
-                                ));
-                                break;
-                            }
-                        }
+                    if let Some(first_segment) = first_layout_line_segment(paragraph) {
+                        first_segment_pos = Some((
+                            first_segment.column_start_position,
+                            first_segment.vertical_position,
+                        ));
                     }
                 }
 
                 // 첫 번째 문단의 vertical_position 추적 (가설 O) / Track first paragraph's vertical_position (Hypothesis O)
                 if first_para_vertical_mm.is_none() {
-                    for record in &paragraph.records {
-                        if let ParagraphRecord::ParaLineSeg { segments } = record {
-                            if let Some(first_segment) = segments.first() {
-                                first_para_vertical_mm =
-                                    Some(first_segment.vertical_position as f64 * 25.4 / 7200.0);
-                                break;
-                            }
-                        }
-                    }
+                    first_para_vertical_mm = first_layout_vertical_mm(paragraph);
                 }
 
                 // 현재 문단의 vertical_position 계산 / Calculate current paragraph's vertical_position
-                let current_para_vertical_mm = paragraph.records.iter().find_map(|record| {
-                    if let ParagraphRecord::ParaLineSeg { segments } = record {
-                        segments
-                            .first()
-                            .map(|seg| seg.vertical_position as f64 * 25.4 / 7200.0)
-                    } else {
-                        None
-                    }
-                });
+                let current_para_vertical_mm = first_layout_vertical_mm(paragraph);
 
                 // 현재 문단 인덱스 (vertical_position이 있는 문단만 카운트) / Current paragraph index (only count paragraphs with vertical_position)
                 let current_para_index = if current_para_vertical_mm.is_some() {
@@ -341,6 +339,7 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
                     options,
                     position,
                     bindata_index: &bindata_index,
+                    bindata_lookup: &bindata_lookup,
                 };
 
                 let mut state = ParagraphRenderState {
@@ -384,12 +383,13 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
                             page_number,
                             &page_content,
                             &page_tables,
-                            page_def,
-                            first_segment_pos,
-                            hcd_pos,
-                            page_number_position,
-                            page_start_number,
-                            document,
+                            page::PageRenderContext {
+                                page_def,
+                                hcd_position: hcd_pos,
+                                page_number_position,
+                                page_start_number,
+                                document,
+                            },
                         ));
                         page_number += 1;
                         page_content.clear();
@@ -417,15 +417,12 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
                 }
 
                 // vertical_position 업데이트 (문단의 모든 LineSegment 확인) / Update vertical_position (check all LineSegments in paragraph)
-                for record in &paragraph.records {
-                    if let ParagraphRecord::ParaLineSeg { segments } = record {
-                        for segment in segments {
-                            let vertical_mm = segment.vertical_position as f64 * 25.4 / 7200.0;
-                            if vertical_mm > current_max_vertical_mm {
-                                current_max_vertical_mm = vertical_mm;
-                            }
+                if let Some(segments) = layout_line_segments(paragraph) {
+                    for segment in segments {
+                        let vertical_mm = segment.vertical_position as f64 * 25.4 / 7200.0;
+                        if vertical_mm > current_max_vertical_mm {
+                            current_max_vertical_mm = vertical_mm;
                         }
-                        break;
                     }
                 }
                 // 첫 번째 세그먼트의 vertical_position을 prev_vertical_mm으로 저장 / Store first segment's vertical_position as prev_vertical_mm
@@ -458,12 +455,13 @@ pub fn to_html(document: &HwpDocument, options: &HtmlOptions) -> String {
             page_number,
             &page_content,
             &page_tables,
-            current_page_def,
-            first_segment_pos,
-            hcd_pos,
-            page_number_position,
-            page_start_number,
-            document,
+            page::PageRenderContext {
+                page_def: current_page_def,
+                hcd_position: hcd_pos,
+                page_number_position,
+                page_start_number,
+                document,
+            },
         ));
     }
 

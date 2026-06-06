@@ -16,9 +16,8 @@ pub mod table;
 
 use crate::document::{CtrlHeader, CtrlId, Paragraph, ParagraphRecord};
 use crate::viewer::html::line_segment::{ImageInfo, TableInfo};
-use crate::viewer::shared::BinDataIndex;
+use crate::viewer::shared::{BinDataIndex, BinDataItemLookup};
 use crate::viewer::HtmlOptions;
-use crate::HwpDocument;
 
 /// CtrlHeader 처리 결과 / CtrlHeader processing result
 #[derive(Debug, Default)]
@@ -46,9 +45,9 @@ pub fn process_ctrl_header<'a>(
     header: &'a CtrlHeader,
     children: &'a [ParagraphRecord],
     paragraphs: &'a [Paragraph],
-    document: &'a HwpDocument,
     options: &'a HtmlOptions,
     bindata_index: &'a BinDataIndex,
+    bindata_lookup: &'a BinDataItemLookup<'a>,
 ) -> CtrlHeaderResult<'a> {
     match header.ctrl_id.as_str() {
         CtrlId::TABLE => {
@@ -61,9 +60,9 @@ pub fn process_ctrl_header<'a>(
                 header,
                 children,
                 paragraphs,
-                document,
                 options,
                 bindata_index,
+                bindata_lookup,
             )
         }
         CtrlId::SECTION_DEF => {

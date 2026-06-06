@@ -5,6 +5,7 @@
 /// Spec mapping: Table 57 - BodyText data records, PARA_TEXT (HWPTAG_BEGIN + 51)
 use crate::document::bodytext::{CharShapeInfo, ControlChar, ControlCharPosition, ParaTextRun};
 use crate::document::{CharShape, HwpDocument};
+use crate::viewer::markdown::security::{escape_text, format_link, format_link_escaped_label};
 
 /// 하이퍼링크 영역 정보 / Hyperlink region information
 #[derive(Debug, Clone)]
@@ -15,6 +16,45 @@ pub struct HyperlinkRegion {
 
 /// RESERVED_3 (code 3) - 필드 콘텐츠 시작 / Field content start
 const FIELD_CONTENT_START: u8 = 3;
+
+#[derive(Debug, Clone)]
+struct Utf8CharOffsets {
+    byte_offsets: Vec<usize>,
+}
+
+impl Utf8CharOffsets {
+    fn new(text: &str) -> Self {
+        Self {
+            byte_offsets: text
+                .char_indices()
+                .map(|(idx, _)| idx)
+                .chain(std::iter::once(text.len()))
+                .collect(),
+        }
+    }
+
+    fn char_count(&self) -> usize {
+        self.byte_offsets.len().saturating_sub(1)
+    }
+
+    fn byte_index(&self, char_idx: usize) -> Option<usize> {
+        self.byte_offsets.get(char_idx).copied()
+    }
+
+    fn slice<'a>(&self, text: &'a str, start_char: usize, end_char: usize) -> Option<&'a str> {
+        if start_char > end_char {
+            return None;
+        }
+
+        let start = self.byte_index(start_char)?;
+        let end = self.byte_index(end_char)?;
+        Some(&text[start..end])
+    }
+
+    fn slice_or_empty<'a>(&self, text: &'a str, start_char: usize, end_char: usize) -> &'a str {
+        self.slice(text, start_char, end_char).unwrap_or("")
+    }
+}
 
 /// 의미 있는 텍스트인지 확인합니다. / Check if text is meaningful.
 ///
@@ -46,14 +86,6 @@ pub(crate) fn is_meaningful_text(text: &str, _control_positions: &[ControlCharPo
 ///
 /// # Returns / 반환값
 /// 마크다운 문자열 / Markdown string
-/// Convert character index to byte index in UTF-8 string
-/// UTF-8 문자열에서 문자 인덱스를 바이트 인덱스로 변환
-fn char_index_to_byte_index(text: &str, char_idx: usize) -> Option<usize> {
-    text.char_indices()
-        .nth(char_idx)
-        .map(|(byte_idx, _)| byte_idx)
-}
-
 /// CharShape 정보를 사용하여 텍스트를 구간별로 나누고 마크다운 스타일을 적용
 /// Divide text into segments by CharShape information and apply markdown styles
 fn convert_text_with_char_shapes<'a>(
@@ -66,12 +98,8 @@ fn convert_text_with_char_shapes<'a>(
         return None;
     }
 
-    let byte_offsets: Vec<usize> = text
-        .char_indices()
-        .map(|(i, _)| i)
-        .chain(std::iter::once(text.len()))
-        .collect();
-    let char_count = byte_offsets.len() - 1;
+    let offsets = Utf8CharOffsets::new(text);
+    let char_count = offsets.char_count();
 
     // CharShape 정보를 position 기준으로 정렬 / Sort CharShape info by position
     let mut sorted_shapes: Vec<_> = char_shapes.iter().collect();
@@ -133,7 +161,7 @@ fn convert_text_with_char_shapes<'a>(
 
             if segment_breaks.is_empty() {
                 // 구간 내에 break가 없으면 전체 구간에 스타일 적용 / No breaks in segment, apply style to entire segment
-                let segment_text = &text[byte_offsets[*start]..byte_offsets[*end]];
+                let segment_text = offsets.slice_or_empty(text, *start, *end);
                 if !segment_text.trim().is_empty() {
                     if let Some(shape) = char_shape {
                         let styled = apply_markdown_styles(
@@ -145,7 +173,7 @@ fn convert_text_with_char_shapes<'a>(
                         );
                         result.push_str(&styled);
                     } else {
-                        result.push_str(segment_text);
+                        result.push_str(&escape_text(segment_text));
                     }
                 }
             } else {
@@ -158,7 +186,7 @@ fn convert_text_with_char_shapes<'a>(
                     let seg_end = segment_breaks[i + 1];
 
                     if seg_start < seg_end && seg_end <= char_count {
-                        let segment_text = &text[byte_offsets[seg_start]..byte_offsets[seg_end]];
+                        let segment_text = offsets.slice_or_empty(text, seg_start, seg_end);
                         if !segment_text.trim().is_empty() {
                             if let Some(shape) = char_shape {
                                 let styled = apply_markdown_styles(
@@ -170,7 +198,7 @@ fn convert_text_with_char_shapes<'a>(
                                 );
                                 result.push_str(&styled);
                             } else {
-                                result.push_str(segment_text);
+                                result.push_str(&escape_text(segment_text));
                             }
                         }
                     }
@@ -213,7 +241,7 @@ fn apply_markdown_styles(
         return String::new();
     }
 
-    let mut result = String::from(text);
+    let mut result = escape_text(text);
 
     // 마크다운 스타일 적용 순서: underline (가장 바깥) -> strikethrough -> bold -> italic (가장 안쪽)
     // Markdown style application order: underline (outermost) -> strikethrough -> bold -> italic (innermost)
@@ -279,12 +307,12 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
                     );
                     result.push_str(&styled);
                 } else {
-                    result.push_str(trimmed);
+                    result.push_str(&escape_text(trimmed));
                 }
             }
             ParaTextRun::Control { display_text, .. } => {
                 if let Some(text) = display_text {
-                    result.push_str(text);
+                    result.push_str(&escape_text(text));
                 }
             }
             ParaTextRun::Hyperlink {
@@ -309,11 +337,11 @@ pub fn convert_runs_to_markdown(runs: &[ParaTextRun], document: &HwpDocument) ->
                         shape.attributes.underline_type != 0,
                     )
                 } else {
-                    text.trim().to_string()
+                    escape_text(text.trim())
                 };
 
                 // 마크다운 하이퍼링크 형식 / Markdown hyperlink format
-                result.push_str(&format!("[{}]({})", styled_text, url));
+                result.push_str(&format_link_escaped_label(&styled_text, url));
             }
         }
     }
@@ -385,7 +413,7 @@ pub fn convert_para_text_to_markdown_with_char_shapes<'a>(
         if is_meaningful_text(text, control_positions) {
             let trimmed = text.trim();
             if !trimmed.is_empty() {
-                return Some(trimmed.to_string());
+                return Some(escape_text(trimmed));
             }
         }
         return None;
@@ -400,6 +428,7 @@ pub fn convert_para_text_to_markdown_with_char_shapes<'a>(
     // control_positions를 정렬하여 순서대로 처리 / Sort control_positions to process in order
     let mut sorted_positions: Vec<_> = control_positions.iter().collect();
     sorted_positions.sort_by_key(|pos| pos.position);
+    let offsets = Utf8CharOffsets::new(text);
 
     for pos in sorted_positions {
         // PARA_BREAK나 LINE_BREAK만 처리 / Only process PARA_BREAK or LINE_BREAK
@@ -408,12 +437,12 @@ pub fn convert_para_text_to_markdown_with_char_shapes<'a>(
         }
 
         // 문자 인덱스를 바이트 인덱스로 변환 / Convert character index to byte index
-        let byte_idx = match char_index_to_byte_index(text, pos.position) {
+        let byte_idx = match offsets.byte_index(pos.position) {
             Some(idx) => idx,
             None => continue, // 유효하지 않은 위치는 건너뜀 / Skip invalid position
         };
 
-        let last_byte_idx = char_index_to_byte_index(text, last_char_pos).unwrap_or(0);
+        let last_byte_idx = offsets.byte_index(last_char_pos).unwrap_or(0);
 
         // 제어 문자 이전의 텍스트 추가 (파서에서 \n이 제거되었으므로 그대로 사용)
         // Add text before control character (parser removed \n, so use as-is)
@@ -421,7 +450,7 @@ pub fn convert_para_text_to_markdown_with_char_shapes<'a>(
             let text_part = &text[last_byte_idx..byte_idx];
             let trimmed = text_part.trim();
             if !trimmed.is_empty() {
-                result.push_str(trimmed);
+                result.push_str(&escape_text(trimmed));
             }
         }
 
@@ -434,12 +463,12 @@ pub fn convert_para_text_to_markdown_with_char_shapes<'a>(
     }
 
     // 마지막 부분의 텍스트 추가 / Add remaining text
-    let last_byte_idx = char_index_to_byte_index(text, last_char_pos).unwrap_or(0);
+    let last_byte_idx = offsets.byte_index(last_char_pos).unwrap_or(0);
     if last_byte_idx < text.len() {
         let text_part = &text[last_byte_idx..];
         let trimmed = text_part.trim();
         if !trimmed.is_empty() {
-            result.push_str(trimmed);
+            result.push_str(&escape_text(trimmed));
         }
     }
 
@@ -532,12 +561,8 @@ pub fn convert_para_text_to_markdown_with_hyperlinks(
         return convert_para_text_to_markdown(text, control_positions);
     }
 
-    let byte_offsets: Vec<usize> = text
-        .char_indices()
-        .map(|(i, _)| i)
-        .chain(std::iter::once(text.len()))
-        .collect();
-    let char_count = byte_offsets.len() - 1;
+    let offsets = Utf8CharOffsets::new(text);
+    let char_count = offsets.char_count();
 
     let mut result = String::new();
     let mut current_text_pos = 0;
@@ -550,23 +575,23 @@ pub fn convert_para_text_to_markdown_with_hyperlinks(
 
         // 필드 이전 텍스트 추가 / Add text before field
         if current_text_pos < text_start && text_start <= char_count {
-            let trimmed = &text[byte_offsets[current_text_pos]..byte_offsets[text_start]];
+            let trimmed = offsets.slice_or_empty(text, current_text_pos, text_start);
             let trimmed = trimmed.trim();
             if !trimmed.is_empty() {
-                result.push_str(trimmed);
+                result.push_str(&escape_text(trimmed));
             }
         }
 
         // 필드 내부 텍스트 (하이퍼링크) / Field content (hyperlink)
         if text_start < text_end && text_end <= char_count {
-            let trimmed_link = &text[byte_offsets[text_start]..byte_offsets[text_end]];
+            let trimmed_link = offsets.slice_or_empty(text, text_start, text_end);
             let trimmed_link = trimmed_link.trim();
             if !trimmed_link.is_empty() {
                 if let Some(hyperlink) = hyperlinks.get(i) {
                     // [text](url) 형식으로 마크다운 링크 생성 / Create markdown link as [text](url)
-                    result.push_str(&format!("[{}]({})", trimmed_link, hyperlink.url));
+                    result.push_str(&format_link(trimmed_link, &hyperlink.url));
                 } else {
-                    result.push_str(trimmed_link);
+                    result.push_str(&escape_text(trimmed_link));
                 }
             }
         }
@@ -576,10 +601,10 @@ pub fn convert_para_text_to_markdown_with_hyperlinks(
 
     // 마지막 필드 이후 텍스트 추가 / Add text after last field
     if current_text_pos < char_count {
-        let trimmed = &text[byte_offsets[current_text_pos]..];
+        let trimmed = offsets.slice_or_empty(text, current_text_pos, char_count);
         let trimmed = trimmed.trim();
         if !trimmed.is_empty() {
-            result.push_str(trimmed);
+            result.push_str(&escape_text(trimmed));
         }
     }
 
@@ -625,12 +650,8 @@ pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
     hyperlinks: &[HyperlinkRegion],
     open_hyperlink: Option<&CrossingHyperlinkState>,
 ) -> CrossingHyperlinkResult {
-    let byte_offsets: Vec<usize> = text
-        .char_indices()
-        .map(|(i, _)| i)
-        .chain(std::iter::once(text.len()))
-        .collect();
-    let char_count = byte_offsets.len() - 1;
+    let offsets = Utf8CharOffsets::new(text);
+    let char_count = offsets.char_count();
 
     // 텍스트가 비어있으면 빈 결과 반환 / Return empty result if text is empty
     if text.trim().is_empty() {
@@ -671,10 +692,10 @@ pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
             let clamped_end = text_end.min(char_count);
 
             if clamped_end > 0 {
-                let trimmed_link = &text[..byte_offsets[clamped_end]];
+                let trimmed_link = offsets.slice_or_empty(text, 0, clamped_end);
                 let trimmed_link = trimmed_link.trim();
                 if !trimmed_link.is_empty() {
-                    result.push_str(&format!("[{}]({})", trimmed_link, open_state.url));
+                    result.push_str(&format_link(trimmed_link, &open_state.url));
                 }
             }
             current_text_pos = clamped_end;
@@ -685,7 +706,7 @@ pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
             // If no FIELD_END, treat entire paragraph as hyperlink and keep open state
             let trimmed_link = text.trim();
             if !trimmed_link.is_empty() {
-                result.push_str(&format!("[{}]({})", trimmed_link, open_state.url));
+                result.push_str(&format_link(trimmed_link, &open_state.url));
             }
             return CrossingHyperlinkResult {
                 markdown: if result.is_empty() {
@@ -721,22 +742,22 @@ pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
 
         // 필드 이전 텍스트 추가 / Add text before field
         if current_text_pos < clamped_start {
-            let trimmed = &text[byte_offsets[current_text_pos]..byte_offsets[clamped_start]];
+            let trimmed = offsets.slice_or_empty(text, current_text_pos, clamped_start);
             let trimmed = trimmed.trim();
             if !trimmed.is_empty() {
-                result.push_str(trimmed);
+                result.push_str(&escape_text(trimmed));
             }
         }
 
         // 필드 내부 텍스트 (하이퍼링크) / Field content (hyperlink)
         if clamped_start < clamped_end {
-            let trimmed_link = &text[byte_offsets[clamped_start]..byte_offsets[clamped_end]];
+            let trimmed_link = offsets.slice_or_empty(text, clamped_start, clamped_end);
             let trimmed_link = trimmed_link.trim();
             if !trimmed_link.is_empty() {
                 if let Some(hyperlink) = hyperlinks.get(hyperlink_index) {
-                    result.push_str(&format!("[{}]({})", trimmed_link, hyperlink.url));
+                    result.push_str(&format_link(trimmed_link, &hyperlink.url));
                 } else {
-                    result.push_str(trimmed_link);
+                    result.push_str(&escape_text(trimmed_link));
                 }
             }
         }
@@ -756,26 +777,26 @@ pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
 
         // 필드 이전 텍스트 추가 / Add text before field
         if current_text_pos < clamped_start {
-            let trimmed = &text[byte_offsets[current_text_pos]..byte_offsets[clamped_start]];
+            let trimmed = offsets.slice_or_empty(text, current_text_pos, clamped_start);
             let trimmed = trimmed.trim();
             if !trimmed.is_empty() {
-                result.push_str(trimmed);
+                result.push_str(&escape_text(trimmed));
             }
         }
 
         // 필드 시작부터 문단 끝까지 하이퍼링크 / Hyperlink from field start to paragraph end
         if clamped_start < char_count {
-            let trimmed_link = &text[byte_offsets[clamped_start]..];
+            let trimmed_link = offsets.slice_or_empty(text, clamped_start, char_count);
             let trimmed_link = trimmed_link.trim();
             if !trimmed_link.is_empty() {
                 if let Some(hyperlink) = hyperlinks.get(hyperlink_index) {
-                    result.push_str(&format!("[{}]({})", trimmed_link, hyperlink.url));
+                    result.push_str(&format_link(trimmed_link, &hyperlink.url));
                     // 열린 하이퍼링크 상태 설정 / Set open hyperlink state
                     new_open_state = Some(CrossingHyperlinkState {
                         url: hyperlink.url.clone(),
                     });
                 } else {
-                    result.push_str(trimmed_link);
+                    result.push_str(&escape_text(trimmed_link));
                 }
             }
         }
@@ -784,10 +805,10 @@ pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
 
     // 마지막 필드 이후 텍스트 추가 / Add text after last field
     if current_text_pos < char_count {
-        let trimmed = &text[byte_offsets[current_text_pos]..];
+        let trimmed = offsets.slice_or_empty(text, current_text_pos, char_count);
         let trimmed = trimmed.trim();
         if !trimmed.is_empty() {
-            result.push_str(trimmed);
+            result.push_str(&escape_text(trimmed));
         }
     }
 
@@ -799,5 +820,71 @@ pub fn convert_para_text_to_markdown_with_crossing_hyperlinks(
             Some(trimmed_result.to_string())
         },
         new_open_state,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_document() -> HwpDocument {
+        HwpDocument::new(crate::document::FileHeader {
+            signature: "HWP Document File".to_string(),
+            version: 0x05000300,
+            document_flags: 0,
+            license_flags: 0,
+            encrypt_version: 0,
+            kogl_country: 0,
+            reserved: vec![0; 207],
+        })
+    }
+
+    #[test]
+    fn utf8_char_offsets_slice_multibyte_text() {
+        let offsets = Utf8CharOffsets::new("가a🙂나");
+
+        assert_eq!(offsets.char_count(), 4);
+        assert_eq!(offsets.slice("가a🙂나", 0, 2), Some("가a"));
+        assert_eq!(offsets.slice("가a🙂나", 2, 4), Some("🙂나"));
+    }
+
+    #[test]
+    fn utf8_char_offsets_reject_out_of_bounds_slice() {
+        let offsets = Utf8CharOffsets::new("abc");
+
+        assert_eq!(offsets.byte_index(4), None);
+        assert_eq!(offsets.slice("abc", 1, 4), None);
+    }
+
+    #[test]
+    fn plain_text_escapes_markdown_links_and_raw_html() {
+        let markdown = convert_para_text_to_markdown(
+            "[Open](javascript:alert(1)) <script>alert(1)</script>",
+            &[],
+        )
+        .expect("text should render");
+
+        assert!(!markdown.contains("[Open](javascript:alert(1))"));
+        assert!(!markdown.contains("<script>alert(1)</script>"));
+        assert_eq!(
+            markdown,
+            r"\[Open\](javascript:alert(1)) &lt;script&gt;alert(1)&lt;/script&gt;"
+        );
+    }
+
+    #[test]
+    fn hwpx_hyperlink_runs_reject_active_content_schemes() {
+        let runs = vec![ParaTextRun::Hyperlink {
+            text: "] (javascript:alert(1)) <b>Open</b>".to_string(),
+            url: "javascript:alert(1)".to_string(),
+            char_shape_id: None,
+        }];
+
+        let markdown = convert_runs_to_markdown(&runs, &test_document()).expect("link renders");
+
+        assert_eq!(
+            markdown,
+            r"[\] (javascript:alert(1)) &lt;b&gt;Open&lt;/b&gt;](#)"
+        );
     }
 }

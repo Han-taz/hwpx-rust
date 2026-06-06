@@ -241,44 +241,28 @@ impl ControlChar {
     /// CHAR: 1 WCHAR (2 bytes)
     /// INLINE: 8 WCHAR (16 bytes) - 제어 문자 1 + 파라미터 6
     /// EXTENDED: 8 WCHAR (16 bytes) - 제어 문자 1 + 포인터 6
-    #[allow(clippy::if_same_then_else)]
     pub fn get_size_by_code(code: u8) -> usize {
-        if code <= 31 {
+        match code {
             // CHAR 타입: 1 WCHAR (2 bytes)
             // 표 6 참조: 10 (LINE_BREAK), 13 (PARA_BREAK), 24 (HYPHEN), 30 (BOUND_SPACE), 31 (FIXED_SPACE)
             // 표 6 미명시: 0 (NULL) - CHAR 타입으로 처리
-            if matches!(
-                code,
-                Self::NULL
-                    | Self::LINE_BREAK
-                    | Self::PARA_BREAK
-                    | Self::HYPHEN
-                    | Self::BOUND_SPACE
-                    | Self::FIXED_SPACE
-            ) {
-                1
-            }
+            Self::NULL
+            | Self::LINE_BREAK
+            | Self::PARA_BREAK
+            | Self::HYPHEN
+            | Self::BOUND_SPACE
+            | Self::FIXED_SPACE => 1,
+
             // INLINE 타입: 8 WCHAR (16 bytes)
             // 표 6 참조: 4 (FIELD_END), 5-7 (예약), 8 (TITLE_MARK), 9 (TAB), 19-20 (예약)
-            else if matches!(
-                code,
-                Self::FIELD_END
-                    | Self::RESERVED_5_7_START..=Self::RESERVED_5_7_END
-                    | Self::TITLE_MARK
-                    | Self::TAB
-                    | Self::RESERVED_19_20_START..=Self::RESERVED_19_20_END
-            ) {
-                8
-            }
             // EXTENDED 타입: 8 WCHAR (16 bytes)
             // 표 6 참조: 11-12, 14-18, 21-23
             // 표 6 미명시: 1-3 - EXTENDED 타입으로 처리
             // INLINE과 동일한 크기(8)이지만 의미적으로 다른 타입임 / Same size (8) as INLINE but semantically different type
-            else {
-                8
-            }
-        } else {
-            1 // 일반 문자
+            1..=31 => 8,
+
+            // 일반 문자 / Ordinary character
+            _ => 1,
         }
     }
 }

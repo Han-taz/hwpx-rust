@@ -51,6 +51,9 @@ pub struct SolidFill {
     pub pattern_color: COLORREF,
     /// 무늬 종류 (표 29) / Pattern type (Table 29)
     pub pattern_type: INT32,
+    /// HWPX 단색 채우기 투명도 / HWPX solid fill alpha
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alpha: Option<BYTE>,
 }
 
 /// 그러데이션 채우기 정보 / Gradient fill information
@@ -66,6 +69,12 @@ pub struct GradientFill {
     pub vertical_center: INT16,
     /// 그러데이션 번짐 정도(0-100) / Gradient spread (0-100)
     pub spread: INT16,
+    /// HWPX 그러데이션 번짐 중심 / HWPX gradient spread center
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step_center: Option<BYTE>,
+    /// HWPX 그러데이션 투명도 / HWPX gradient alpha
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alpha: Option<BYTE>,
     /// 그러데이션의 색 수 / Number of gradient colors
     pub color_count: INT16,
     /// 색상이 바뀌는 곳의 위치 (color_count > 2일 경우에만) / Color change positions (only if color_count > 2)
@@ -81,6 +90,24 @@ pub struct ImageFill {
     pub image_fill_type: BYTE,
     /// 그림 정보 (표 32) / Image information (Table 32)
     pub image_info: Vec<u8>, // 5 bytes
+    /// HWPX 이미지 채우기 모드 / HWPX image fill mode
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
+    /// HWPX 이미지 바이너리 참조 / HWPX image binary reference
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub binary_item_ref: Option<String>,
+    /// HWPX 이미지 밝기 / HWPX image brightness
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brightness: Option<INT16>,
+    /// HWPX 이미지 대비 / HWPX image contrast
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contrast: Option<INT16>,
+    /// HWPX 이미지 효과 / HWPX image effect
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect: Option<String>,
+    /// HWPX 이미지 투명도 / HWPX image alpha
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alpha: Option<BYTE>,
     /// 그러데이션 번짐정도의 중심 (0..100) / Gradient spread center (0..100)
     pub gradient_spread_center: Option<BYTE>,
     /// 추가 채우기 속성 길이 / Additional fill attribute length
@@ -234,7 +261,7 @@ impl BorderFill {
             },
         ];
         let mut off_i = start;
-        for i in 0..4 {
+        for border in &mut borders_interleave {
             let line_type = data[off_i];
             off_i += 1;
             let width = data[off_i];
@@ -246,7 +273,7 @@ impl BorderFill {
                 data[off_i + 3],
             ]));
             off_i += 4;
-            borders_interleave[i] = BorderLine {
+            *border = BorderLine {
                 line_type,
                 width,
                 color,
@@ -271,8 +298,8 @@ impl BorderFill {
         ];
         off_s += 4;
         let mut colors = [COLORREF(0); 4];
-        for i in 0..4 {
-            colors[i] = COLORREF(u32::from_le_bytes([
+        for color in &mut colors {
+            *color = COLORREF(u32::from_le_bytes([
                 data[off_s],
                 data[off_s + 1],
                 data[off_s + 2],
@@ -402,6 +429,7 @@ impl BorderFill {
                     background_color,
                     pattern_color,
                     pattern_type,
+                    alpha: None,
                 }))
             }
             FillType::Gradient => {
@@ -472,6 +500,8 @@ impl BorderFill {
                     horizontal_center,
                     vertical_center,
                     spread,
+                    step_center: None,
+                    alpha: None,
                     color_count,
                     positions,
                     colors,
@@ -503,6 +533,12 @@ impl BorderFill {
                 Ok(FillInfo::Image(ImageFill {
                     image_fill_type,
                     image_info,
+                    mode: None,
+                    binary_item_ref: None,
+                    brightness: None,
+                    contrast: None,
+                    effect: None,
+                    alpha: None,
                     gradient_spread_center: None,
                     additional_attributes_length: None,
                     additional_attributes: None,

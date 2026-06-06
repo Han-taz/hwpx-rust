@@ -27,6 +27,14 @@ pub mod shape_component;
 pub mod table;
 pub mod video_data;
 
+type TableCellCandidate = (
+    u16,
+    u16,
+    Vec<super::Paragraph>,
+    Option<table::CellAttributes>,
+);
+type TableCellGridEntry = Option<(usize, Vec<super::Paragraph>)>;
+
 pub use char_shape::{CharShapeInfo, ParaCharShape};
 pub use chart_data::{
     // Chart objects
@@ -208,7 +216,6 @@ pub struct ShapeComponentRecordData {
 /// Paragraph record (level 1 records)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[allow(clippy::large_enum_variant)] // ChartData variant is large but rarely used
 pub enum ParagraphRecord {
     /// 문단의 텍스트 / Paragraph text
     ParaText {
@@ -311,6 +318,18 @@ pub enum ParagraphRecord {
     HwpxImage {
         /// 바이너리 아이템 참조 이름 (예: "image1") / Binary item reference name (e.g., "image1")
         binary_item_ref: String,
+        /// HWPX 이미지 밝기 / HWPX image brightness
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        brightness: Option<i16>,
+        /// HWPX 이미지 대비 / HWPX image contrast
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        contrast: Option<i16>,
+        /// HWPX 이미지 효과 / HWPX image effect
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        effect: Option<String>,
+        /// HWPX 이미지 투명도 / HWPX image alpha
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        alpha: Option<u8>,
     },
     /// 묶음 개체 / Container shape component
     ShapeComponentContainer {
@@ -350,7 +369,7 @@ pub enum ParagraphRecord {
     /// 차트 데이터 / Chart data
     ChartData {
         /// 차트 데이터 정보 / Chart data information
-        chart_data: ChartData,
+        chart_data: Box<ChartData>,
     },
     /// 비디오 데이터 / Video data
     VideoData {
@@ -498,29 +517,7 @@ impl Section {
             if is_control_paragraph {
                 // ParaText 레코드만 필터링 (다른 레코드는 유지)
                 // Filter out only ParaText records (keep other records)
-                let before_count = records.len();
                 records.retain(|record| !matches!(record, ParagraphRecord::ParaText { .. }));
-                let after_count = records.len();
-                if before_count != after_count {
-                    #[cfg(debug_assertions)]
-                    eprintln!("[DEBUG] Removed {} ParaText records from control paragraph (is_inside_control_header={})", 
-                        before_count - after_count, is_inside_control_header);
-                }
-            }
-        } else {
-            // 본문 Paragraph의 경우 ParaText 확인 (디버그)
-            // Check ParaText in body paragraph (debug)
-            let para_text_count = records
-                .iter()
-                .filter(|record| matches!(record, ParagraphRecord::ParaText { .. }))
-                .count();
-            if para_text_count > 0 {
-                for record in &records {
-                    if let ParagraphRecord::ParaText { data } = record {
-                        #[cfg(debug_assertions)]
-                        eprintln!("[DEBUG] Body paragraph ParaText: {}", data.text);
-                    }
-                }
             }
         }
 
@@ -692,13 +689,7 @@ impl Section {
             }
             HwpTag::CTRL_HEADER => {
                 let ctrl_header = CtrlHeader::parse(node.data())?;
-                // 디버그: CTRL_HEADER 파싱 시작 / Debug: Start parsing CTRL_HEADER
                 use crate::document::bodytext::ctrl_header::CtrlId;
-                #[cfg(debug_assertions)]
-                eprintln!(
-                    "[DEBUG] Parsing CTRL_HEADER: ctrl_id={:?}, ctrl_id_value={}",
-                    ctrl_header.ctrl_id, ctrl_header.ctrl_id_value
-                );
 
                 // 자식 레코드들을 재귀적으로 처리 / Recursively process child records
                 // hwp.js: visitControlHeader에서 record.children를 모두 처리
@@ -954,10 +945,8 @@ impl Section {
                         // paragraphs가 있는 엔트리를 우선합니다.
                         if list_headers_for_table.len() > 1 {
                             use std::collections::BTreeMap;
-                            let mut by_pos: BTreeMap<
-                                (u16, u16),
-                                (u16, u16, Vec<super::Paragraph>, Option<CellAttributes>),
-                            > = BTreeMap::new();
+                            let mut by_pos: BTreeMap<(u16, u16), TableCellCandidate> =
+                                BTreeMap::new();
                             for (row_addr, col_addr, paragraphs, cell_attrs_opt) in
                                 list_headers_for_table.drain(..)
                             {
@@ -988,7 +977,7 @@ impl Section {
                         let col_count = table.attributes.col_count.into();
 
                         // row_address와 col_address를 사용하여 셀 매핑 / Map cells using row_address and col_address
-                        let mut cell_map: Vec<Vec<Option<(usize, Vec<super::Paragraph>)>>> =
+                        let mut cell_map: Vec<Vec<TableCellGridEntry>> =
                             vec![vec![None; col_count]; row_count];
 
                         for (idx, (row_addr, col_addr, paragraphs, _)) in
@@ -1178,19 +1167,6 @@ impl Section {
                     }
                 }
 
-                #[cfg(debug_assertions)]
-                eprintln!(
-                    "[DEBUG] CTRL_HEADER {:?}: Final - children_count={}, paragraphs_count={}, caption={:?}",
-                    final_ctrl_header.ctrl_id,
-                    children.len(),
-                    paragraphs.len(),
-                    if let CtrlHeaderData::ObjectCommon { caption, .. } = &final_ctrl_header.data {
-                        caption.is_some()
-                    } else {
-                        false
-                    }
-                );
-
                 Ok(ParagraphRecord::CtrlHeader {
                     data: Box::new(CtrlHeaderRecordData {
                         header: final_ctrl_header,
@@ -1315,16 +1291,6 @@ impl Section {
                                                             version,
                                                             original_data,
                                                         )?;
-                                                    // 디버그: ListHeader 내부의 ParaText 확인 / Debug: Check ParaText inside ListHeader
-                                                    if let ParagraphRecord::ParaText { data } =
-                                                        &parsed_record
-                                                    {
-                                                        #[cfg(debug_assertions)]
-                                                        eprintln!(
-                                                            "[DEBUG] ListHeader ParaText: {}",
-                                                            data.text
-                                                        );
-                                                    }
                                                     para_records.push(parsed_record);
                                                 } else {
                                                     break;
@@ -1653,7 +1619,9 @@ impl Section {
                 // 참고: 현재 테스트 파일(`noori.hwp`)에 CHART_DATA 레코드가 없어 실제 파일로 테스트되지 않음
                 // Note: Current test file (`noori.hwp`) does not contain CHART_DATA records, so it has not been tested with actual files
                 let chart_data = ChartData::parse(node.data())?;
-                Ok(ParagraphRecord::ChartData { chart_data })
+                Ok(ParagraphRecord::ChartData {
+                    chart_data: Box::new(chart_data),
+                })
             }
             HwpTag::VIDEO_DATA => {
                 // 비디오 데이터 파싱 / Parse video data
@@ -1723,11 +1691,7 @@ impl BodyText {
                         paragraphs,
                     });
                 }
-                Err(e) => {
-                    // 스트림이 없으면 경고만 출력하고 계속 진행 / If stream doesn't exist, just warn and continue
-                    #[cfg(debug_assertions)]
-                    eprintln!("Warning: Could not read BodyText/{stream_name}: {e}");
-                }
+                Err(_e) => {}
             }
         }
 

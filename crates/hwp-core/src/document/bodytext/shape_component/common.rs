@@ -332,7 +332,7 @@ impl ShapeComponent {
 }
 
 /// Matrix 파싱 (표 85) / Parse matrix (Table 85)
-/// double array[6] (48바이트) - 3X2 matrix의 원소 / double array[6] (48 bytes) - Elements of 3X2 matrix
+/// `double array[6]` (48바이트) - 3X2 matrix의 원소 / `double array[6]` (48 bytes) - Elements of 3X2 matrix
 fn parse_matrix(data: &[u8]) -> Result<Matrix, HwpError> {
     if data.len() < 48 {
         return Err(HwpError::insufficient_data("Matrix", 48, data.len()));

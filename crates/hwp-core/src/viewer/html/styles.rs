@@ -107,6 +107,7 @@ pub fn generate_css_styles(document: &HwpDocument) -> String {
             "함초롬바탕" // 기본값 / Default
         };
 
+        let font_name = super::security::escape_css_string(font_name);
         css.push_str(&format!("font-family:\"{font_name}\";"));
 
         // 속성 / Attributes
@@ -321,4 +322,46 @@ pub fn round_to_2dp(value: f64) -> f64 {
 pub fn int32_to_mm(value: INT32) -> f64 {
     // INT32는 1/7200인치 단위 (SHWPUNIT와 동일)
     (value as f64 / 7200.0) * 25.4
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::docinfo::{CharShape, FaceName};
+
+    fn test_document() -> HwpDocument {
+        HwpDocument::new(crate::document::FileHeader {
+            signature: "HWP Document File".to_string(),
+            version: 0x05000300,
+            document_flags: 0,
+            license_flags: 0,
+            encrypt_version: 0,
+            kogl_country: 0,
+            reserved: vec![0; 207],
+        })
+    }
+
+    fn minimal_char_shape() -> CharShape {
+        let mut data = [0_u8; 70];
+        data[42..46].copy_from_slice(&1000_i32.to_le_bytes());
+        CharShape::parse(&data, 0x05000300).expect("minimal char shape should parse")
+    }
+
+    #[test]
+    fn font_family_names_escape_css_string_delimiters() {
+        let mut document = test_document();
+        document.doc_info.face_names.push(FaceName {
+            name: "Bad\";background:url(javascript:alert(1));/*".to_string(),
+            alternative_font_type: None,
+            alternative_font_name: None,
+            font_type_info: None,
+            default_font_name: None,
+        });
+        document.doc_info.char_shapes.push(minimal_char_shape());
+
+        let css = generate_css_styles(&document);
+
+        assert!(!css.contains("font-family:\"Bad\";background"));
+        assert!(css.contains("font-family:\"Bad\\22 ;background"));
+    }
 }

@@ -8,6 +8,6 @@ pub fn process_footnote<'a>(
     _children: &'a [ParagraphRecord],
     _paragraphs: &[Paragraph],
 ) -> CtrlHeaderResult<'a> {
-    // TODO: 각주 처리 로직 추가 / Add footnote processing logic
+    // Footnote content is rendered by the shared body control path.
     CtrlHeaderResult::new()
 }

@@ -1,16 +1,6 @@
-// Clippy lints - allow stylistic lints that would require significant refactoring
+#![forbid(unsafe_code)]
+// Preserve HWP spec type names such as HWPUNIT and WORD.
 #![allow(clippy::upper_case_acronyms)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::type_complexity)]
-#![allow(clippy::needless_range_loop)]
-#![allow(clippy::wrong_self_convention)]
-#![allow(clippy::doc_lazy_continuation)]
-#![allow(clippy::manual_clamp)]
-#![allow(clippy::manual_strip)]
-#![allow(clippy::format_in_format_args)]
-#![allow(clippy::unused_enumerate_index)]
-// Rustc lint - internal API uses pub(crate) types
-#![allow(private_interfaces)]
 
 //! HWP Core Library
 //!
@@ -202,10 +192,7 @@ impl HwpParser {
                 Ok(preview_text) => {
                     document.preview_text = Some(preview_text);
                 }
-                Err(e) => {
-                    #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse PrvText stream: {e}");
-                }
+                Err(_e) => {}
             }
         }
     }
@@ -224,10 +211,7 @@ impl HwpParser {
                 Ok(preview_image) => {
                     document.preview_image = Some(preview_image);
                 }
-                Err(e) => {
-                    #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse PrvImage stream: {e}");
-                }
+                Err(_e) => {}
             }
         }
     }
@@ -241,10 +225,7 @@ impl HwpParser {
             Ok(scripts) => {
                 document.scripts = Some(scripts);
             }
-            Err(e) => {
-                #[cfg(debug_assertions)]
-                eprintln!("Warning: Failed to parse Scripts storage: {e}");
-            }
+            Err(_e) => {}
         }
     }
 
@@ -271,10 +252,7 @@ impl HwpParser {
                         document.xml_template = Some(xml_template);
                     }
                 }
-                Err(e) => {
-                    #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse XMLTemplate storage: {e}");
-                }
+                Err(_e) => {}
             }
         }
     }
@@ -293,52 +271,16 @@ impl HwpParser {
     ) {
         match Self::read_summary_information_stream(cfb, data) {
             Ok(summary_bytes) => {
-                #[cfg(debug_assertions)]
-                {
-                    eprintln!(
-                        "Debug: Successfully read SummaryInformation stream, size: {} bytes",
-                        summary_bytes.len()
-                    );
-                    if summary_bytes.len() >= 2 {
-                        eprintln!(
-                            "Debug: Byte order: 0x{:02X}{:02X}",
-                            summary_bytes[0], summary_bytes[1]
-                        );
-                    }
-                }
                 match crate::document::SummaryInformation::parse(&summary_bytes) {
                     Ok(summary_information) => {
-                        #[cfg(debug_assertions)]
-                        eprintln!("Debug: Successfully parsed SummaryInformation");
                         document.summary_information = Some(summary_information);
                     }
-                    Err(e) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            eprintln!("Warning: Failed to parse SummaryInformation stream: {e}");
-                            eprintln!("  Stream size: {} bytes", summary_bytes.len());
-                            if summary_bytes.len() >= 40 {
-                                eprintln!("  First 40 bytes: {:?}", &summary_bytes[..40]);
-                                eprintln!(
-                                    "  Byte order: 0x{:02X}{:02X}",
-                                    summary_bytes[0], summary_bytes[1]
-                                );
-                                eprintln!(
-                                    "  Version: 0x{:02X}{:02X}",
-                                    summary_bytes[2], summary_bytes[3]
-                                );
-                            }
-                        }
+                    Err(_e) => {
                         // 파싱 실패 시 None으로 유지 (raw_data 저장 안 함) / Keep None on parse failure (don't store raw_data)
                     }
                 }
             }
-            Err(e) => {
-                #[cfg(debug_assertions)]
-                {
-                    eprintln!("Warning: Failed to read SummaryInformation stream: {e}");
-                    eprintln!("  Tried: \\u{{0005}}HwpSummaryInformation, \\x05HwpSummaryInformation, HwpSummaryInformation");
-                }
+            Err(_e) => {
                 // 스트림이 없으면 None으로 유지 (정상) / Keep None if stream doesn't exist (normal)
             }
         }
@@ -362,17 +304,12 @@ impl HwpParser {
         for name in STREAM_NAMES {
             match CfbParser::read_stream(cfb, name) {
                 Ok(stream_data) => return Ok(stream_data),
-                Err(e) => {
-                    #[cfg(debug_assertions)]
-                    eprintln!("Debug: Failed to read with {name}: {e}");
-                }
+                Err(_e) => {}
             }
         }
 
         // If all string-based attempts fail, try parsing CFB bytes directly
         // 모든 문자열 기반 시도가 실패하면 CFB 바이트를 직접 파싱 시도
-        #[cfg(debug_assertions)]
-        eprintln!("Debug: All string-based attempts failed, trying direct byte parsing for \\005HwpSummaryInformation");
         let stream_name_bytes = b"\x05HwpSummaryInformation";
         CfbParser::read_stream_by_bytes(data, stream_name_bytes)
     }

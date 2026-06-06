@@ -19,6 +19,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Rust",
     "Topic :: Text Processing :: Markup",
 ]
@@ -32,3 +34,30 @@ Repository = "https://github.com/Han-taz/hwpx-rust"
 features = ["pyo3/extension-module"]
 python-source = "python"
 module-name = "hwpx"
+exclude = [
+    "**/__pycache__",
+    "**/__pycache__/*",
+    "**/*.pyc",
+    "**/*.pyo",
+    ".venv",
+    ".venv/**",
+    "**/.venv",
+    "**/.venv/**",
+    "target",
+    "target/**",
+    "**/target",
+    "**/target/**",
+    "dist",
+    "dist/**",
+    "**/dist",
+    "**/dist/**",
+    ".maturin",
+    ".maturin/**",
+    "**/.maturin",
+    "**/.maturin/**",
+    "**/*.so",
+    "**/*.pyd",
+    "**/*.dylib",
+    "**/*.dll",
+    "**/*-darwin.so",
+]

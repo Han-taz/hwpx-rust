@@ -14,6 +14,7 @@ mod options;
 mod page;
 mod pagination;
 mod paragraph;
+mod security;
 mod styles;
 mod text;
 

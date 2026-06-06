@@ -127,25 +127,35 @@ fn default_borderline(
     get_border_fill(document, table.attributes.border_fill_id).map(|bf| bf.borders[side].clone())
 }
 
-fn vertical_segment_borderline(
-    table: &Table,
-    document: &HwpDocument,
+struct VerticalBorderContext<'a> {
+    table: &'a Table,
+    document: &'a HwpDocument,
+    ctrl_header_height_mm: Option<f64>,
+}
+
+struct VerticalBorderSegment {
     col_x: f64,
     y0: f64,
     y1: f64,
-    ctrl_header_height_mm: Option<f64>,
     is_left_edge: bool,
     is_right_edge: bool,
+}
+
+fn vertical_segment_borderline(
+    context: &VerticalBorderContext<'_>,
+    segment: VerticalBorderSegment,
 ) -> Option<BorderLine> {
     let eps = 0.01;
+    let table = context.table;
+    let document = context.document;
 
     // 바깥 테두리: table.border_fill_id가 있으면 그걸 우선, 없으면 셀 border_fill로 결정
-    if is_left_edge {
+    if segment.is_left_edge {
         if let Some(line) = default_borderline(table, document, 0) {
             return Some(line);
         }
     }
-    if is_right_edge {
+    if segment.is_right_edge {
         if let Some(line) = default_borderline(table, document, 1) {
             return Some(line);
         }
@@ -166,11 +176,11 @@ fn vertical_segment_borderline(
         let cell_left = calculate_cell_left(table, cell);
         let cell_width = cell.cell_attributes.width.to_mm();
         let cell_right = cell_left + cell_width;
-        let cell_top = calculate_cell_top(table, cell, ctrl_header_height_mm);
-        let cell_height = get_cell_height(table, cell, ctrl_header_height_mm);
+        let cell_top = calculate_cell_top(table, cell, context.ctrl_header_height_mm);
+        let cell_height = get_cell_height(table, cell, context.ctrl_header_height_mm);
         let cell_bottom = cell_top + cell_height;
 
-        let overlaps_y = !(y1 <= cell_top + eps || y0 >= cell_bottom - eps);
+        let overlaps_y = !(segment.y1 <= cell_top + eps || segment.y0 >= cell_bottom - eps);
         if !overlaps_y {
             continue;
         }
@@ -182,7 +192,7 @@ fn vertical_segment_borderline(
         };
 
         // 왼쪽 셀의 Right: 여러 셀이 매칭되면 “첫 셀” 우선(원본/레거시 동작에 더 근접)
-        if (cell_right - col_x).abs() < eps {
+        if (cell_right - segment.col_x).abs() < eps {
             let cand = bf.borders[1].clone();
             if from_left_cell_right.is_none() {
                 from_left_cell_right = Some(cand);
@@ -190,7 +200,7 @@ fn vertical_segment_borderline(
         }
 
         // 오른쪽 셀의 Left: 여러 셀이 매칭되면 “첫 셀” 우선
-        if (cell_left - col_x).abs() < eps {
+        if (cell_left - segment.col_x).abs() < eps {
             let cand = bf.borders[0].clone();
             if from_right_cell_left.is_none() {
                 from_right_cell_left = Some(cand);
@@ -198,34 +208,43 @@ fn vertical_segment_borderline(
         }
     }
 
-    if is_left_edge {
+    if segment.is_left_edge {
         from_right_cell_left.or(from_left_cell_right)
     } else {
         from_left_cell_right.or(from_right_cell_left)
     }
 }
 
-fn horizontal_segment_borderline(
-    table: &Table,
-    document: &HwpDocument,
-    row_positions: &[f64],
+struct HorizontalBorderContext<'a> {
+    table: &'a Table,
+    document: &'a HwpDocument,
+    row_positions: &'a [f64],
+}
+
+struct HorizontalBorderSegment {
     row_y: f64,
     x0: f64,
     x1: f64,
-    ctrl_header_height_mm: Option<f64>,
     is_top_edge: bool,
     is_bottom_edge: bool,
+}
+
+fn horizontal_segment_borderline(
+    context: &HorizontalBorderContext<'_>,
+    segment: HorizontalBorderSegment,
 ) -> Option<BorderLine> {
     let eps = 0.01;
-    let _ = ctrl_header_height_mm; // row_positions 기반 계산을 사용
+    let table = context.table;
+    let document = context.document;
+    let row_positions = context.row_positions;
 
     // 바깥 테두리: table.border_fill_id가 있으면 그걸 우선, 없으면 셀 border_fill로 결정
-    if is_top_edge {
+    if segment.is_top_edge {
         if let Some(line) = default_borderline(table, document, 2) {
             return Some(line);
         }
     }
-    if is_bottom_edge {
+    if segment.is_bottom_edge {
         if let Some(line) = default_borderline(table, document, 3) {
             return Some(line);
         }
@@ -258,7 +277,7 @@ fn horizontal_segment_borderline(
         let cell_width = cell.cell_attributes.width.to_mm();
         let cell_right = cell_left + cell_width;
 
-        let overlaps_x = !(x1 <= cell_left + eps || x0 >= cell_right - eps);
+        let overlaps_x = !(segment.x1 <= cell_left + eps || segment.x0 >= cell_right - eps);
         if !overlaps_x {
             continue;
         }
@@ -270,7 +289,7 @@ fn horizontal_segment_borderline(
         };
 
         // 위쪽 셀의 Bottom: 여러 셀이 매칭되면 “첫 셀” 우선
-        if (cell_bottom - row_y).abs() < eps {
+        if (cell_bottom - segment.row_y).abs() < eps {
             let cand = bf.borders[3].clone();
             if from_upper_cell_bottom.is_none() {
                 from_upper_cell_bottom = Some(cand);
@@ -278,7 +297,7 @@ fn horizontal_segment_borderline(
         }
 
         // 아래쪽 셀의 Top: 여러 셀이 매칭되면 “첫 셀” 우선
-        if (cell_top - row_y).abs() < eps {
+        if (cell_top - segment.row_y).abs() < eps {
             let cand = bf.borders[2].clone();
             if from_lower_cell_top.is_none() {
                 from_lower_cell_top = Some(cand);
@@ -286,7 +305,7 @@ fn horizontal_segment_borderline(
         }
     }
 
-    if is_top_edge {
+    if segment.is_top_edge {
         from_lower_cell_top.or(from_upper_cell_bottom)
     } else {
         from_upper_cell_bottom.or(from_lower_cell_top)
@@ -306,6 +325,11 @@ pub(crate) fn render_vertical_borders(
     let _is_suspect_image_or_caption_table =
         table.attributes.row_count as usize >= 6 && table.cells.len() >= 12;
     let _h11_logged_count = 0usize;
+    let border_context = VerticalBorderContext {
+        table,
+        document,
+        ctrl_header_height_mm,
+    };
 
     for &col_x in column_positions {
         let is_left_edge = (col_x - 0.0).abs() < epsilon;
@@ -316,14 +340,14 @@ pub(crate) fn render_vertical_borders(
         // 외곽선이 위/아래로 끊기는 현상이 발생할 수 있음)
         if is_left_edge || is_right_edge {
             if let Some(line) = vertical_segment_borderline(
-                table,
-                document,
-                col_x,
-                0.0,
-                content.height,
-                ctrl_header_height_mm,
-                is_left_edge,
-                is_right_edge,
+                &border_context,
+                VerticalBorderSegment {
+                    col_x,
+                    y0: 0.0,
+                    y1: content.height,
+                    is_left_edge,
+                    is_right_edge,
+                },
             ) {
                 svg_paths.push_str(&render_border_paths(
                     col_x,
@@ -372,14 +396,14 @@ pub(crate) fn render_vertical_borders(
             // 덮인 범위가 없으면 전체 높이에 걸쳐 경계선을 그림
             // If no covered ranges, draw border across full height
             if let Some(line) = vertical_segment_borderline(
-                table,
-                document,
-                col_x,
-                0.0,
-                content.height,
-                ctrl_header_height_mm,
-                is_left_edge,
-                is_right_edge,
+                &border_context,
+                VerticalBorderSegment {
+                    col_x,
+                    y0: 0.0,
+                    y1: content.height,
+                    is_left_edge,
+                    is_right_edge,
+                },
             ) {
                 svg_paths.push_str(&render_border_paths(
                     col_x,
@@ -392,14 +416,14 @@ pub(crate) fn render_vertical_borders(
             }
         } else if segments.len() == 1 && segments[0].0 == 0.0 && segments[0].1 == content.height {
             if let Some(line) = vertical_segment_borderline(
-                table,
-                document,
-                col_x,
-                0.0,
-                content.height,
-                ctrl_header_height_mm,
-                is_left_edge,
-                is_right_edge,
+                &border_context,
+                VerticalBorderSegment {
+                    col_x,
+                    y0: 0.0,
+                    y1: content.height,
+                    is_left_edge,
+                    is_right_edge,
+                },
             ) {
                 svg_paths.push_str(&render_border_paths(
                     col_x,
@@ -413,14 +437,14 @@ pub(crate) fn render_vertical_borders(
         } else {
             for (y_start, y_end) in segments {
                 if let Some(line) = vertical_segment_borderline(
-                    table,
-                    document,
-                    col_x,
-                    y_start,
-                    y_end,
-                    ctrl_header_height_mm,
-                    is_left_edge,
-                    is_right_edge,
+                    &border_context,
+                    VerticalBorderSegment {
+                        col_x,
+                        y0: y_start,
+                        y1: y_end,
+                        is_left_edge,
+                        is_right_edge,
+                    },
                 ) {
                     svg_paths.push_str(&render_border_paths(
                         col_x, y_start, col_x, y_end, true, &line,
@@ -444,6 +468,11 @@ pub(crate) fn render_horizontal_borders(
 ) -> String {
     let mut svg_paths = String::new();
     let _ = ctrl_header_height_mm; // row_positions 기반 계산을 사용
+    let border_context = HorizontalBorderContext {
+        table,
+        document,
+        row_positions,
+    };
 
     for &row_y in row_positions {
         let is_top_edge = (row_y - 0.0).abs() < 0.01;
@@ -489,15 +518,14 @@ pub(crate) fn render_horizontal_borders(
             continue;
         } else if segments.len() == 1 && segments[0].0 == 0.0 && segments[0].1 == content.width {
             let line_opt = horizontal_segment_borderline(
-                table,
-                document,
-                row_positions,
-                row_y,
-                0.0,
-                content.width,
-                ctrl_header_height_mm,
-                is_top_edge,
-                is_bottom_edge,
+                &border_context,
+                HorizontalBorderSegment {
+                    row_y,
+                    x0: 0.0,
+                    x1: content.width,
+                    is_top_edge,
+                    is_bottom_edge,
+                },
             );
             if let Some(line) = line_opt {
                 svg_paths.push_str(&render_border_paths(
@@ -512,15 +540,14 @@ pub(crate) fn render_horizontal_borders(
         } else {
             for (x_start, x_end) in segments {
                 let line_opt = horizontal_segment_borderline(
-                    table,
-                    document,
-                    row_positions,
-                    row_y,
-                    x_start,
-                    x_end,
-                    ctrl_header_height_mm,
-                    is_top_edge,
-                    is_bottom_edge,
+                    &border_context,
+                    HorizontalBorderSegment {
+                        row_y,
+                        x0: x_start,
+                        x1: x_end,
+                        is_top_edge,
+                        is_bottom_edge,
+                    },
                 );
                 if let Some(line) = line_opt {
                     svg_paths.push_str(&render_border_paths(
@@ -540,15 +567,14 @@ pub(crate) fn render_horizontal_borders(
     // row_positions는 행의 시작 위치만 포함하므로, 항상 content.height 위치에 하단 테두리를 그려야 함
     // row_positions only contains row start positions, so we must always draw bottom border at content.height
     if let Some(line) = horizontal_segment_borderline(
-        table,
-        document,
-        row_positions,
-        content.height,
-        0.0,
-        content.width,
-        ctrl_header_height_mm,
-        false,
-        true,
+        &border_context,
+        HorizontalBorderSegment {
+            row_y: content.height,
+            x0: 0.0,
+            x1: content.width,
+            is_top_edge: false,
+            is_bottom_edge: true,
+        },
     ) {
         svg_paths.push_str(&render_border_paths(
             -border_offset,

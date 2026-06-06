@@ -8,6 +8,6 @@ pub fn process_section_def<'a>(
     _children: &'a [ParagraphRecord],
     _paragraphs: &[Paragraph],
 ) -> CtrlHeaderResult<'a> {
-    // TODO: 구역 정의 처리 로직 추가 / Add section definition processing logic
+    // Section definitions do not emit standalone HTML in this control path.
     CtrlHeaderResult::new()
 }

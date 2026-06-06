@@ -29,7 +29,7 @@ pub struct LineSegmentTag {
 
 impl LineSegmentTag {
     /// UINT32 태그 값에서 LineSegmentTag를 파싱합니다. / Parse LineSegmentTag from UINT32 tag value.
-    fn from_bits(tag: UINT32) -> Self {
+    pub(crate) fn from_bits(tag: UINT32) -> Self {
         LineSegmentTag {
             is_first_line_of_page: (tag & 0x00000001) != 0,
             is_first_line_of_column: (tag & 0x00000002) != 0,

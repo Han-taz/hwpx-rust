@@ -4,7 +4,8 @@
 /// 스펙 문서 매핑: 표 57 - 본문의 데이터 레코드, TABLE (HWPTAG_BEGIN + 61)
 /// Spec mapping: Table 57 - BodyText data records, TABLE (HWPTAG_BEGIN + 61)
 use crate::document::{bodytext::Table, HwpDocument, ParagraphRecord};
-use crate::viewer::shared::BinDataIndex;
+use crate::viewer::markdown::security::escape_text;
+use crate::viewer::shared::{build_bindata_item_lookup, BinDataIndex, BinDataItemLookup};
 
 /// Sort table cells by (row_address, col_address) — shared helper to avoid duplication
 fn sort_cells(
@@ -26,6 +27,7 @@ fn convert_nested_table_to_text(
     table: &Table,
     document: &HwpDocument,
     bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -61,8 +63,14 @@ fn convert_nested_table_to_text(
         let mut cell_texts = Vec::new();
         for cell in &row_cells {
             // 셀 내용 추출 (재귀적으로 중첩 테이블도 처리)
-            let cell_text =
-                get_nested_cell_content(cell, document, bindata_index, options, tracker);
+            let cell_text = get_nested_cell_content(
+                cell,
+                document,
+                bindata_index,
+                bindata_lookup,
+                options,
+                tracker,
+            );
             if !cell_text.trim().is_empty() {
                 cell_texts.push(cell_text);
             }
@@ -84,6 +92,7 @@ fn get_nested_cell_content(
     cell: &crate::document::bodytext::TableCell,
     document: &HwpDocument,
     bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -104,6 +113,7 @@ fn get_nested_cell_content(
                         table,
                         document,
                         bindata_index,
+                        bindata_lookup,
                         options,
                         tracker,
                     );
@@ -129,6 +139,25 @@ pub fn convert_table_to_markdown(
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
+    let bindata_lookup = build_bindata_item_lookup(document);
+    convert_table_to_markdown_with_lookup(
+        table,
+        document,
+        bindata_index,
+        &bindata_lookup,
+        options,
+        tracker,
+    )
+}
+
+pub(crate) fn convert_table_to_markdown_with_lookup(
+    table: &Table,
+    document: &HwpDocument,
+    bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
+    options: &crate::viewer::markdown::MarkdownOptions,
+    tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
+) -> String {
     let row_count = table.attributes.row_count as usize;
     let col_count = table.attributes.col_count as usize;
 
@@ -151,9 +180,23 @@ pub fn convert_table_to_markdown(
     // HTML 모드이거나 병합된 셀이 있으면 HTML 테이블로 출력
     // Use HTML table if in HTML mode or has merged cells
     if options.use_html == Some(true) || has_merged_cells {
-        convert_table_to_html(table, document, bindata_index, options, tracker)
+        convert_table_to_html(
+            table,
+            document,
+            bindata_index,
+            bindata_lookup,
+            options,
+            tracker,
+        )
     } else {
-        convert_table_to_markdown_simple(table, document, bindata_index, options, tracker)
+        convert_table_to_markdown_simple(
+            table,
+            document,
+            bindata_index,
+            bindata_lookup,
+            options,
+            tracker,
+        )
     }
 }
 
@@ -163,6 +206,7 @@ fn convert_table_to_html(
     table: &Table,
     document: &HwpDocument,
     bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -225,15 +269,30 @@ fn convert_table_to_html(
 
             // 커버된 위치 표시
             // Mark covered positions
-            for r in row_idx..(row_idx + row_span).min(row_count) {
-                for c in col_idx..(col_idx + col_span).min(col_count) {
-                    covered[r][c] = true;
+            for covered_row in covered
+                .iter_mut()
+                .take((row_idx + row_span).min(row_count))
+                .skip(row_idx)
+            {
+                for covered_cell in covered_row
+                    .iter_mut()
+                    .take((col_idx + col_span).min(col_count))
+                    .skip(col_idx)
+                {
+                    *covered_cell = true;
                 }
             }
 
             // 셀 내용 추출
             // Extract cell content
-            let cell_content = get_cell_content(cell, document, bindata_index, options, tracker);
+            let cell_content = get_cell_content(
+                cell,
+                document,
+                bindata_index,
+                bindata_lookup,
+                options,
+                tracker,
+            );
 
             // 빈 행 필터링: 셀에 실제 내용이 있는지 확인
             // Empty row filtering: check if cell has actual content
@@ -295,6 +354,7 @@ fn convert_table_to_markdown_simple(
     table: &Table,
     document: &HwpDocument,
     bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -342,18 +402,17 @@ fn convert_table_to_markdown_simple(
             let row = row_index;
 
             if col < col_count {
-                fill_cell_content(
-                    &mut grid,
-                    cell,
-                    row,
-                    col,
+                let mut fill_context = FillCellContext {
+                    grid: &mut grid,
                     row_count,
                     col_count,
                     document,
                     bindata_index,
+                    bindata_lookup,
                     options,
                     tracker,
-                );
+                };
+                fill_cell_content(cell, row, col, &mut fill_context);
             }
         }
     } else {
@@ -362,18 +421,17 @@ fn convert_table_to_markdown_simple(
             let col = (cell.cell_attributes.col_address.saturating_sub(min_col)) as usize;
 
             if row < row_count && col < col_count {
-                fill_cell_content(
-                    &mut grid,
-                    cell,
-                    row,
-                    col,
+                let mut fill_context = FillCellContext {
+                    grid: &mut grid,
                     row_count,
                     col_count,
                     document,
                     bindata_index,
+                    bindata_lookup,
                     options,
                     tracker,
-                );
+                };
+                fill_cell_content(cell, row, col, &mut fill_context);
             }
         }
     }
@@ -382,13 +440,11 @@ fn convert_table_to_markdown_simple(
     let mut lines = Vec::new();
     lines.push(String::new());
 
-    for row_idx in 0..row_count {
-        let row_data: Vec<String> = (0..col_count)
-            .map(|col| {
-                grid[row_idx][col]
-                    .clone()
-                    .unwrap_or_else(|| " ".to_string())
-            })
+    for (row_idx, row) in grid.iter().enumerate().take(row_count) {
+        let row_data: Vec<String> = row
+            .iter()
+            .take(col_count)
+            .map(|cell| cell.clone().unwrap_or_else(|| " ".to_string()))
             .collect();
         lines.push(format!("| {} |", row_data.join(" | ")));
 
@@ -410,6 +466,7 @@ fn get_cell_content(
     cell: &crate::document::bodytext::TableCell,
     document: &HwpDocument,
     bindata_index: &BinDataIndex,
+    bindata_lookup: &BinDataItemLookup<'_>,
     options: &crate::viewer::markdown::MarkdownOptions,
     tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
 ) -> String {
@@ -423,15 +480,15 @@ fn get_cell_content(
                 ParagraphRecord::ParaText { data: pt_data } => {
                     let text = &pt_data.text;
                     if !text.trim().is_empty() {
-                        para_parts.push(text.clone());
+                        para_parts.push(escape_text(text));
                     }
                 }
                 ParagraphRecord::ShapeComponentPicture { shape_component_picture } => {
                     if let Some(image_md) =
-                        crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown(
+                        crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown_with_lookup(
                             shape_component_picture,
-                            document,
                             bindata_index,
+                            bindata_lookup,
                             options.image_output_dir.as_deref(),
                         )
                     {
@@ -440,22 +497,25 @@ fn get_cell_content(
                 }
                 ParagraphRecord::ShapeComponent { data: sc_data } => {
                     let shape_parts =
-                        crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown(
+                        crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown_with_lookup(
                             &sc_data.children,
                             document,
                             bindata_index,
+                            bindata_lookup,
                             options.image_output_dir.as_deref(),
                             tracker,
                         );
                     para_parts.extend(shape_parts);
                 }
-                ParagraphRecord::HwpxImage { binary_item_ref } => {
+                ParagraphRecord::HwpxImage {
+                    binary_item_ref, ..
+                } => {
                     // HWPX 이미지 참조 변환 / Convert HWPX image reference
                     if let Some(image_md) =
-                        crate::viewer::markdown::document::bodytext::shape_component_picture::convert_hwpx_image_to_markdown(
+                        crate::viewer::markdown::document::bodytext::shape_component_picture::convert_hwpx_image_to_markdown_with_lookup(
                             binary_item_ref,
-                            document,
                             bindata_index,
+                            bindata_lookup,
                             options.image_output_dir.as_deref(),
                         )
                     {
@@ -466,7 +526,7 @@ fn get_cell_content(
                     // 중첩 테이블을 HTML 테이블로 렌더링 (재귀)
                     // Render nested table as HTML table (recursive)
                     let nested_table_html =
-                        convert_table_to_html(table, document, bindata_index, options, tracker);
+                        convert_table_to_html(table, document, bindata_index, bindata_lookup, options, tracker);
                     if !nested_table_html.trim().is_empty() {
                         para_parts.push(nested_table_html);
                     }
@@ -489,38 +549,35 @@ fn get_cell_content(
 
 /// Fill cell content and handle cell merging
 /// 셀 내용을 채우고 셀 병합을 처리
-#[allow(unused_assignments)]
+struct FillCellContext<'a> {
+    grid: &'a mut [Vec<Option<String>>],
+    row_count: usize,
+    col_count: usize,
+    document: &'a HwpDocument,
+    bindata_index: &'a BinDataIndex,
+    bindata_lookup: &'a BinDataItemLookup<'a>,
+    options: &'a crate::viewer::markdown::MarkdownOptions,
+    tracker: &'a mut crate::viewer::markdown::utils::OutlineNumberTracker,
+}
+
 fn fill_cell_content(
-    grid: &mut [Vec<Option<String>>],
     cell: &crate::document::bodytext::TableCell,
     row: usize,
     col: usize,
-    row_count: usize,
-    col_count: usize,
-    document: &HwpDocument,
-    bindata_index: &BinDataIndex,
-    options: &crate::viewer::markdown::MarkdownOptions,
-    tracker: &mut crate::viewer::markdown::utils::OutlineNumberTracker,
+    context: &mut FillCellContext<'_>,
 ) {
+    let document = context.document;
+    let bindata_index = context.bindata_index;
+    let bindata_lookup = context.bindata_lookup;
+    let options = context.options;
+    let tracker = &mut *context.tracker;
+
     // 셀 내용을 텍스트와 이미지로 변환 / Convert cell content to text and images
     let mut cell_parts = Vec::new();
-    let mut has_image = false;
-
-    // 먼저 이미지가 있는지 확인 / First check if image exists
-    for para in &cell.paragraphs {
-        for rec in &para.records {
-            if matches!(rec, ParagraphRecord::ShapeComponentPicture { .. }) {
-                has_image = true;
-                break;
-            }
-        }
-        if has_image {
-            break;
-        }
-    }
 
     // 셀 내부의 문단들을 마크다운으로 변환 / Convert paragraphs inside cell to markdown
     for (idx, para) in cell.paragraphs.iter().enumerate() {
+        let part_count_before_paragraph = cell_parts.len();
         // 테이블 셀 내부에서는 PARA_BREAK를 직접 처리해야 함
         // In table cells, we need to handle PARA_BREAK directly
 
@@ -553,7 +610,7 @@ fn fill_cell_content(
 
                 if !has_breaks {
                     // 제어 문자가 없으면 텍스트만 추가 / If no control characters, just add text
-                    para_text_result.push_str(text);
+                    para_text_result.push_str(&escape_text(text));
                     continue;
                 }
 
@@ -586,7 +643,7 @@ fn fill_cell_content(
                         let text_before =
                             &text[byte_offsets[last_char_pos]..byte_offsets[pos.position]];
                         // trim() 없이 그대로 추가 (정확한 위치 유지) / Add as-is without trim (maintain exact position)
-                        para_text_result.push_str(text_before);
+                        para_text_result.push_str(&escape_text(text_before));
                     }
 
                     // PARA_BREAK나 LINE_BREAK 위치에 <br> 추가 / Add <br> at PARA_BREAK or LINE_BREAK position
@@ -611,7 +668,7 @@ fn fill_cell_content(
                 if last_char_pos < char_count {
                     let text_after = &text[byte_offsets[last_char_pos]..];
                     // trim() 없이 그대로 추가 / Add as-is without trim
-                    para_text_result.push_str(text_after);
+                    para_text_result.push_str(&escape_text(text_after));
                 }
             }
 
@@ -633,46 +690,44 @@ fn fill_cell_content(
                     } => {
                         // ShapeComponentPicture 변환 / Convert ShapeComponentPicture
                         if let Some(image_md) =
-                            crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown(
+                            crate::viewer::markdown::document::bodytext::shape_component_picture::convert_shape_component_picture_to_markdown_with_lookup(
                                 shape_component_picture,
-                                document,
                                 bindata_index,
+                                bindata_lookup,
                                 options.image_output_dir.as_deref(),
                             )
                         {
                             cell_parts.push(image_md);
-                            has_image = true;
                         }
                     }
                     ParagraphRecord::ShapeComponent { data: sc_data } => {
                         // SHAPE_COMPONENT의 children을 재귀적으로 처리 / Recursively process SHAPE_COMPONENT's children
                         let shape_parts =
-                            crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown(
+                            crate::viewer::markdown::document::bodytext::shape_component::convert_shape_component_children_to_markdown_with_lookup(
                                 &sc_data.children,
                                 document,
                                 bindata_index,
+                                bindata_lookup,
                                 options.image_output_dir.as_deref(),
                                 tracker,
                             );
                         for shape_part in shape_parts {
-                            if shape_part.contains("![") {
-                                has_image = true;
-                            }
                             cell_parts.push(shape_part);
                         }
                     }
-                    ParagraphRecord::HwpxImage { binary_item_ref } => {
+                    ParagraphRecord::HwpxImage {
+                        binary_item_ref, ..
+                    } => {
                         // HWPX 이미지 참조 변환 / Convert HWPX image reference
                         if let Some(image_md) =
-                            crate::viewer::markdown::document::bodytext::shape_component_picture::convert_hwpx_image_to_markdown(
+                            crate::viewer::markdown::document::bodytext::shape_component_picture::convert_hwpx_image_to_markdown_with_lookup(
                                 binary_item_ref,
-                                document,
                                 bindata_index,
+                                bindata_lookup,
                                 options.image_output_dir.as_deref(),
                             )
                         {
                             cell_parts.push(image_md);
-                            has_image = true;
                         }
                     }
                     ParagraphRecord::Table { table } => {
@@ -683,6 +738,7 @@ fn fill_cell_content(
                                 table,
                                 document,
                                 bindata_index,
+                                bindata_lookup,
                                 options,
                                 tracker,
                             );
@@ -695,6 +751,7 @@ fn fill_cell_content(
                                 table,
                                 document,
                                 bindata_index,
+                                bindata_lookup,
                                 options,
                                 tracker,
                             );
@@ -712,7 +769,13 @@ fn fill_cell_content(
 
         // 마지막 문단이 아니면 문단 사이 줄바꿈 추가
         // If not last paragraph, add line break between paragraphs
-        if idx < cell.paragraphs.len() - 1 {
+        let paragraph_rendered_content = cell_parts.len() > part_count_before_paragraph;
+        let has_later_renderable_paragraph = cell
+            .paragraphs
+            .iter()
+            .skip(idx + 1)
+            .any(paragraph_has_renderable_cell_content);
+        if paragraph_rendered_content && has_later_renderable_paragraph {
             cell_parts.push("<br>".to_string());
         }
     }
@@ -729,8 +792,8 @@ fn fill_cell_content(
 
     // 셀에 이미 내용이 있으면 덮어쓰지 않음 (병합 셀 처리)
     // Don't overwrite if cell already has content (handle merged cells)
-    if grid[row][col].is_none() {
-        grid[row][col] = Some(cell_content);
+    if context.grid[row][col].is_none() {
+        context.grid[row][col] = Some(cell_content);
 
         // 셀 병합 처리: col_span과 row_span에 따라 병합된 셀을 빈 셀로 채움
         // Handle cell merging: fill merged cells with empty cells based on col_span and row_span
@@ -739,20 +802,164 @@ fn fill_cell_content(
 
         // 병합된 열을 빈 셀로 채움 (마크다운에서는 병합을 직접 표현할 수 없으므로 빈 셀로 처리)
         // Fill merged columns with empty cells (markdown doesn't support cell merging directly)
-        for c in (col + 1)..(col + col_span).min(col_count) {
-            if grid[row][c].is_none() {
-                grid[row][c] = Some(" ".to_string());
+        for slot in context.grid[row]
+            .iter_mut()
+            .take((col + col_span).min(context.col_count))
+            .skip(col + 1)
+        {
+            if slot.is_none() {
+                *slot = Some(" ".to_string());
             }
         }
 
         // 병합된 행을 빈 셀로 채움
         // Fill merged rows with empty cells
-        for r in (row + 1)..(row + row_span).min(row_count) {
-            for c in col..(col + col_span).min(col_count) {
-                if grid[r][c].is_none() {
-                    grid[r][c] = Some(" ".to_string());
+        for row_slots in context
+            .grid
+            .iter_mut()
+            .take((row + row_span).min(context.row_count))
+            .skip(row + 1)
+        {
+            for slot in row_slots
+                .iter_mut()
+                .take((col + col_span).min(context.col_count))
+                .skip(col)
+            {
+                if slot.is_none() {
+                    *slot = Some(" ".to_string());
                 }
             }
         }
+    }
+}
+
+fn paragraph_has_renderable_cell_content(para: &crate::document::bodytext::Paragraph) -> bool {
+    para.records.iter().any(|record| match record {
+        ParagraphRecord::ParaText { data } => !data.text.trim().is_empty(),
+        ParagraphRecord::ShapeComponentPicture { .. }
+        | ParagraphRecord::ShapeComponent { .. }
+        | ParagraphRecord::HwpxImage { .. }
+        | ParagraphRecord::Table { .. } => true,
+        _ => false,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::bodytext::list_header::{
+        LineBreak, ListHeader, ListHeaderAttribute, TextDirection, VerticalAlign,
+    };
+    use crate::document::bodytext::table::{CellAttributes, TableCell};
+    use crate::document::bodytext::{ParaTextData, Paragraph, ParagraphRecord};
+    use crate::types::HWPUNIT;
+    use crate::viewer::markdown::utils::OutlineNumberTracker;
+    use crate::viewer::markdown::MarkdownOptions;
+    use crate::viewer::shared::BinDataIndex;
+
+    fn test_document() -> HwpDocument {
+        HwpDocument::new(crate::document::FileHeader {
+            signature: "HWP Document File".to_string(),
+            version: 0x05000300,
+            document_flags: 0,
+            license_flags: 0,
+            encrypt_version: 0,
+            kogl_country: 0,
+            reserved: vec![0; 207],
+        })
+    }
+
+    fn minimal_cell(text: &str) -> TableCell {
+        TableCell {
+            list_header: ListHeader {
+                paragraph_count: 1,
+                attribute: ListHeaderAttribute {
+                    text_direction: TextDirection::Horizontal,
+                    line_break: LineBreak::Normal,
+                    vertical_align: VerticalAlign::Top,
+                },
+            },
+            cell_attributes: CellAttributes {
+                col_address: 0,
+                row_address: 0,
+                col_span: 1,
+                row_span: 1,
+                width: HWPUNIT(5000),
+                height: HWPUNIT(1000),
+                left_margin: 0,
+                right_margin: 0,
+                top_margin: 0,
+                bottom_margin: 0,
+                border_fill_id: 0,
+            },
+            paragraphs: vec![Paragraph {
+                para_header: Default::default(),
+                records: vec![ParagraphRecord::ParaText {
+                    data: Box::new(ParaTextData {
+                        text: text.to_string(),
+                        ..Default::default()
+                    }),
+                }],
+            }],
+        }
+    }
+
+    #[test]
+    fn table_cell_ignores_line_segment_only_paragraphs_when_inserting_breaks() {
+        let document = test_document();
+        let bindata_index = BinDataIndex::new();
+        let bindata_lookup = build_bindata_item_lookup(&document);
+        let options = MarkdownOptions::default();
+        let mut tracker = OutlineNumberTracker::new();
+        let mut grid = vec![vec![None]];
+        let mut cell = minimal_cell("image");
+        cell.paragraphs.push(Paragraph {
+            para_header: Default::default(),
+            records: vec![ParagraphRecord::ParaLineSeg {
+                segments: Vec::new(),
+            }],
+        });
+
+        let mut fill_context = FillCellContext {
+            grid: &mut grid,
+            row_count: 1,
+            col_count: 1,
+            document: &document,
+            bindata_index: &bindata_index,
+            bindata_lookup: &bindata_lookup,
+            options: &options,
+            tracker: &mut tracker,
+        };
+        fill_cell_content(&cell, 0, 0, &mut fill_context);
+
+        assert_eq!(grid[0][0].as_deref(), Some("image"));
+    }
+
+    #[test]
+    fn table_cell_text_escapes_markdown_links_and_raw_html() {
+        let document = test_document();
+        let bindata_index = BinDataIndex::new();
+        let bindata_lookup = build_bindata_item_lookup(&document);
+        let options = MarkdownOptions::default();
+        let mut tracker = OutlineNumberTracker::new();
+        let mut grid = vec![vec![None]];
+        let cell = minimal_cell("[Open](javascript:alert(1)) <script>");
+
+        let mut fill_context = FillCellContext {
+            grid: &mut grid,
+            row_count: 1,
+            col_count: 1,
+            document: &document,
+            bindata_index: &bindata_index,
+            bindata_lookup: &bindata_lookup,
+            options: &options,
+            tracker: &mut tracker,
+        };
+        fill_cell_content(&cell, 0, 0, &mut fill_context);
+
+        assert_eq!(
+            grid[0][0].as_deref(),
+            Some(r"\[Open\](javascript:alert(1)) &lt;script&gt;")
+        );
     }
 }

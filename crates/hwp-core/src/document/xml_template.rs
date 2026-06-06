@@ -37,6 +37,7 @@ impl XmlTemplate {
     /// - _SchemaName: Schema 이름 (표 10)
     /// - Schema: Schema 문자열 (표 11)
     /// - Instance: Instance 문자열 (표 12)
+    ///
     /// According to spec 3.2.10, XMLTemplate storage contains the following streams:
     /// - _SchemaName: Schema name (Table 10)
     /// - Schema: Schema string (Table 11)
@@ -55,10 +56,7 @@ impl XmlTemplate {
                 Ok(schema_name) => {
                     xml_template.schema_name = Some(schema_name);
                 }
-                Err(e) => {
-                    #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse _SchemaName stream: {e}");
-                }
+                Err(_e) => {}
             }
         }
 
@@ -71,10 +69,7 @@ impl XmlTemplate {
                 Ok(schema) => {
                     xml_template.schema = Some(schema);
                 }
-                Err(e) => {
-                    #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse Schema stream: {e}");
-                }
+                Err(_e) => {}
             }
         }
 
@@ -87,10 +82,7 @@ impl XmlTemplate {
                 Ok(instance) => {
                     xml_template.instance = Some(instance);
                 }
-                Err(e) => {
-                    #[cfg(debug_assertions)]
-                    eprintln!("Warning: Failed to parse Instance stream: {e}");
-                }
+                Err(_e) => {}
             }
         }
 

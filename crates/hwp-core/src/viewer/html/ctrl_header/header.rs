@@ -8,6 +8,6 @@ pub fn process_header<'a>(
     _children: &'a [ParagraphRecord],
     _paragraphs: &[Paragraph],
 ) -> CtrlHeaderResult<'a> {
-    // TODO: 머리말 처리 로직 추가 / Add header processing logic
+    // Header paragraphs are rendered by the shared body control path.
     CtrlHeaderResult::new()
 }

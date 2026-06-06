@@ -4,6 +4,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub const MAX_PARSE_WARNINGS: usize = 10_000;
+
 /// Parsing context for better error messages
 ///
 /// Contains location and context information about where an error occurred.
@@ -206,6 +208,17 @@ impl ParseWarnings {
 
     /// Add a warning
     pub fn push(&mut self, warning: ParseWarning) {
+        if self.warnings.len() >= MAX_PARSE_WARNINGS {
+            return;
+        }
+
+        if self.warnings.len() == MAX_PARSE_WARNINGS - 1 {
+            self.warnings.push(ParseWarning::warning(
+                "Additional parser warnings suppressed after reaching the warning item limit",
+            ));
+            return;
+        }
+
         self.warnings.push(warning);
     }
 
@@ -239,7 +252,9 @@ impl ParseWarnings {
 
     /// Merge another warnings collection into this one
     pub fn merge(&mut self, other: ParseWarnings) {
-        self.warnings.extend(other.warnings);
+        for warning in other.warnings {
+            self.push(warning);
+        }
     }
 
     /// Clear all warnings
@@ -349,6 +364,15 @@ pub enum HwpError {
     /// Invalid HWPX structure
     #[error("Invalid HWPX structure: {reason}")]
     InvalidHwpxStructure { reason: String },
+
+    /// Input exceeded a configured parser resource limit
+    #[error("{resource} exceeded limit for '{path}': limit {limit}, actual {actual}")]
+    ResourceLimitExceeded {
+        resource: &'static str,
+        path: String,
+        limit: u64,
+        actual: u64,
+    },
 
     // ===== Other errors =====
     /// IO error
@@ -538,5 +562,47 @@ impl From<serde_json::Error> for HwpError {
 impl From<HwpError> for String {
     fn from(err: HwpError) -> Self {
         err.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_warnings_caps_items_and_records_suppression() {
+        let mut warnings = ParseWarnings::new();
+
+        for index in 0..(MAX_PARSE_WARNINGS + 10) {
+            warnings.push(ParseWarning::warning(format!("warning {index}")));
+        }
+
+        assert_eq!(warnings.len(), MAX_PARSE_WARNINGS);
+        let last = &warnings.warnings()[MAX_PARSE_WARNINGS - 1];
+        assert_eq!(last.severity, WarningSeverity::Warning);
+        assert!(last
+            .message
+            .contains("Additional parser warnings suppressed"));
+    }
+
+    #[test]
+    fn parse_warnings_merge_respects_item_cap() {
+        let mut left = ParseWarnings::new();
+        let mut right = ParseWarnings::new();
+
+        for index in 0..(MAX_PARSE_WARNINGS - 2) {
+            left.push(ParseWarning::warning(format!("left warning {index}")));
+        }
+        for index in 0..10 {
+            right.push(ParseWarning::warning(format!("right warning {index}")));
+        }
+
+        left.merge(right);
+
+        assert_eq!(left.len(), MAX_PARSE_WARNINGS);
+        let last = &left.warnings()[MAX_PARSE_WARNINGS - 1];
+        assert!(last
+            .message
+            .contains("Additional parser warnings suppressed"));
     }
 }

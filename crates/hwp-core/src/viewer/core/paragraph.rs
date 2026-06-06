@@ -24,18 +24,14 @@ pub fn process_paragraph<R: Renderer>(
 
     let mut parts = Vec::new();
     let mut text_parts = Vec::new(); // 같은 문단 내의 텍스트 레코드들을 모음
-                                     // TODO: 글자 모양 정보 수집 및 적용 (렌더러별로 다름)
-                                     // Character shape information collection and application (varies by renderer)
+                                     // Character shape handling is renderer-specific.
 
     // Process all records in order / 모든 레코드를 순서대로 처리
     for record in &paragraph.records {
         match record {
             ParagraphRecord::ParaText { data } => {
                 // ParaText 처리 / Process ParaText
-                // TODO: 글자 모양 적용 로직 구현 (렌더러별로 다름)
-                // Character shape application logic (varies by renderer)
-                // 현재는 간단히 텍스트만 사용
-                // For now, just use text
+                // This shared path keeps plain text and leaves styling to concrete renderers.
                 let text_content = data.text.to_string();
                 text_parts.push(text_content);
             }
@@ -79,8 +75,7 @@ pub fn process_paragraph<R: Renderer>(
     // 같은 문단 내의 텍스트를 합침 / Combine text in the same paragraph
     if !text_parts.is_empty() {
         let combined_text = text_parts.join("");
-        // TODO: 개요 번호 처리 (렌더러별로 다름)
-        // Outline number processing (varies by renderer)
+        // Outline numbering is renderer-specific in concrete rendering paths.
         parts.push(renderer.render_paragraph(&combined_text));
     }
 
