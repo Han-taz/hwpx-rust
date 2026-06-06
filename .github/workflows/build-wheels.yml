@@ -6,58 +6,218 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  metadata:
+    name: Release Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Check release metadata versions
+        run: python packages/hwpx-python/scripts/check_release_versions.py
+
+      - name: Test PyO3 GIL release checker
+        run: python packages/hwpx-python/scripts/check_pyo3_gil_release_test.py
+
+      - name: Test workflow packaging gates
+        run: python packages/hwpx-python/scripts/check_workflows_test.py
+
+      - name: Test release documentation gates
+        run: python packages/hwpx-python/scripts/check_release_docs_test.py
+
+      - name: Check production panic APIs
+        run: python packages/hwpx-python/scripts/check_no_production_panics.py
+
+      - name: Test production panic checker
+        run: python packages/hwpx-python/scripts/check_no_production_panics_test.py
+
+      - name: Check production debug output
+        run: python packages/hwpx-python/scripts/check_no_production_debug_output.py
+
+      - name: Test production debug output checker
+        run: python packages/hwpx-python/scripts/check_no_production_debug_output_test.py
+
+      - name: Check production TODO markers
+        run: python packages/hwpx-python/scripts/check_no_production_todos.py
+
+      - name: Test production TODO checker
+        run: python packages/hwpx-python/scripts/check_no_production_todos_test.py
+
+      - name: Test wheel contents checker
+        run: python packages/hwpx-python/scripts/check_wheel_contents_test.py
+
+      - name: Test wheel install checker
+        run: python packages/hwpx-python/scripts/check_wheel_install_test.py
+
+      - name: Test source distribution checker
+        run: python packages/hwpx-python/scripts/check_sdist_contents_test.py
+
+      - name: Test source distribution install checker
+        run: python packages/hwpx-python/scripts/check_sdist_install_test.py
+
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: metadata
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            manylinux: "2014"
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
+            manylinux: "2014"
           - os: macos-latest
             target: x86_64-apple-darwin
+            manylinux: auto
           - os: macos-latest
             target: aarch64-apple-darwin
+            manylinux: auto
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            manylinux: auto
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
+          maturin-version: v1.11.5
           target: ${{ matrix.target }}
-          args: --release --out dist -m packages/hwpx-python/Cargo.toml
-          manylinux: auto
+          args: --release --locked --compatibility pypi --out dist -m packages/hwpx-python/Cargo.toml
+          manylinux: ${{ matrix.manylinux }}
+
+      - name: Smoke test native Linux wheel
+        if: matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu'
+        run: python packages/hwpx-python/scripts/check_wheel_install.py dist/*.whl
+
+      - name: Check wheel contents
+        run: python packages/hwpx-python/scripts/check_wheel_contents.py dist/*.whl
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.target }}
           path: dist/*.whl
 
+  sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    needs: metadata
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: v1.11.5
+          command: sdist
+          args: --out dist -m packages/hwpx-python/Cargo.toml
+
+      - name: Check sdist contents
+        run: python packages/hwpx-python/scripts/check_sdist_contents.py dist/*.tar.gz
+
+      - name: Smoke test sdist install
+        run: python packages/hwpx-python/scripts/check_sdist_install.py dist/*.tar.gz
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v7
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, sdist]
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
         with:
-          pattern: wheels-*
+          python-version: '3.12'
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: '*'
           merge-multiple: true
           path: dist
 
+      - name: Check downloaded wheel contents
+        run: python packages/hwpx-python/scripts/check_wheel_contents.py dist/*.whl
+
+      - name: Check downloaded sdist contents
+        run: python packages/hwpx-python/scripts/check_sdist_contents.py dist/*.tar.gz
+
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
-          files: dist/*.whl
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [release]
+    if: startsWith(github.ref, 'refs/tags/')
+    environment:
+      name: pypi
+      url: https://pypi.org/p/hwpx
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: '*'
+          merge-multiple: true
+          path: dist
+
+      - name: Check downloaded wheel contents
+        run: python packages/hwpx-python/scripts/check_wheel_contents.py dist/*.whl
+
+      - name: Check downloaded sdist contents
+        run: python packages/hwpx-python/scripts/check_sdist_contents.py dist/*.tar.gz
+
+      - name: Publish distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

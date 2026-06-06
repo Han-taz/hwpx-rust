@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -14,7 +17,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -23,13 +26,42 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run tests
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
+
+      - name: Run hwpx-python embedding-mode tests
+        run: cargo test -p hwpx-python --no-default-features --locked
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Generate LCOV coverage
+        run: cargo llvm-cov --workspace --all-features --locked --lcov --output-path lcov.info
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: lcov
+          path: lcov.info
 
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -40,13 +72,72 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Run hwpx-python embedding-mode clippy
+        run: cargo clippy -p hwpx-python --no-default-features --all-targets --locked -- -D warnings
+
+  docs:
+    name: Rustdoc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Rust documentation
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --locked --no-deps
+
+  benchmark:
+    name: Benchmark Compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Compile benchmark targets
+        run: cargo bench -p hwp-core --bench parse_benchmark --locked -- --test
+
+  fuzz:
+    name: Fuzz Target Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+
+      - name: Check fuzz workspace
+        run: cargo check --manifest-path fuzz/Cargo.toml --locked
+
+      - name: List fuzz targets
+        run: cargo fuzz list
+
+      - name: Build fuzz targets
+        run: |
+          cargo fuzz build parse_auto
+          cargo fuzz build parse_hwpx
 
   fmt:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -60,13 +151,121 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        run: cargo install cargo-audit --locked
 
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
 
       - name: Run cargo audit
         run: cargo audit
+
+      - name: Run cargo audit for fuzz workspace
+        run: cargo audit --file fuzz/Cargo.lock
+
+  cargo-deny:
+    name: Dependency Policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check dependency policy
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          rust-version: stable
+          command: check
+          arguments: --locked
+
+  python-package:
+    name: Python Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check PyO3 GIL release
+        run: python packages/hwpx-python/scripts/check_pyo3_gil_release.py
+
+      - name: Test PyO3 GIL release checker
+        run: python packages/hwpx-python/scripts/check_pyo3_gil_release_test.py
+
+      - name: Check release metadata versions
+        run: python packages/hwpx-python/scripts/check_release_versions.py
+
+      - name: Test release metadata checker
+        run: python packages/hwpx-python/scripts/check_release_versions_test.py
+
+      - name: Test workflow packaging gates
+        run: python packages/hwpx-python/scripts/check_workflows_test.py
+
+      - name: Test release documentation gates
+        run: python packages/hwpx-python/scripts/check_release_docs_test.py
+
+      - name: Check production panic APIs
+        run: python packages/hwpx-python/scripts/check_no_production_panics.py
+
+      - name: Test production panic checker
+        run: python packages/hwpx-python/scripts/check_no_production_panics_test.py
+
+      - name: Check production debug output
+        run: python packages/hwpx-python/scripts/check_no_production_debug_output.py
+
+      - name: Test production debug output checker
+        run: python packages/hwpx-python/scripts/check_no_production_debug_output_test.py
+
+      - name: Check production TODO markers
+        run: python packages/hwpx-python/scripts/check_no_production_todos.py
+
+      - name: Test production TODO checker
+        run: python packages/hwpx-python/scripts/check_no_production_todos_test.py
+
+      - name: Test wheel contents checker
+        run: python packages/hwpx-python/scripts/check_wheel_contents_test.py
+
+      - name: Test wheel install checker
+        run: python packages/hwpx-python/scripts/check_wheel_install_test.py
+
+      - name: Test source distribution install checker
+        run: python packages/hwpx-python/scripts/check_sdist_install_test.py
+
+      - name: Test source distribution checker
+        run: python packages/hwpx-python/scripts/check_sdist_contents_test.py
+
+      - name: Build abi3 wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: v1.11.5
+          target: x86_64-unknown-linux-gnu
+          args: --release --locked --compatibility pypi --out dist -m packages/hwpx-python/Cargo.toml
+          manylinux: "2014"
+
+      - name: Check wheel contents
+        run: python packages/hwpx-python/scripts/check_wheel_contents.py dist/*.whl
+
+      - name: Smoke test wheel install
+        run: python packages/hwpx-python/scripts/check_wheel_install.py dist/*.whl
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: v1.11.5
+          command: sdist
+          args: --out dist -m packages/hwpx-python/Cargo.toml
+
+      - name: Check sdist contents
+        run: python packages/hwpx-python/scripts/check_sdist_contents.py dist/*.tar.gz
+
+      - name: Smoke test sdist install
+        run: python packages/hwpx-python/scripts/check_sdist_install.py dist/*.tar.gz
