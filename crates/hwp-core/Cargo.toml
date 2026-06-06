@@ -24,7 +24,7 @@ thiserror = "2.0.17"
 unicode-normalization = "0.1.24"
 
 # HWPX parsing (ZIP + XML)
-zip = { version = "2.2", default-features = false, features = ["deflate"] }
+zip = { version = "8.6", default-features = false, features = ["deflate"] }
 quick-xml = { version = "0.37", features = ["serialize"] }
 
 [dev-dependencies]
