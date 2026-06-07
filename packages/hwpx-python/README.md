@@ -8,7 +8,7 @@ and conversion APIs release the Python GIL while Rust code is running.
 ## Installation
 
 ```bash
-pip install hwpx
+pip install hwpxkit
 ```
 
 Or install from source:

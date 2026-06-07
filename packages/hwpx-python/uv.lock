@@ -3,6 +3,6 @@ revision = 1
 requires-python = ">=3.8"
 
 [[package]]
-name = "hwpx"
-version = "0.1.0"
+name = "hwpxkit"
+version = "0.2.0"
 source = { editable = "." }

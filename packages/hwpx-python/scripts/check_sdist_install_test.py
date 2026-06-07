@@ -36,18 +36,18 @@ def add_text(tar: tarfile.TarFile, name: str, text: str) -> None:
 
 def make_sdist(
     path: Path,
-    pkg_info: str | None = "Metadata-Version: 2.1\nName: hwpx\nVersion: 0.2.0\n",
+    pkg_info: str | None = "Metadata-Version: 2.1\nName: hwpxkit\nVersion: 0.2.0\n",
 ) -> None:
     with tarfile.open(path, "w:gz") as tar:
         if pkg_info is not None:
-            add_text(tar, "hwpx-0.2.0/PKG-INFO", pkg_info)
+            add_text(tar, "hwpxkit-0.2.0/PKG-INFO", pkg_info)
 
 
 class CheckSdistInstallTest(unittest.TestCase):
     def test_reads_pkg_info_version(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             make_sdist(sdist)
 
             self.assertEqual(module.sdist_metadata_version(sdist), "0.2.0")
@@ -55,7 +55,7 @@ class CheckSdistInstallTest(unittest.TestCase):
     def test_rejects_missing_pkg_info_version(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             make_sdist(sdist, pkg_info=None)
 
             with self.assertRaisesRegex(ValueError, "PKG-INFO"):
@@ -64,10 +64,10 @@ class CheckSdistInstallTest(unittest.TestCase):
     def test_rejects_pkg_info_name_mismatch(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             make_sdist(
                 sdist,
-                pkg_info="Metadata-Version: 2.1\nName: not-hwpx\nVersion: 0.2.0\n",
+                pkg_info="Metadata-Version: 2.1\nName: not-hwpxkit\nVersion: 0.2.0\n",
             )
 
             with self.assertRaisesRegex(ValueError, "PKG-INFO name"):
@@ -76,7 +76,7 @@ class CheckSdistInstallTest(unittest.TestCase):
     def test_rejects_unsafe_pkg_info_member_path(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             with tarfile.open(sdist, "w:gz") as tar:
                 add_text(tar, "../PKG-INFO", "Version: 0.2.0\n")
 
@@ -86,7 +86,7 @@ class CheckSdistInstallTest(unittest.TestCase):
     def test_rejects_oversized_pkg_info(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             oversized_pkg_info = "Version: 0.2.0\n" + ("x" * (1024 * 1024 + 1))
             make_sdist(sdist, pkg_info=oversized_pkg_info)
 
@@ -96,9 +96,9 @@ class CheckSdistInstallTest(unittest.TestCase):
     def test_rejects_invalid_utf8_pkg_info(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             with tarfile.open(sdist, "w:gz") as tar:
-                add_bytes(tar, "hwpx-0.2.0/PKG-INFO", b"\xff")
+                add_bytes(tar, "hwpxkit-0.2.0/PKG-INFO", b"\xff")
 
             with self.assertRaisesRegex(ValueError, "invalid UTF-8"):
                 module.sdist_metadata_version(sdist)
@@ -108,7 +108,7 @@ class CheckSdistInstallTest(unittest.TestCase):
         fixture = Path("/tmp/fixtures/linespacing.hwpx")
         commands = module.install_commands(
             Path("/tmp/venv/bin/python"),
-            Path("/tmp/dist/hwpx-0.2.0.tar.gz"),
+            Path("/tmp/dist/hwpxkit-0.2.0.tar.gz"),
             "0.2.0",
             fixture,
         )
@@ -117,7 +117,7 @@ class CheckSdistInstallTest(unittest.TestCase):
         self.assertIn("install", commands[0])
         self.assertIn("--no-deps", commands[0])
         self.assertIn("--force-reinstall", commands[0])
-        self.assertIn("/tmp/dist/hwpx-0.2.0.tar.gz", commands[0])
+        self.assertIn("/tmp/dist/hwpxkit-0.2.0.tar.gz", commands[0])
         self.assertEqual(commands[1][:2], ["/tmp/venv/bin/python", "-c"])
         self.assertIn("__version__", commands[1][2])
         self.assertIn("0.2.0", commands[1][2])
@@ -131,12 +131,12 @@ class CheckSdistInstallTest(unittest.TestCase):
     def test_reads_smoke_fixture_from_sdist(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             with tarfile.open(sdist, "w:gz") as tar:
-                add_text(tar, "hwpx-0.2.0/PKG-INFO", "Name: hwpx\nVersion: 0.2.0\n")
+                add_text(tar, "hwpxkit-0.2.0/PKG-INFO", "Name: hwpxkit\nVersion: 0.2.0\n")
                 add_bytes(
                     tar,
-                    "hwpx-0.2.0/crates/hwp-core/tests/fixtures/linespacing.hwpx",
+                    "hwpxkit-0.2.0/crates/hwp-core/tests/fixtures/linespacing.hwpx",
                     b"fixture bytes",
                 )
 
@@ -145,7 +145,7 @@ class CheckSdistInstallTest(unittest.TestCase):
     def test_rejects_missing_smoke_fixture(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             make_sdist(sdist)
 
             with self.assertRaisesRegex(ValueError, "smoke fixture"):

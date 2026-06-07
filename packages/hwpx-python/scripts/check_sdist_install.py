@@ -68,9 +68,9 @@ def sdist_metadata_version(path: Path) -> str:
     name = NAME_RE.search(pkg_info)
     if not name:
         raise ValueError(f"{path.name}: PKG-INFO is missing Name")
-    if name.group(1).lower() != "hwpx":
+    if name.group(1).lower() != "hwpxkit":
         raise ValueError(
-            f"{path.name}: PKG-INFO name {name.group(1)!r} does not match 'hwpx'"
+            f"{path.name}: PKG-INFO name {name.group(1)!r} does not match 'hwpxkit'"
         )
 
     version = VERSION_RE.search(pkg_info)
@@ -119,7 +119,7 @@ import hwpx
 
 expected_version = {expected_version!r}
 fixture_path = Path({str(fixture_path)!r})
-assert importlib.metadata.version("hwpx") == expected_version
+assert importlib.metadata.version("hwpxkit") == expected_version
 assert hwpx.__version__ == expected_version
 assert callable(hwpx.parse)
 assert callable(hwpx.parse_file)

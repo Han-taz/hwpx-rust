@@ -24,18 +24,18 @@ def load_script():
 
 def make_wheel(
     path: Path,
-    metadata: str | None = "Metadata-Version: 2.1\nName: hwpx\nVersion: 0.2.0\n",
+    metadata: str | None = "Metadata-Version: 2.1\nName: hwpxkit\nVersion: 0.2.0\n",
 ) -> None:
     with zipfile.ZipFile(path, "w") as wheel:
         if metadata is not None:
-            wheel.writestr("hwpx-0.2.0.dist-info/METADATA", metadata)
+            wheel.writestr("hwpxkit-0.2.0.dist-info/METADATA", metadata)
 
 
 class CheckWheelInstallTest(unittest.TestCase):
     def test_reads_wheel_metadata_version(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpx-0.2.0-cp38-abi3-macosx_11_0_arm64.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx_11_0_arm64.whl"
             make_wheel(wheel)
 
             self.assertEqual(module.wheel_metadata_version(wheel), "0.2.0")
@@ -43,7 +43,7 @@ class CheckWheelInstallTest(unittest.TestCase):
     def test_rejects_missing_wheel_metadata(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpx-0.2.0-cp38-abi3-macosx_11_0_arm64.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx_11_0_arm64.whl"
             make_wheel(wheel, metadata=None)
 
             with self.assertRaisesRegex(ValueError, "METADATA"):
@@ -52,10 +52,10 @@ class CheckWheelInstallTest(unittest.TestCase):
     def test_rejects_wheel_metadata_name_mismatch(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpx-0.2.0-cp38-abi3-macosx_11_0_arm64.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx_11_0_arm64.whl"
             make_wheel(
                 wheel,
-                metadata="Metadata-Version: 2.1\nName: not-hwpx\nVersion: 0.2.0\n",
+                metadata="Metadata-Version: 2.1\nName: not-hwpxkit\nVersion: 0.2.0\n",
             )
 
             with self.assertRaisesRegex(ValueError, "METADATA name"):
@@ -66,7 +66,7 @@ class CheckWheelInstallTest(unittest.TestCase):
         fixture = Path("/tmp/fixtures/linespacing.hwpx")
         commands = module.install_commands(
             Path("/tmp/venv/bin/python"),
-            Path("/tmp/dist/hwpx-0.2.0-cp38-abi3-linux_x86_64.whl"),
+            Path("/tmp/dist/hwpxkit-0.2.0-cp38-abi3-linux_x86_64.whl"),
             "0.2.0",
             fixture,
         )
@@ -74,7 +74,7 @@ class CheckWheelInstallTest(unittest.TestCase):
         self.assertEqual(commands[0][:3], ["/tmp/venv/bin/python", "-m", "pip"])
         self.assertIn("install", commands[0])
         self.assertIn("--force-reinstall", commands[0])
-        self.assertIn("/tmp/dist/hwpx-0.2.0-cp38-abi3-linux_x86_64.whl", commands[0])
+        self.assertIn("/tmp/dist/hwpxkit-0.2.0-cp38-abi3-linux_x86_64.whl", commands[0])
         self.assertEqual(commands[1][:2], ["/tmp/venv/bin/python", "-c"])
         self.assertIn("__version__", commands[1][2])
         self.assertIn("parse_file(str(fixture_path))", commands[1][2])

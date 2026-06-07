@@ -14,6 +14,7 @@ from typing import Any
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 INIT_VERSION_RE = re.compile(r"^__version__ = [\"']([^\"']+)[\"']$", re.MULTILINE)
 WORKSPACE_PACKAGES = ("hwp-core", "hwpx-python")
+PYPI_PROJECT_NAME = "hwpxkit"
 
 
 def default_root() -> Path:
@@ -66,6 +67,13 @@ def check_versions(root: Path) -> list[str]:
             )
 
     pyproject = load_toml(root / "packages/hwpx-python/pyproject.toml")
+    pyproject_name = pyproject.get("project", {}).get("name")
+    if pyproject_name != PYPI_PROJECT_NAME:
+        errors.append(
+            "packages/hwpx-python/pyproject.toml project name "
+            f"{pyproject_name!r} does not match {PYPI_PROJECT_NAME!r}"
+        )
+
     pyproject_version = pyproject.get("project", {}).get("version")
     if pyproject_version != workspace_version:
         errors.append(

@@ -119,7 +119,7 @@ without depending on noisy shared-runner timings. See
 ### 설치
 
 ```bash
-pip install hwpx
+pip install hwpxkit
 ```
 
 ### 사용 예제

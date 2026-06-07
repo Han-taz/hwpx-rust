@@ -400,10 +400,10 @@ def validate_wheel(path: Path) -> list[str]:
     init_version = re.search(r"^__version__ = [\"'](.+)[\"']$", init_py, re.MULTILINE)
     if not metadata_package_name:
         errors.append(f"{path.name}: missing wheel metadata name")
-    elif metadata_package_name.group(1).lower() != "hwpx":
+    elif metadata_package_name.group(1).lower() != "hwpxkit":
         errors.append(
             f"{path.name}: metadata name {metadata_package_name.group(1)!r} "
-            "does not match 'hwpx'"
+            "does not match 'hwpxkit'"
         )
 
     if not metadata_version:

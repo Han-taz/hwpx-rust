@@ -3,7 +3,7 @@ requires = ["maturin>=1.4,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "hwpx"
+name = "hwpxkit"
 version = "0.2.0"
 description = "Python bindings for HWP/HWPX document parser"
 readme = "README.md"

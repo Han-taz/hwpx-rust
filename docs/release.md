@@ -126,7 +126,7 @@ Trusted Publishing. The workflow does not use a long-lived PyPI API token.
 
 Before the first release, configure PyPI with a GitHub trusted publisher for:
 
-- PyPI project: `hwpx`
+- PyPI project: `hwpxkit`
 - GitHub repository: `Han-taz/hwpx-rust`
 - Workflow: `build-wheels.yml`
 - Environment: `pypi`

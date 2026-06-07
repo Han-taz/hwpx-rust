@@ -68,7 +68,7 @@ edition = "2021"
         root / "packages/hwpx-python/pyproject.toml",
         f"""
 [project]
-name = "hwpx"
+name = "hwpxkit"
 version = "{version}"
 """.lstrip(),
     )
@@ -134,6 +134,26 @@ version = "0.1.0"
             self.assertIn("Cargo.lock package hwpx-python", result.stderr)
             self.assertIn("0.1.0", result.stderr)
             self.assertIn("0.2.0", result.stderr)
+
+    def test_rejects_pyproject_distribution_name_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_repo(root)
+            write(
+                root / "packages/hwpx-python/pyproject.toml",
+                """
+[project]
+name = "hwpx"
+version = "0.2.0"
+""".lstrip(),
+            )
+
+            result = self.run_checker(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("pyproject.toml project name", result.stderr)
+            self.assertIn("hwpx", result.stderr)
+            self.assertIn("hwpxkit", result.stderr)
 
 
 if __name__ == "__main__":

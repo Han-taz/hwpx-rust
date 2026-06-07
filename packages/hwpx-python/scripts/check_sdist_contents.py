@@ -153,10 +153,10 @@ def check_versions(
     pkg_info_name = PKG_INFO_NAME_RE.search(pkg_info)
     if not pkg_info_name:
         errors.append(f"{sdist_name}: PKG-INFO is missing Name")
-    elif pkg_info_name.group(1).lower() != "hwpx":
+    elif pkg_info_name.group(1).lower() != "hwpxkit":
         errors.append(
             f"{sdist_name}: PKG-INFO name {pkg_info_name.group(1)!r} "
-            "does not match 'hwpx'"
+            "does not match 'hwpxkit'"
         )
 
     pkg_info_version = PKG_INFO_VERSION_RE.search(pkg_info)
