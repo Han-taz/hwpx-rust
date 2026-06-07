@@ -48,6 +48,14 @@ def with_record(files: dict[str, str | bytes]) -> dict[str, str | bytes]:
     return recorded
 
 
+def with_windows_record(files: dict[str, str | bytes]) -> dict[str, str | bytes]:
+    recorded = with_record(files)
+    record = recorded[RECORD_NAME]
+    assert isinstance(record, str)
+    recorded[RECORD_NAME] = record.replace("/", "\\")
+    return recorded
+
+
 def make_wheel(path: Path, files: dict[str, str | bytes]) -> None:
     make_wheel_entries(path, files.items())
 
@@ -124,6 +132,26 @@ class CheckWheelContentsTest(unittest.TestCase):
             make_wheel(wheel, with_record(valid_files()))
 
             result = self.run_checker(Path(tmp) / "*.whl")
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_accepts_windows_record_path_separators(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-win_amd64.whl"
+            make_wheel(wheel, with_windows_record(valid_files()))
+
+            result = self.run_checker(wheel)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_accepts_crlf_python_init_version(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-win_amd64.whl"
+            files = valid_files()
+            files["hwpx/__init__.py"] = '__version__ = "0.2.0"\r\n'
+            make_wheel(wheel, with_record(files))
+
+            result = self.run_checker(wheel)
 
             self.assertEqual(result.returncode, 0, result.stderr)
 

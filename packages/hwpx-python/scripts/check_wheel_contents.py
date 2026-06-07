@@ -25,6 +25,7 @@ DIAGNOSTIC_SUMMARY_FIELDS = {
 REQUIRED_DIST_INFO_FILES = {"METADATA", "WHEEL", "RECORD"}
 MAX_WHEEL_MEMBER_SIZE = 64 * 1024 * 1024
 MAX_WHEEL_UNCOMPRESSED_SIZE = 256 * 1024 * 1024
+INIT_VERSION_RE = re.compile(r"^__version__ = [\"'](.+)[\"']\r?$", re.MULTILINE)
 
 
 def unsafe_path_reason(name: str) -> str | None:
@@ -90,12 +91,13 @@ def validate_record(
         if len(row) != 3:
             errors.append(f"{wheel_name}: RECORD row {row_number} has {len(row)} fields")
             continue
-        member_name, hash_field, size_field = row
+        raw_member_name, hash_field, size_field = row
+        member_name = raw_member_name.replace("\\", "/")
         if not member_name:
             errors.append(f"{wheel_name}: RECORD row {row_number} has empty path")
             continue
         if member_name in record_entries:
-            errors.append(f"{wheel_name}: RECORD has duplicate entry {member_name!r}")
+            errors.append(f"{wheel_name}: RECORD has duplicate entry {raw_member_name!r}")
             continue
         record_entries[member_name] = (hash_field, size_field)
 
@@ -398,7 +400,7 @@ def validate_wheel(path: Path) -> list[str]:
 
     metadata_version = re.search(r"^Version: (.+)$", metadata, re.MULTILINE)
     metadata_package_name = re.search(r"^Name: (.+)$", metadata, re.MULTILINE)
-    init_version = re.search(r"^__version__ = [\"'](.+)[\"']$", init_py, re.MULTILINE)
+    init_version = INIT_VERSION_RE.search(init_py)
     if not metadata_package_name:
         errors.append(f"{path.name}: missing wheel metadata name")
     elif metadata_package_name.group(1).lower() != "hwpxkit":
