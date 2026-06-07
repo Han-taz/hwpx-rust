@@ -118,6 +118,15 @@ class CheckWheelContentsTest(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_accepts_literal_glob_pattern_argument(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            make_wheel(wheel, with_record(valid_files()))
+
+            result = self.run_checker(Path(tmp) / "*.whl")
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_rejects_missing_diagnostic_report_stub(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"

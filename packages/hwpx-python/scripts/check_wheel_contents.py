@@ -7,6 +7,7 @@ import argparse
 import ast
 import base64
 import csv
+import glob
 import hashlib
 import re
 import sys
@@ -419,13 +420,24 @@ def validate_wheel(path: Path) -> list[str]:
     return errors
 
 
+def expand_path_args(paths: list[Path]) -> list[Path]:
+    expanded: list[Path] = []
+    for path in paths:
+        matches = sorted(glob.glob(str(path)))
+        if matches:
+            expanded.extend(Path(match) for match in matches)
+        else:
+            expanded.append(path)
+    return expanded
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("wheels", nargs="+", type=Path)
     args = parser.parse_args()
 
     errors: list[str] = []
-    for wheel in args.wheels:
+    for wheel in expand_path_args(args.wheels):
         errors.extend(validate_wheel(wheel))
 
     if errors:
