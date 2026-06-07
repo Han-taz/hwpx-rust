@@ -61,7 +61,7 @@ Add a negative test:
 ```python
     def test_rejects_missing_hwpx_parser_modules_required_for_source_build(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpx-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
             files = valid_files()
             del files[f"{ROOT}/crates/hwp-core/src/parser/hwpx/package.rs"]
             del files[f"{ROOT}/crates/hwp-core/src/parser/hwpx/xml_attr.rs"]

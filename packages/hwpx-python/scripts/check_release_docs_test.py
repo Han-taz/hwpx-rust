@@ -9,6 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 RELEASE_DOC = ROOT / "docs" / "release.md"
+ROOT_README = ROOT / "README.md"
+PYTHON_README = ROOT / "packages" / "hwpx-python" / "README.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 BUILD_WHEELS_WORKFLOW = ROOT / ".github" / "workflows" / "build-wheels.yml"
 
@@ -110,6 +112,33 @@ class ReleaseDocsTest(unittest.TestCase):
         for token in required_tokens:
             with self.subTest(token=token):
                 self.assertIn(token, release)
+
+    def test_distribution_docs_use_hwpxkit_name(self) -> None:
+        self.assertIn("pip install hwpxkit", text(ROOT_README))
+        self.assertIn("pip install hwpxkit", text(PYTHON_README))
+        self.assertIn("PyPI project: `hwpxkit`", text(RELEASE_DOC))
+        self.assertIn("https://pypi.org/p/hwpxkit", text(BUILD_WHEELS_WORKFLOW))
+
+        doc_paths = [
+            ROOT_README,
+            PYTHON_README,
+            RELEASE_DOC,
+            BUILD_WHEELS_WORKFLOW,
+            *sorted((ROOT / "docs" / "plans").glob("*.md")),
+        ]
+        forbidden_tokens = [
+            "pip install hwpx\n",
+            "PyPI project: `hwpx`",
+            "https://pypi.org/p/hwpx\n",
+            "hwpx-0.2.0.tar.gz",
+        ]
+
+        for path in doc_paths:
+            contents = text(path)
+            relative_path = path.relative_to(ROOT)
+            for token in forbidden_tokens:
+                with self.subTest(path=relative_path, token=token):
+                    self.assertNotIn(token, contents)
 
     def test_release_docs_compile_all_packaging_scripts(self) -> None:
         release = text(RELEASE_DOC)
