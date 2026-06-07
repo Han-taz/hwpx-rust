@@ -399,18 +399,19 @@ fn parse_file(py: Python<'_>, path: &str) -> PyResult<Document> {
     }
 }
 
-/// hwpx - Python bindings for HWP/HWPX document parser
+/// hwpxkit - Python bindings for HWP/HWPX document parser
 ///
 /// This module provides functions to parse and convert HWP/HWPX documents.
 ///
 /// Example:
-///     >>> import hwpx
-///     >>> doc = hwpx.parse_file("document.hwpx")
+///     >>> import hwpxkit
+///     >>> doc = hwpxkit.parse_file("document.hwpx")
 ///     >>> print(doc.to_markdown())
 ///     >>> print(doc.to_html())
 ///     >>> print(doc.get_text())
 #[pymodule]
-fn hwpx(m: &Bound<'_, PyModule>) -> PyResult<()> {
+#[pyo3(name = "_native")]
+fn hwpxkit(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse, m)?)?;
     m.add_function(wrap_pyfunction!(parse_file, m)?)?;
     m.add_class::<Document>()?;

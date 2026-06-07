@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install an hwpx sdist in a fresh virtualenv and smoke test the package."""
+"""Install an hwpxkit sdist in a fresh virtualenv and smoke test the package."""
 
 from __future__ import annotations
 
@@ -113,19 +113,21 @@ def venv_python_path(venv_dir: Path) -> Path:
 def smoke_code(expected_version: str, fixture_path: Path) -> str:
     return f"""
 import importlib.metadata
+import importlib.util
 import json
 from pathlib import Path
-import hwpx
+import hwpxkit
 
 expected_version = {expected_version!r}
 fixture_path = Path({str(fixture_path)!r})
 assert importlib.metadata.version("hwpxkit") == expected_version
-assert hwpx.__version__ == expected_version
-assert callable(hwpx.parse)
-assert callable(hwpx.parse_file)
+assert importlib.util.find_spec("hwpx") is None
+assert hwpxkit.__version__ == expected_version
+assert callable(hwpxkit.parse)
+assert callable(hwpxkit.parse_file)
 
-doc = hwpx.parse_file(str(fixture_path))
-doc_from_bytes = hwpx.parse(fixture_path.read_bytes())
+doc = hwpxkit.parse_file(str(fixture_path))
+doc_from_bytes = hwpxkit.parse(fixture_path.read_bytes())
 assert doc.section_count == doc_from_bytes.section_count
 assert doc.section_count >= 1
 assert isinstance(doc.version, str)

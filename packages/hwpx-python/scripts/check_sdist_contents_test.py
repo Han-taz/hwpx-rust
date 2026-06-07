@@ -13,8 +13,8 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("check_sdist_contents.py")
-ROOT = "hwpxkit-0.2.0"
-VERSION = "0.2.0"
+ROOT = "hwpxkit-0.2.1"
+VERSION = "0.2.1"
 
 
 def add_bytes(tar: tarfile.TarFile, name: str, data: bytes) -> None:
@@ -53,7 +53,7 @@ version = "{version}"
 [workspace.package]
 version = "{version}"
 """.lstrip(),
-        f"{ROOT}/README.md": "# hwpx\n",
+        f"{ROOT}/README.md": "# hwpxkit\n",
         f"{ROOT}/crates/hwp-core/Cargo.toml": """
 [package]
 name = "hwp-core"
@@ -79,10 +79,10 @@ name = "hwpxkit"
 version = "{version}"
 """.lstrip(),
         f"{ROOT}/packages/hwpx-python/src/lib.rs": "",
-        f"{ROOT}/python/hwpx/__init__.py": (
+        f"{ROOT}/python/hwpxkit/__init__.py": (
             f'__version__ = "{version}"\n'
         ),
-        f"{ROOT}/python/hwpx/__init__.pyi": """
+        f"{ROOT}/python/hwpxkit/__init__.pyi": """
 from typing import TypedDict
 
 class DiagnosticSummary(TypedDict):
@@ -100,7 +100,7 @@ class Document:
     def warnings(self) -> tuple[str, ...]: ...
     def diagnostic_report(self) -> DiagnosticReport: ...
 """.lstrip(),
-        f"{ROOT}/python/hwpx/py.typed": "",
+        f"{ROOT}/python/hwpxkit/py.typed": "",
     }
 
 
@@ -115,7 +115,7 @@ class CheckSdistContentsTest(unittest.TestCase):
 
     def test_accepts_valid_sdist(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             make_sdist(sdist, valid_files())
 
             result = self.run_checker(sdist)
@@ -124,9 +124,9 @@ class CheckSdistContentsTest(unittest.TestCase):
 
     def test_rejects_generated_artifacts_and_missing_required_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
-            del files[f"{ROOT}/python/hwpx/py.typed"]
+            del files[f"{ROOT}/python/hwpxkit/py.typed"]
             files[f"{ROOT}/packages/hwpx-python/.venv/bin/python"] = ""
             files[f"{ROOT}/packages/hwpx-python/scripts/__pycache__/checker.pyc"] = ""
             files[f"{ROOT}/packages/hwpx-python/hwpx.cpython-314-darwin.so"] = ""
@@ -142,7 +142,7 @@ class CheckSdistContentsTest(unittest.TestCase):
 
     def test_rejects_missing_hwpx_parser_modules_required_for_source_build(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
             del files[f"{ROOT}/crates/hwp-core/src/parser/hwpx/package.rs"]
             del files[f"{ROOT}/crates/hwp-core/src/parser/hwpx/xml_attr.rs"]
@@ -156,25 +156,25 @@ class CheckSdistContentsTest(unittest.TestCase):
 
     def test_rejects_version_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
-            files[f"{ROOT}/python/hwpx/__init__.py"] = (
-                '__version__ = "0.2.1"\n'
+            files[f"{ROOT}/python/hwpxkit/__init__.py"] = (
+                '__version__ = "0.2.2"\n'
             )
             make_sdist(sdist, files)
 
             result = self.run_checker(sdist)
 
             self.assertNotEqual(result.returncode, 0)
+            self.assertIn("0.2.2", result.stderr)
             self.assertIn("0.2.1", result.stderr)
-            self.assertIn("0.2.0", result.stderr)
 
     def test_rejects_pkg_info_name_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
             files[f"{ROOT}/PKG-INFO"] = (
-                "Metadata-Version: 2.1\nName: not-hwpxkit\nVersion: 0.2.0\n"
+                "Metadata-Version: 2.1\nName: not-hwpxkit\nVersion: 0.2.1\n"
             )
             make_sdist(sdist, files)
 
@@ -186,9 +186,9 @@ class CheckSdistContentsTest(unittest.TestCase):
 
     def test_rejects_missing_diagnostic_report_stub(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
-            files[f"{ROOT}/python/hwpx/__init__.pyi"] = """
+            files[f"{ROOT}/python/hwpxkit/__init__.pyi"] = """
 class Document:
     @property
     def warnings(self) -> tuple[str, ...]: ...
@@ -202,9 +202,9 @@ class Document:
 
     def test_rejects_missing_diagnostic_summary_metadata_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
-            files[f"{ROOT}/python/hwpx/__init__.pyi"] = """
+            files[f"{ROOT}/python/hwpxkit/__init__.pyi"] = """
 from typing import TypedDict
 
 class DiagnosticSummary(TypedDict):
@@ -230,7 +230,7 @@ class Document:
 
     def test_rejects_malicious_member_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
             files[f"{ROOT}/../evil.py"] = ""
             files["/tmp/absolute.py"] = ""
@@ -243,7 +243,7 @@ class Document:
 
     def test_rejects_oversized_required_text_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
             files[f"{ROOT}/PKG-INFO"] += "x" * (1024 * 1024 + 1)
             make_sdist(sdist, files)
@@ -255,7 +255,7 @@ class Document:
 
     def test_rejects_invalid_utf8_required_text_file_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            sdist = Path(tmp) / "hwpxkit-0.2.0.tar.gz"
+            sdist = Path(tmp) / "hwpxkit-0.2.1.tar.gz"
             files = valid_files()
             files[f"{ROOT}/PKG-INFO"] = b"\xff"
             make_sdist(sdist, files)

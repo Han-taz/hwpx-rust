@@ -1,15 +1,15 @@
 """
-hwpx - Python bindings for HWP/HWPX document parser
+hwpxkit - Python bindings for HWP/HWPX document parser
 
 Example usage:
-    >>> import hwpx
+    >>> import hwpxkit
     >>>
     >>> # Parse from file path
-    >>> doc = hwpx.parse_file("document.hwpx")
+    >>> doc = hwpxkit.parse_file("document.hwpx")
     >>>
     >>> # Or parse from bytes
     >>> with open("document.hwpx", "rb") as f:
-    ...     doc = hwpx.parse(f.read())
+    ...     doc = hwpxkit.parse(f.read())
     >>>
     >>> # Convert to markdown
     >>> markdown = doc.to_markdown()
@@ -25,7 +25,7 @@ Example usage:
     >>> json_str = doc.to_json()
 """
 
-from .hwpx import parse, parse_file, Document
+from ._native import parse, parse_file, Document
 
 __all__ = ["parse", "parse_file", "Document"]
-__version__ = "0.2.0"
+__version__ = "0.2.1"

@@ -125,14 +125,14 @@ pip install hwpxkit
 ### 사용 예제
 
 ```python
-import hwpx
+import hwpxkit
 
 # 파일에서 문서 열기
-doc = hwpx.parse_file("document.hwpx")
+doc = hwpxkit.parse_file("document.hwpx")
 
 # 또는 바이트에서 파싱
 with open("document.hwp", "rb") as f:
-    doc = hwpx.parse(f.read())
+    doc = hwpxkit.parse(f.read())
 
 # 문서 정보
 print(doc.version)        # 예: "5.1.0.1"

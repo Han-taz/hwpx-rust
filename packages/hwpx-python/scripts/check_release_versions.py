@@ -15,6 +15,8 @@ VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 INIT_VERSION_RE = re.compile(r"^__version__ = [\"']([^\"']+)[\"']$", re.MULTILINE)
 WORKSPACE_PACKAGES = ("hwp-core", "hwpx-python")
 PYPI_PROJECT_NAME = "hwpxkit"
+PYTHON_MODULE_NAME = "hwpxkit._native"
+PYTHON_RUST_LIB_NAME = "_native"
 
 
 def default_root() -> Path:
@@ -66,6 +68,14 @@ def check_versions(root: Path) -> list[str]:
                 f"does not match workspace version {workspace_version!r}"
             )
 
+    python_cargo = load_toml(root / "packages/hwpx-python/Cargo.toml")
+    python_lib_name = python_cargo.get("lib", {}).get("name")
+    if python_lib_name != PYTHON_RUST_LIB_NAME:
+        errors.append(
+            "packages/hwpx-python/Cargo.toml lib name "
+            f"{python_lib_name!r} does not match {PYTHON_RUST_LIB_NAME!r}"
+        )
+
     pyproject = load_toml(root / "packages/hwpx-python/pyproject.toml")
     pyproject_name = pyproject.get("project", {}).get("name")
     if pyproject_name != PYPI_PROJECT_NAME:
@@ -81,16 +91,26 @@ def check_versions(root: Path) -> list[str]:
             f"{pyproject_version!r} does not match workspace version {workspace_version!r}"
         )
 
-    init_path = root / "packages/hwpx-python/python/hwpx/__init__.py"
-    init_text = init_path.read_text(encoding="utf-8")
-    init_match = INIT_VERSION_RE.search(init_text)
-    if not init_match:
-        errors.append("packages/hwpx-python/python/hwpx/__init__.py is missing __version__")
-    elif init_match.group(1) != workspace_version:
+    module_name = pyproject.get("tool", {}).get("maturin", {}).get("module-name")
+    if module_name != PYTHON_MODULE_NAME:
         errors.append(
-            "packages/hwpx-python/python/hwpx/__init__.py version "
-            f"{init_match.group(1)!r} does not match workspace version {workspace_version!r}"
+            "packages/hwpx-python/pyproject.toml module-name "
+            f"{module_name!r} does not match {PYTHON_MODULE_NAME!r}"
         )
+
+    init_path = root / "packages/hwpx-python/python/hwpxkit/__init__.py"
+    if not init_path.is_file():
+        errors.append("packages/hwpx-python/python/hwpxkit/__init__.py is missing")
+    else:
+        init_text = init_path.read_text(encoding="utf-8")
+        init_match = INIT_VERSION_RE.search(init_text)
+        if not init_match:
+            errors.append("packages/hwpx-python/python/hwpxkit/__init__.py is missing __version__")
+        elif init_match.group(1) != workspace_version:
+            errors.append(
+                "packages/hwpx-python/python/hwpxkit/__init__.py version "
+                f"{init_match.group(1)!r} does not match workspace version {workspace_version!r}"
+            )
 
     cargo_lock = load_toml(root / "Cargo.lock")
     lock_packages = cargo_lock.get("package", [])

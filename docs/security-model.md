@@ -138,14 +138,14 @@ CPU-bound parse and conversion APIs release the Python GIL while running Rust co
 - `Document.to_json`
 - `Document.get_text`
 
-`hwpx.parse_file()` checks the source file size before reading and rejects files larger
+`hwpxkit.parse_file()` checks the source file size before reading and rejects files larger
 than 512 MiB. It also performs a capped read to handle files that grow after metadata
-inspection. The `hwpx.parse(bytes)` API assumes the caller already owns and has bounded
+inspection. The `hwpxkit.parse(bytes)` API assumes the caller already owns and has bounded
 the provided byte buffer.
 
 The wheel validation script rejects missing type marker files, generated Python cache
 artifacts, local macOS extension artifacts, non-`abi3` native extension tags on Unix,
-and version drift between package metadata and `hwpx.__version__`.
+and version drift between package metadata and `hwpxkit.__version__`.
 
 ## Diagnostics
 
@@ -182,7 +182,7 @@ CI gates include:
 - Python wheel build, wheel content validation, and import smoke tests.
 - PyO3 GIL-release checker and checker tests for CPU-bound Python APIs.
 - Release metadata validation across Rust workspace metadata, `Cargo.lock`, Python
-  package metadata, and `hwpx.__version__`.
+  package metadata, and `hwpxkit.__version__`.
 - PyPI Trusted Publishing with GitHub OIDC instead of long-lived API tokens.
 
 ## Non-Goals

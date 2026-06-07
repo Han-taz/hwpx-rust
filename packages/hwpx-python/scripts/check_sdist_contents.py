@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate packaged hwpx source distribution contents."""
+"""Validate packaged hwpxkit source distribution contents."""
 
 from __future__ import annotations
 
@@ -31,9 +31,9 @@ REQUIRED_FILES = {
     "packages/hwpx-python/Cargo.toml",
     "pyproject.toml",
     "packages/hwpx-python/src/lib.rs",
-    "python/hwpx/__init__.py",
-    "python/hwpx/__init__.pyi",
-    "python/hwpx/py.typed",
+    "python/hwpxkit/__init__.py",
+    "python/hwpxkit/__init__.pyi",
+    "python/hwpxkit/py.typed",
 }
 
 FORBIDDEN_COMPONENTS = {"__pycache__", ".venv", "target", "dist", ".maturin"}
@@ -191,10 +191,10 @@ def check_versions(
     if python_cargo_version is None:
         errors.append(f"{sdist_name}: packages/hwpx-python/Cargo.toml is missing package version")
 
-    init_py = text_files.get("python/hwpx/__init__.py", "")
+    init_py = text_files.get("python/hwpxkit/__init__.py", "")
     init_match = INIT_VERSION_RE.search(init_py)
     if not init_match:
-        errors.append(f"{sdist_name}: hwpx __init__.py is missing __version__")
+        errors.append(f"{sdist_name}: hwpxkit __init__.py is missing __version__")
     init_version = init_match.group(1) if init_match else None
 
     versions = {
@@ -202,7 +202,7 @@ def check_versions(
         "Cargo.toml": workspace_version,
         "pyproject.toml": pyproject_version,
         "packages/hwpx-python/Cargo.toml": python_cargo_version,
-        "python/hwpx/__init__.py": init_version,
+        "python/hwpxkit/__init__.py": init_version,
     }
     expected = workspace_version or next((version for version in versions.values() if version), None)
     if expected:
@@ -313,7 +313,7 @@ def validate_sdist(path: str) -> list[str]:
                     f"{sdist_name}: missing required source files: {', '.join(missing)}"
                 )
 
-            init_pyi = text_files.get("python/hwpx/__init__.pyi", "")
+            init_pyi = text_files.get("python/hwpxkit/__init__.pyi", "")
             if init_pyi and not STUB_WARNINGS_RE.search(init_pyi):
                 errors.append(f"{sdist_name}: type stub is missing Document.warnings property")
             if init_pyi and not STUB_DIAGNOSTIC_REPORT_RE.search(init_pyi):

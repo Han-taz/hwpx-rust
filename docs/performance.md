@@ -72,8 +72,8 @@ Parser performance work must preserve these invariants:
 
 Python users should prefer the native package APIs:
 
-- `hwpx.parse`
-- `hwpx.parse_file`
+- `hwpxkit.parse`
+- `hwpxkit.parse_file`
 - `Document.to_markdown`
 - `Document.to_html`
 - `Document.to_json`

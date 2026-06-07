@@ -1,4 +1,4 @@
-"""Type stubs for hwpx module"""
+"""Type stubs for hwpxkit module"""
 from typing import Dict, List, Optional, TypedDict
 
 class DiagnosticContext(TypedDict):

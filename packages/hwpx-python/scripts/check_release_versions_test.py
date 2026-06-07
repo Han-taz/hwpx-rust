@@ -62,6 +62,9 @@ edition.workspace = true
 name = "hwpx-python"
 version = "{version}"
 edition = "2021"
+
+[lib]
+name = "_native"
 """.lstrip(),
     )
     write(
@@ -70,10 +73,13 @@ edition = "2021"
 [project]
 name = "hwpxkit"
 version = "{version}"
+
+[tool.maturin]
+module-name = "hwpxkit._native"
 """.lstrip(),
     )
     write(
-        root / "packages/hwpx-python/python/hwpx/__init__.py",
+        root / "packages/hwpx-python/python/hwpxkit/__init__.py",
         f'__version__ = "{version}"\n',
     )
 
@@ -100,12 +106,12 @@ class CheckReleaseVersionsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             make_repo(root)
-            write(root / "packages/hwpx-python/python/hwpx/__init__.py", '__version__ = "0.2.1"\n')
+            write(root / "packages/hwpx-python/python/hwpxkit/__init__.py", '__version__ = "0.2.1"\n')
 
             result = self.run_checker(root)
 
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn("packages/hwpx-python/python/hwpx/__init__.py", result.stderr)
+            self.assertIn("packages/hwpx-python/python/hwpxkit/__init__.py", result.stderr)
             self.assertIn("0.2.1", result.stderr)
             self.assertIn("0.2.0", result.stderr)
 
@@ -154,6 +160,53 @@ version = "0.2.0"
             self.assertIn("pyproject.toml project name", result.stderr)
             self.assertIn("hwpx", result.stderr)
             self.assertIn("hwpxkit", result.stderr)
+
+    def test_rejects_maturin_module_name_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_repo(root)
+            write(
+                root / "packages/hwpx-python/pyproject.toml",
+                """
+[project]
+name = "hwpxkit"
+version = "0.2.0"
+
+[tool.maturin]
+module-name = "hwpx"
+""".lstrip(),
+            )
+
+            result = self.run_checker(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("pyproject.toml module-name", result.stderr)
+            self.assertIn("hwpx", result.stderr)
+            self.assertIn("hwpxkit._native", result.stderr)
+
+    def test_rejects_rust_lib_name_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_repo(root)
+            write(
+                root / "packages/hwpx-python/Cargo.toml",
+                """
+[package]
+name = "hwpx-python"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+name = "hwpx"
+""".lstrip(),
+            )
+
+            result = self.run_checker(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("packages/hwpx-python/Cargo.toml lib name", result.stderr)
+            self.assertIn("hwpx", result.stderr)
+            self.assertIn("_native", result.stderr)
 
 
 if __name__ == "__main__":

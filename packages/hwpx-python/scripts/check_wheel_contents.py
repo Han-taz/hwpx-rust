@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate packaged hwpx wheel contents."""
+"""Validate packaged hwpxkit wheel contents."""
 
 from __future__ import annotations
 
@@ -262,21 +262,21 @@ def validate_wheel(path: Path) -> list[str]:
             init_py = (
                 decode_wheel_text(
                     path.name,
-                    "hwpx/__init__.py",
-                    member_data["hwpx/__init__.py"],
+                    "hwpxkit/__init__.py",
+                    member_data["hwpxkit/__init__.py"],
                     errors,
                 )
-                if "hwpx/__init__.py" in member_data
+                if "hwpxkit/__init__.py" in member_data
                 else ""
             )
             init_pyi = (
                 decode_wheel_text(
                     path.name,
-                    "hwpx/__init__.pyi",
-                    member_data["hwpx/__init__.pyi"],
+                    "hwpxkit/__init__.pyi",
+                    member_data["hwpxkit/__init__.pyi"],
                     errors,
                 )
-                if "hwpx/__init__.pyi" in member_data
+                if "hwpxkit/__init__.pyi" in member_data
                 else ""
             )
             metadata_member_name = next(
@@ -311,7 +311,7 @@ def validate_wheel(path: Path) -> list[str]:
         errors.append(f"{path.name}: failed to read wheel: {exc}")
         return errors
 
-    required = {"hwpx/__init__.py", "hwpx/__init__.pyi", "hwpx/py.typed"}
+    required = {"hwpxkit/__init__.py", "hwpxkit/__init__.pyi", "hwpxkit/py.typed"}
     missing = sorted(required.difference(names))
     if missing:
         errors.append(f"{path.name}: missing required package files: {', '.join(missing)}")
@@ -368,7 +368,7 @@ def validate_wheel(path: Path) -> list[str]:
     native_extensions = [
         name
         for name in names
-        if name.startswith("hwpx/hwpx.") and name.endswith((".so", ".pyd"))
+        if name.startswith("hwpxkit/_native.") and name.endswith((".so", ".pyd"))
     ]
     if len(native_extensions) != 1:
         errors.append(
@@ -412,10 +412,10 @@ def validate_wheel(path: Path) -> list[str]:
     if not metadata_version:
         errors.append(f"{path.name}: missing wheel metadata version")
     elif not init_version:
-        errors.append(f"{path.name}: missing hwpx.__version__")
+        errors.append(f"{path.name}: missing hwpxkit.__version__")
     elif init_version.group(1) != metadata_version.group(1):
         errors.append(
-            f"{path.name}: hwpx.__version__ {init_version.group(1)!r} "
+            f"{path.name}: hwpxkit.__version__ {init_version.group(1)!r} "
             f"does not match metadata version {metadata_version.group(1)!r}"
         )
 

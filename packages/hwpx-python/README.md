@@ -1,4 +1,4 @@
-# hwpx
+# hwpxkit
 
 Python bindings for HWP/HWPX document parser.
 
@@ -41,14 +41,14 @@ The built wheel will be in the `dist/` directory.
 ### Parse a document
 
 ```python
-import hwpx
+import hwpxkit
 
 # Parse from file path
-doc = hwpx.parse_file("document.hwpx")
+doc = hwpxkit.parse_file("document.hwpx")
 
 # Or parse from bytes
 with open("document.hwpx", "rb") as f:
-    doc = hwpx.parse(f.read())
+    doc = hwpxkit.parse(f.read())
 ```
 
 ### Convert to Markdown
@@ -104,8 +104,8 @@ for item in report["items"]:
 
 HWP/HWPX input is treated as untrusted. The Rust parser enforces HWPX ZIP, XML, and
 section resource limits and returns structured diagnostics for unsupported or lossy
-content. `hwpx.parse_file()` rejects source files larger than 512 MiB before reading
-them into memory; callers that use `hwpx.parse(bytes)` are responsible for bounding the
+content. `hwpxkit.parse_file()` rejects source files larger than 512 MiB before reading
+them into memory; callers that use `hwpxkit.parse(bytes)` are responsible for bounding the
 bytes they pass in. See the repository security model for details.
 
 ### Document properties

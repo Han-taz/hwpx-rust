@@ -81,7 +81,7 @@ python3 packages/hwpx-python/scripts/check_sdist_install.py dist/*.tar.gz
 ```
 
 Inspect the generated artifacts before publishing. Wheels must contain exactly one
-native extension, include `hwpx/__init__.pyi` and `hwpx/py.typed`, and omit generated
+native extension, include `hwpxkit/__init__.pyi` and `hwpxkit/py.typed`, and omit generated
 cache files or local extension artifacts. Source distributions must include the Rust
 workspace sources required for local builds, include Python typing files, keep release
 metadata versions synchronized, and omit local virtualenv, cache, and build outputs.
@@ -100,11 +100,11 @@ Keep these versions in sync:
 - `Cargo.lock` workspace package entries
 - `packages/hwpx-python/Cargo.toml`
 - `packages/hwpx-python/pyproject.toml`
-- `packages/hwpx-python/python/hwpx/__init__.py`
+- `packages/hwpx-python/python/hwpxkit/__init__.py`
 - release tag name
 
 Use `python3 packages/hwpx-python/scripts/check_release_versions.py` before tagging.
-Use tags with a `v` prefix, for example `v0.2.0`.
+Use tags with a `v` prefix, for example `v0.2.1`.
 
 ## GitHub Release
 
@@ -143,7 +143,7 @@ After release artifacts are available:
 
 - Install the wheel in a fresh virtual environment.
 - Install the source distribution in a fresh virtual environment.
-- Import `hwpx` and verify `hwpx.__version__`.
+- Import `hwpxkit` and verify `hwpxkit.__version__`.
 - Parse at least one public HWPX fixture.
 - Run `to_markdown`, `to_html`, `to_json`, `get_text`, and `diagnostic_report`.
 - Confirm the PyPI release contains all wheels, the source distribution, and publish

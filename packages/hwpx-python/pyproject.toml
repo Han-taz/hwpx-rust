@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "hwpxkit"
-version = "0.2.0"
+version = "0.2.1"
 description = "Python bindings for HWP/HWPX document parser"
 readme = "README.md"
 license = { text = "MIT" }
@@ -33,7 +33,7 @@ Repository = "https://github.com/Han-taz/hwpx-rust"
 [tool.maturin]
 features = ["pyo3/extension-module"]
 python-source = "python"
-module-name = "hwpx"
+module-name = "hwpxkit._native"
 exclude = [
     "**/__pycache__",
     "**/__pycache__/*",
@@ -55,9 +55,9 @@ exclude = [
     ".maturin/**",
     "**/.maturin",
     "**/.maturin/**",
-    "**/*.so",
-    "**/*.pyd",
-    "**/*.dylib",
-    "**/*.dll",
-    "**/*-darwin.so",
+    { path = "**/*.so", format = "sdist" },
+    { path = "**/*.pyd", format = "sdist" },
+    { path = "**/*.dylib", format = "sdist" },
+    { path = "**/*.dll", format = "sdist" },
+    { path = "**/*-darwin.so", format = "sdist" },
 ]

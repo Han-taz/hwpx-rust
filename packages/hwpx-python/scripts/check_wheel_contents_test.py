@@ -17,8 +17,8 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("check_wheel_contents.py")
-VERSION = "0.2.0"
-RECORD_NAME = "hwpxkit-0.2.0.dist-info/RECORD"
+VERSION = "0.2.1"
+RECORD_NAME = "hwpxkit-0.2.1.dist-info/RECORD"
 
 
 def load_script():
@@ -74,8 +74,8 @@ def make_wheel_entries(
 
 def valid_files(version: str = VERSION) -> dict[str, str | bytes]:
     return {
-        "hwpx/__init__.py": f'__version__ = "{version}"\n',
-        "hwpx/__init__.pyi": """
+        "hwpxkit/__init__.py": f'__version__ = "{version}"\n',
+        "hwpxkit/__init__.pyi": """
 from typing import TypedDict
 
 class DiagnosticSummary(TypedDict):
@@ -93,12 +93,12 @@ class Document:
     def warnings(self) -> tuple[str, ...]: ...
     def diagnostic_report(self) -> DiagnosticReport: ...
 """.lstrip(),
-        "hwpx/py.typed": "",
-        "hwpx/hwpx.abi3.so": b"\x7fELF",
-        "hwpxkit-0.2.0.dist-info/METADATA": (
+        "hwpxkit/py.typed": "",
+        "hwpxkit/_native.abi3.so": b"\x7fELF",
+        "hwpxkit-0.2.1.dist-info/METADATA": (
             f"Metadata-Version: 2.1\nName: hwpxkit\nVersion: {version}\n"
         ),
-        "hwpxkit-0.2.0.dist-info/WHEEL": (
+        "hwpxkit-0.2.1.dist-info/WHEEL": (
             "Wheel-Version: 1.0\n"
             "Generator: maturin\n"
             "Root-Is-Purelib: false\n"
@@ -119,7 +119,7 @@ class CheckWheelContentsTest(unittest.TestCase):
 
     def test_accepts_valid_wheel(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             make_wheel(wheel, with_record(valid_files()))
 
             result = self.run_checker(wheel)
@@ -128,7 +128,7 @@ class CheckWheelContentsTest(unittest.TestCase):
 
     def test_accepts_literal_glob_pattern_argument(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             make_wheel(wheel, with_record(valid_files()))
 
             result = self.run_checker(Path(tmp) / "*.whl")
@@ -137,7 +137,7 @@ class CheckWheelContentsTest(unittest.TestCase):
 
     def test_accepts_windows_record_path_separators(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-win_amd64.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-win_amd64.whl"
             make_wheel(wheel, with_windows_record(valid_files()))
 
             result = self.run_checker(wheel)
@@ -146,9 +146,9 @@ class CheckWheelContentsTest(unittest.TestCase):
 
     def test_accepts_crlf_python_init_version(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-win_amd64.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-win_amd64.whl"
             files = valid_files()
-            files["hwpx/__init__.py"] = '__version__ = "0.2.0"\r\n'
+            files["hwpxkit/__init__.py"] = '__version__ = "0.2.1"\r\n'
             make_wheel(wheel, with_record(files))
 
             result = self.run_checker(wheel)
@@ -157,9 +157,9 @@ class CheckWheelContentsTest(unittest.TestCase):
 
     def test_rejects_missing_diagnostic_report_stub(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            files["hwpx/__init__.pyi"] = """
+            files["hwpxkit/__init__.pyi"] = """
 class Document:
     @property
     def warnings(self) -> tuple[str, ...]: ...
@@ -173,23 +173,23 @@ class Document:
 
     def test_rejects_missing_required_files_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            del files["hwpx/__init__.pyi"]
-            del files["hwpx/py.typed"]
+            del files["hwpxkit/__init__.pyi"]
+            del files["hwpxkit/py.typed"]
             make_wheel(wheel, files)
 
             result = self.run_checker(wheel)
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("missing required package files", result.stderr)
-            self.assertIn("hwpx/__init__.pyi", result.stderr)
-            self.assertIn("hwpx/py.typed", result.stderr)
+            self.assertIn("hwpxkit/__init__.pyi", result.stderr)
+            self.assertIn("hwpxkit/py.typed", result.stderr)
             self.assertNotIn("Traceback", result.stderr)
 
     def test_rejects_unreadable_wheel_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             wheel.write_bytes(b"not a zip file")
 
             result = self.run_checker(wheel)
@@ -200,7 +200,7 @@ class Document:
 
     def test_rejects_unsafe_member_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
             files["../evil.py"] = ""
             files["/tmp/absolute.py"] = ""
@@ -217,52 +217,52 @@ class Document:
 
     def test_rejects_duplicate_member_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             entries = list(valid_files().items())
-            entries.append(("hwpx/__init__.py", '__version__ = "0.2.0"\n'))
+            entries.append(("hwpxkit/__init__.py", '__version__ = "0.2.1"\n'))
             make_wheel_entries(wheel, entries)
 
             result = self.run_checker(wheel)
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("duplicate wheel member paths", result.stderr)
-            self.assertIn("hwpx/__init__.py", result.stderr)
+            self.assertIn("hwpxkit/__init__.py", result.stderr)
 
     def test_rejects_oversized_member_before_record_validation(self) -> None:
         module = load_script()
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             make_wheel(wheel, with_record(valid_files()))
 
             module.MAX_WHEEL_MEMBER_SIZE = 8
             errors = module.validate_wheel(wheel)
 
             self.assertTrue(
-                any("hwpx/__init__.py is too large" in error for error in errors),
+                any("hwpxkit/__init__.py is too large" in error for error in errors),
                 errors,
             )
 
     def test_rejects_missing_wheel_dist_info_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            del files["hwpxkit-0.2.0.dist-info/WHEEL"]
-            del files["hwpxkit-0.2.0.dist-info/RECORD"]
+            del files["hwpxkit-0.2.1.dist-info/WHEEL"]
+            del files["hwpxkit-0.2.1.dist-info/RECORD"]
             make_wheel(wheel, files)
 
             result = self.run_checker(wheel)
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("missing wheel dist-info files", result.stderr)
-            self.assertIn("hwpxkit-0.2.0.dist-info/WHEEL", result.stderr)
-            self.assertIn("hwpxkit-0.2.0.dist-info/RECORD", result.stderr)
+            self.assertIn("hwpxkit-0.2.1.dist-info/WHEEL", result.stderr)
+            self.assertIn("hwpxkit-0.2.1.dist-info/RECORD", result.stderr)
 
     def test_rejects_metadata_name_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            files["hwpxkit-0.2.0.dist-info/METADATA"] = (
-                "Metadata-Version: 2.1\nName: not-hwpxkit\nVersion: 0.2.0\n"
+            files["hwpxkit-0.2.1.dist-info/METADATA"] = (
+                "Metadata-Version: 2.1\nName: not-hwpxkit\nVersion: 0.2.1\n"
             )
             make_wheel(wheel, files)
 
@@ -274,9 +274,9 @@ class Document:
 
     def test_rejects_invalid_utf8_metadata_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            files["hwpxkit-0.2.0.dist-info/METADATA"] = b"\xff"
+            files["hwpxkit-0.2.1.dist-info/METADATA"] = b"\xff"
             make_wheel(wheel, with_record(files))
 
             result = self.run_checker(wheel)
@@ -288,9 +288,9 @@ class Document:
 
     def test_rejects_invalid_utf8_wheel_metadata_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            files["hwpxkit-0.2.0.dist-info/WHEEL"] = b"\xff"
+            files["hwpxkit-0.2.1.dist-info/WHEEL"] = b"\xff"
             make_wheel(wheel, with_record(files))
 
             result = self.run_checker(wheel)
@@ -302,9 +302,9 @@ class Document:
 
     def test_rejects_empty_wheel_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            files["hwpxkit-0.2.0.dist-info/WHEEL"] = ""
+            files["hwpxkit-0.2.1.dist-info/WHEEL"] = ""
             make_wheel(wheel, with_record(files))
 
             result = self.run_checker(wheel)
@@ -316,9 +316,9 @@ class Document:
 
     def test_rejects_purelib_wheel_metadata_for_native_extension(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            files["hwpxkit-0.2.0.dist-info/WHEEL"] = (
+            files["hwpxkit-0.2.1.dist-info/WHEEL"] = (
                 "Wheel-Version: 1.0\n"
                 "Generator: maturin\n"
                 "Root-Is-Purelib: true\n"
@@ -334,9 +334,9 @@ class Document:
 
     def test_rejects_non_abi3_wheel_tag(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            files["hwpxkit-0.2.0.dist-info/WHEEL"] = (
+            files["hwpxkit-0.2.1.dist-info/WHEEL"] = (
                 "Wheel-Version: 1.0\n"
                 "Generator: maturin\n"
                 "Root-Is-Purelib: false\n"
@@ -352,12 +352,12 @@ class Document:
 
     def test_rejects_record_missing_wheel_member(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = with_record(valid_files())
             record = files[RECORD_NAME]
             assert isinstance(record, str)
             files[RECORD_NAME] = "\n".join(
-                line for line in record.splitlines() if "hwpx/py.typed" not in line
+                line for line in record.splitlines() if "hwpxkit/py.typed" not in line
             ) + "\n"
             make_wheel(wheel, files)
 
@@ -365,11 +365,11 @@ class Document:
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("RECORD is missing entries", result.stderr)
-            self.assertIn("hwpx/py.typed", result.stderr)
+            self.assertIn("hwpxkit/py.typed", result.stderr)
 
     def test_rejects_record_hash_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = with_record(valid_files())
             record = files[RECORD_NAME]
             assert isinstance(record, str)
@@ -383,7 +383,7 @@ class Document:
 
     def test_rejects_record_size_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = with_record(valid_files())
             record = files[RECORD_NAME]
             assert isinstance(record, str)
@@ -397,11 +397,11 @@ class Document:
 
     def test_rejects_record_extra_entry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = with_record(valid_files())
             record = files[RECORD_NAME]
             assert isinstance(record, str)
-            files[RECORD_NAME] = record + "hwpx/missing.py,sha256=abc,1\n"
+            files[RECORD_NAME] = record + "hwpxkit/missing.py,sha256=abc,1\n"
             make_wheel(wheel, files)
 
             result = self.run_checker(wheel)
@@ -411,7 +411,7 @@ class Document:
 
     def test_rejects_invalid_utf8_record_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
             files[RECORD_NAME] = b"\xff"
             make_wheel(wheel, files)
@@ -425,9 +425,9 @@ class Document:
 
     def test_rejects_missing_diagnostic_summary_metadata_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            wheel = Path(tmp) / "hwpxkit-0.2.0-cp38-abi3-macosx.whl"
+            wheel = Path(tmp) / "hwpxkit-0.2.1-cp38-abi3-macosx.whl"
             files = valid_files()
-            files["hwpx/__init__.pyi"] = """
+            files["hwpxkit/__init__.pyi"] = """
 from typing import TypedDict
 
 class DiagnosticSummary(TypedDict):

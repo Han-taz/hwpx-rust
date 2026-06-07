@@ -36,7 +36,7 @@ Modify:
 - `crates/hwp-core/src/parser/hwpx/bindata.rs` - thread diagnostics and record failed binary reads.
 - `crates/hwp-core/Cargo.toml` - fix repository metadata and add `toml` dev-dependency.
 - `packages/hwpx-python/src/lib.rs` - add `Document.diagnostic_report()`.
-- `packages/hwpx-python/python/hwpx/__init__.pyi` - add type stub for `diagnostic_report`.
+- `packages/hwpx-python/python/hwpxkit/__init__.pyi` - add type stub for `diagnostic_report`.
 - `packages/hwpx-python/pyproject.toml` - fix project URLs.
 - `README.md` - document support status, diagnostics, corpus checks, and verification commands.
 - `packages/hwpx-python/README.md` - document Python diagnostics API.
@@ -1469,12 +1469,12 @@ git commit -m "test: add corpus compatibility harness"
 
 **Files:**
 - Modify: `packages/hwpx-python/src/lib.rs`
-- Modify: `packages/hwpx-python/python/hwpx/__init__.pyi`
+- Modify: `packages/hwpx-python/python/hwpxkit/__init__.pyi`
 - Modify: `packages/hwpx-python/README.md`
 
 - [ ] **Step 1: Declare Python stub API**
 
-Modify `packages/hwpx-python/python/hwpx/__init__.pyi` first so the expected API is explicit:
+Modify `packages/hwpx-python/python/hwpxkit/__init__.pyi` first so the expected API is explicit:
 
 ```python
 from typing import Any, Dict, Optional
@@ -1498,7 +1498,7 @@ def diagnostic_report(self) -> Dict[str, Any]:
 Run:
 
 ```bash
-rg -n "diagnostic_report|PyDict|PyList" packages/hwpx-python/src/lib.rs packages/hwpx-python/python/hwpx/__init__.pyi
+rg -n "diagnostic_report|PyDict|PyList" packages/hwpx-python/src/lib.rs packages/hwpx-python/python/hwpxkit/__init__.pyi
 ```
 
 Expected: the stub file contains `diagnostic_report`; `packages/hwpx-python/src/lib.rs` does not yet contain a `diagnostic_report` method.
@@ -1616,7 +1616,7 @@ Mention that `doc.warnings` remains available for string compatibility.
 Run:
 
 ```bash
-git add packages/hwpx-python/src/lib.rs packages/hwpx-python/python/hwpx/__init__.pyi packages/hwpx-python/README.md
+git add packages/hwpx-python/src/lib.rs packages/hwpx-python/python/hwpxkit/__init__.pyi packages/hwpx-python/README.md
 git commit -m "feat: expose parser diagnostics to python"
 ```
 

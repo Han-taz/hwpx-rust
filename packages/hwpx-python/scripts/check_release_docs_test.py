@@ -9,6 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 RELEASE_DOC = ROOT / "docs" / "release.md"
+SECURITY_DOC = ROOT / "docs" / "security-model.md"
+PERFORMANCE_DOC = ROOT / "docs" / "performance.md"
 ROOT_README = ROOT / "README.md"
 PYTHON_README = ROOT / "packages" / "hwpx-python" / "README.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
@@ -116,6 +118,11 @@ class ReleaseDocsTest(unittest.TestCase):
     def test_distribution_docs_use_hwpxkit_name(self) -> None:
         self.assertIn("pip install hwpxkit", text(ROOT_README))
         self.assertIn("pip install hwpxkit", text(PYTHON_README))
+        self.assertIn("import hwpxkit", text(ROOT_README))
+        self.assertIn("import hwpxkit", text(PYTHON_README))
+        self.assertIn("hwpxkit.parse_file", text(ROOT_README))
+        self.assertIn("hwpxkit.parse_file", text(PYTHON_README))
+        self.assertIn("Import `hwpxkit` and verify `hwpxkit.__version__`", text(RELEASE_DOC))
         self.assertIn("PyPI project: `hwpxkit`", text(RELEASE_DOC))
         self.assertIn("https://pypi.org/p/hwpxkit", text(BUILD_WHEELS_WORKFLOW))
 
@@ -123,14 +130,26 @@ class ReleaseDocsTest(unittest.TestCase):
             ROOT_README,
             PYTHON_README,
             RELEASE_DOC,
+            SECURITY_DOC,
+            PERFORMANCE_DOC,
             BUILD_WHEELS_WORKFLOW,
+            *sorted((ROOT / "docs").glob("*.md")),
             *sorted((ROOT / "docs" / "plans").glob("*.md")),
+            *sorted((ROOT / "docs" / "superpowers" / "plans").glob("*.md")),
         ]
         forbidden_tokens = [
             "pip install hwpx\n",
             "PyPI project: `hwpx`",
             "https://pypi.org/p/hwpx\n",
             "hwpx-0.2.0.tar.gz",
+            "import hwpx\n",
+            "from hwpx import",
+            "hwpx.parse",
+            "hwpx.parse_file",
+            "hwpx.__version__",
+            "python/hwpx/",
+            "hwpx/__init__.pyi",
+            "hwpx/py.typed",
         ]
 
         for path in doc_paths:
