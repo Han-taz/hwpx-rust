@@ -15,12 +15,12 @@ path = "src/lib.rs"
 base64 = "0.22.1"
 cfb = "0.12.1"
 encoding_rs = "0.8.33"
-flate2 = "1.1.5"
+flate2 = "1.1.9"
 log = "0.4"
 pathdiff = "0.2.1"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
-thiserror = "2.0.17"
+serde_json = "1.0.150"
+thiserror = "2.0.18"
 unicode-normalization = "0.1.24"
 
 # HWPX parsing (ZIP + XML)
@@ -28,7 +28,7 @@ zip = { version = "2.2", default-features = false, features = ["deflate"] }
 quick-xml = { version = "0.37", features = ["serialize"] }
 
 [dev-dependencies]
-insta = "1.43.2"
+insta = "1.47.2"
 criterion = "0.5"
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }
 toml = "0.8"
