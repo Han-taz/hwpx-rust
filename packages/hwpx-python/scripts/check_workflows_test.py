@@ -100,9 +100,12 @@ class PackagingWorkflowTest(unittest.TestCase):
 
     def test_ci_fuzz_job_pins_toolchain_and_cargo_fuzz_commands(self) -> None:
         fuzz_job = job_section(workflow_text(CI_WORKFLOW), "fuzz")
+        required_toolchain_setup = (
+            "        uses: dtolnay/rust-toolchain@master\n"
+            "        with:\n"
+            "          toolchain: nightly-2025-06-01"
+        )
         required_tokens = [
-            "dtolnay/rust-toolchain@master",
-            "toolchain: nightly-2025-06-01",
             "cargo install cargo-fuzz --version 0.13.1 --locked",
             "name: Check fuzz workspace",
             "cargo +nightly-2025-06-01 check --manifest-path fuzz/Cargo.toml --locked",
@@ -114,6 +117,7 @@ class PackagingWorkflowTest(unittest.TestCase):
             "cargo +nightly-2025-06-01 fuzz build parse_hwpx",
         ]
 
+        self.assertIn(required_toolchain_setup, fuzz_job)
         for token in required_tokens:
             with self.subTest(token=token):
                 self.assertIn(token, fuzz_job)
