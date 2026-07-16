@@ -114,24 +114,25 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@nightly-2025-06-01
 
       - name: Cache cargo registry & build
         uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-fuzz
-        run: cargo install cargo-fuzz --locked
+        run: cargo install cargo-fuzz --version 0.13.1 --locked
 
       - name: Check fuzz workspace
-        run: cargo check --manifest-path fuzz/Cargo.toml --locked
+        run: cargo +nightly-2025-06-01 check --manifest-path fuzz/Cargo.toml --locked
 
       - name: List fuzz targets
-        run: cargo fuzz list
+        run: cargo +nightly-2025-06-01 fuzz list
 
-      - name: Build fuzz targets
-        run: |
-          cargo fuzz build parse_auto
-          cargo fuzz build parse_hwpx
+      - name: Build parse_auto fuzz target
+        run: cargo +nightly-2025-06-01 fuzz build parse_auto
+
+      - name: Build parse_hwpx fuzz target
+        run: cargo +nightly-2025-06-01 fuzz build parse_hwpx
 
   fmt:
     name: Format
