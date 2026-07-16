@@ -1386,23 +1386,24 @@ fn parse_section_xml_with_limits(
                             in_parameters = true;
                         }
                     }
-                    s if s.ends_with(b":stringParam") || s == b"stringParam" => {
+                    s if (s.ends_with(b":stringParam") || s == b"stringParam")
+                        && in_parameters
+                        && hyperlink_state.active =>
+                    {
                         // Parse stringParam for URL extraction
                         // <hp:stringParam name="Path">URL</hp:stringParam>
-                        if in_parameters && hyperlink_state.active {
-                            for_each_xml_attribute(&section_source, e, |attr| {
-                                let key = attr.key.as_ref();
-                                if key == b"name" {
-                                    current_param_name = parse_string_attr(
-                                        &section_source,
-                                        "hp:stringParam",
-                                        "name",
-                                        &attr,
-                                    )?;
-                                }
-                                Ok(())
-                            })?;
-                        }
+                        for_each_xml_attribute(&section_source, e, |attr| {
+                            let key = attr.key.as_ref();
+                            if key == b"name" {
+                                current_param_name = parse_string_attr(
+                                    &section_source,
+                                    "hp:stringParam",
+                                    "name",
+                                    &attr,
+                                )?;
+                            }
+                            Ok(())
+                        })?;
                     }
                     _ => {}
                 }
