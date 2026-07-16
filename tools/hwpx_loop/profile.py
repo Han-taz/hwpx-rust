@@ -16,18 +16,25 @@ class VerificationProfile:
     nightly_toolchain: str
     cargo_fuzz_version: str
     oci_digest: str
+    oci_image: str
+    setup_network: str
+    command_network: str
     commands: Tuple[CommandSpec, ...]
 
 
 def baseline_v1() -> VerificationProfile:
     stable = "1.97.0"
     nightly = "nightly-2025-06-01"
+    digest = "sha256:8fa55b2f3ddf97471ab6a767bfa3f37e6bad0986ba823e75fea57e2a2a5c3073"
     return VerificationProfile(
         profile_id="baseline-v1",
         stable_toolchain=stable,
         nightly_toolchain=nightly,
         cargo_fuzz_version="0.13.1",
-        oci_digest="sha256:8fa55b2f3ddf97471ab6a767bfa3f37e6bad0986ba823e75fea57e2a2a5c3073",
+        oci_digest=digest,
+        oci_image="rust@" + digest,
+        setup_network="bridge",
+        command_network="none",
         commands=(
             CommandSpec(
                 "stable-clippy",
