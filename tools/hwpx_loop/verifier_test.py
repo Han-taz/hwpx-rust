@@ -57,8 +57,20 @@ def fake_oci_execution(argv):
     if "rustc" in argv and "+1.97.0" in argv:
         return Execution(0, b"rustc 1.97.0\nrelease: 1.97.0\n", b"")
     if "rustc" in argv and "+nightly-2025-06-01" in argv:
-        return Execution(0, b"rustc 1.89.0-nightly\nrelease: 1.89.0-nightly\n", b"")
-    return Execution(0, ("ran " + " ".join(argv)).encode("utf-8"), b"")
+        return Execution(
+            0,
+            b"rustc 1.89.0-nightly (4d08223c0 2025-05-31)\n"
+            b"commit-hash: 4d08223c054cf5a56d9761ca925fd46ffebe7115\n"
+            b"commit-date: 2025-05-31\nrelease: 1.89.0-nightly\n",
+            b"",
+        )
+    workspace_mounts = [
+        value for value in argv if value.endswith(",dst=/workspace,readonly")
+    ]
+    if workspace_mounts:
+        checkout = workspace_mounts[0].split("src=", 1)[1].split(",dst=", 1)[0]
+        return Execution(0, ("ran fake-oci run " + checkout).encode("utf-8"), b"")
+    return Execution(0, b"cleanup", b"")
 
 
 class CommandResultTest(unittest.TestCase):
@@ -163,6 +175,19 @@ class ClassificationTest(unittest.TestCase):
                 verdict = overall_verdict(comparisons)
                 self.assertEqual((verdict.name, verdict.exit_code), expected)
 
+    def test_blocked_report_preserves_requested_objectives(self):
+        request = VerificationRequest(BASE_SHA, CLIPPY_HEAD_SHA, ("stable-clippy",))
+        verifier = DifferentialVerifier(Path.cwd(), Path.cwd().parent / "unused-artifacts")
+
+        report = verifier._blocked_report(request, baseline_v1(), "blocked")
+
+        objectives = {
+            comparison.command_id: comparison.objective
+            for comparison in report.comparisons
+        }
+        self.assertTrue(objectives["stable-clippy"])
+        self.assertFalse(objectives["fuzz-list"])
+
 
 class SerializationTest(unittest.TestCase):
     def test_normalizes_volatile_output_before_sha256(self):
@@ -229,6 +254,12 @@ class ProfileTest(unittest.TestCase):
         self.assertEqual(profile.profile_id, "baseline-v1")
         self.assertEqual(profile.stable_toolchain, "1.97.0")
         self.assertEqual(profile.nightly_toolchain, "nightly-2025-06-01")
+        self.assertEqual(profile.nightly_release, "1.89.0-nightly")
+        self.assertEqual(
+            profile.nightly_commit_hash,
+            "4d08223c054cf5a56d9761ca925fd46ffebe7115",
+        )
+        self.assertEqual(profile.nightly_commit_date, "2025-05-31")
         self.assertEqual(profile.cargo_fuzz_version, "0.13.1")
         self.assertEqual(
             profile.oci_digest,
@@ -247,6 +278,108 @@ class ProfileTest(unittest.TestCase):
                 "fuzz-build-parse-hwpx",
             ],
         )
+        self.assertEqual(
+            [(command.command_id, command.argv, command.timeout_seconds) for command in profile.commands],
+            [
+                (
+                    "stable-clippy",
+                    (
+                        "cargo",
+                        "+1.97.0",
+                        "clippy",
+                        "--workspace",
+                        "--all-targets",
+                        "--all-features",
+                        "--locked",
+                        "--",
+                        "-D",
+                        "warnings",
+                    ),
+                    2700,
+                ),
+                (
+                    "fuzz-workspace-check",
+                    (
+                        "cargo",
+                        "+nightly-2025-06-01",
+                        "check",
+                        "--manifest-path",
+                        "fuzz/Cargo.toml",
+                        "--locked",
+                    ),
+                    2700,
+                ),
+                (
+                    "fuzz-list",
+                    ("cargo", "+nightly-2025-06-01", "fuzz", "list"),
+                    600,
+                ),
+                (
+                    "fuzz-build-parse-auto",
+                    (
+                        "cargo",
+                        "+nightly-2025-06-01",
+                        "fuzz",
+                        "build",
+                        "parse_auto",
+                    ),
+                    2700,
+                ),
+                (
+                    "fuzz-build-parse-hwpx",
+                    (
+                        "cargo",
+                        "+nightly-2025-06-01",
+                        "fuzz",
+                        "build",
+                        "parse_hwpx",
+                    ),
+                    2700,
+                ),
+            ],
+        )
+
+    def test_duplicate_and_timeout_validation_reasons_and_boundaries(self):
+        profile = baseline_v1()
+        request = VerificationRequest(BASE_SHA, CLIPPY_HEAD_SHA, ("stable-clippy",))
+
+        duplicate = dataclasses.replace(
+            profile, commands=profile.commands + (profile.commands[0],)
+        )
+        with self.assertRaisesRegex(InvalidRun, "^command IDs must be unique$"):
+            validate_request(request, duplicate)
+
+        for timeout in (0, True, 1.5, 3601):
+            with self.subTest(timeout=timeout):
+                changed = dataclasses.replace(
+                    profile,
+                    commands=(
+                        dataclasses.replace(
+                            profile.commands[0], timeout_seconds=timeout
+                        ),
+                    ),
+                )
+                with self.assertRaisesRegex(
+                    InvalidRun,
+                    "^command timeouts must be integer seconds from 1 through 3600$",
+                ):
+                    validate_request(request, changed)
+
+        for timeout in (1, 3600):
+            with self.subTest(timeout=timeout):
+                changed = dataclasses.replace(
+                    profile,
+                    commands=(
+                        dataclasses.replace(
+                            profile.commands[0], timeout_seconds=timeout
+                        ),
+                    ),
+                )
+                with self.assertRaisesRegex(
+                    InvalidRun,
+                    "^only the exact registered baseline-v1 profile is accepted$",
+                ):
+                    validate_request(request, changed)
 
     def test_rejects_invalid_inputs_before_a_run(self):
         profile = baseline_v1()
@@ -414,9 +547,30 @@ class GitIntegrationTest(unittest.TestCase):
                 if any(command.argv == call[-len(command.argv) :] for command in baseline_v1().commands)
             ]
             self.assertEqual(len(verification_runs), len(baseline_v1().commands) * 2)
+            for side in ("base", "head"):
+                for command in baseline_v1().commands:
+                    matches = [
+                        call
+                        for call in verification_runs
+                        if call[-len(command.argv) :] == command.argv
+                        and any(
+                            ("/checkouts/" + side + ",dst=/workspace,readonly") in value
+                            for value in call
+                        )
+                    ]
+                    self.assertEqual(
+                        len(matches),
+                        1,
+                        (side, command.command_id),
+                    )
             self.assertTrue(all(image in call for call in oci_runs))
             self.assertTrue(all("--read-only" in call for call in oci_runs))
             self.assertTrue(all("--network" in call for call in oci_runs))
+            self.assertTrue(all("--name" in call and "--cidfile" in call for call in oci_runs))
+            names = [call[call.index("--name") + 1] for call in oci_runs]
+            cidfiles = [call[call.index("--cidfile") + 1] for call in oci_runs]
+            self.assertEqual(len(names), len(set(names)))
+            self.assertEqual(len(cidfiles), len(set(cidfiles)))
             self.assertTrue(
                 all(call[call.index("--network") + 1] == "none" for call in verification_runs)
             )
@@ -484,9 +638,11 @@ class GitIntegrationTest(unittest.TestCase):
                 )
                 result = (artifacts / "result.json").read_bytes()
                 outputs.append((result, report.sha256()))
+                expected_sha256 = hashlib.sha256(result).hexdigest()
+                self.assertEqual(report.sha256(), expected_sha256)
                 self.assertEqual(
                     (artifacts / "result.sha256").read_text(encoding="ascii"),
-                    report.sha256() + "\n",
+                    expected_sha256 + "\n",
                 )
 
             self.assertEqual(outputs[0], outputs[1])
@@ -502,8 +658,9 @@ class GitIntegrationTest(unittest.TestCase):
                     return execute_command(argv, cwd, env, timeout)
                 if argv[1:3] == ("image", "inspect"):
                     return fake_oci_execution(argv)
-                oci_runs.append(tuple(argv))
-                if "install" in argv:
+                if argv[1] == "run":
+                    oci_runs.append(tuple(argv))
+                if argv[1] == "run" and "install" in argv:
                     workspace_mount = next(
                         value for value in argv if value.endswith(",dst=/workspace,readonly")
                     )
@@ -543,6 +700,34 @@ class GitIntegrationTest(unittest.TestCase):
             self.assertEqual(report.verdict.name, "infrastructure_blocked")
             self.assertFalse((artifacts / "logs/base/stable-clippy.stdout.bin").exists())
 
+    def test_blocks_mismatched_verbose_nightly_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, base, head, _, _ = self.make_repo(temporary)
+            artifacts = Path(temporary) / "artifacts"
+
+            def executor(argv, cwd, env, timeout):
+                if argv[0] != "fake-oci":
+                    return execute_command(argv, cwd, env, timeout)
+                if "rustc" in argv and "+nightly-2025-06-01" in argv:
+                    return Execution(
+                        0,
+                        b"rustc 1.89.0-nightly\n"
+                        b"commit-hash: 0000000000000000000000000000000000000000\n"
+                        b"commit-date: 2025-06-01\n"
+                        b"release: 1.89.0-nightly\n",
+                        b"",
+                    )
+                return fake_oci_execution(argv)
+
+            report = DifferentialVerifier(
+                repo, artifacts, executor=executor, oci_runtime="fake-oci"
+            ).run(
+                VerificationRequest(base, head, ("stable-clippy",)), baseline_v1()
+            )
+
+            self.assertEqual(report.verdict.name, "infrastructure_blocked")
+            self.assertFalse((artifacts / "logs/base/stable-clippy.stdout.bin").exists())
+
     def test_rejects_checkout_mutation_after_successful_verification_command(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo, base, head, _, _ = self.make_repo(temporary)
@@ -570,6 +755,201 @@ class GitIntegrationTest(unittest.TestCase):
                 )
 
             self.assertEqual(len(verification_runs), 1)
+
+    def test_timeout_cleans_up_daemon_container_and_captures_cleanup_logs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, base, head, _, _ = self.make_repo(temporary)
+            artifacts = Path(temporary) / "artifacts"
+            live = set()
+            cleanup_actions = []
+
+            def executor(argv, cwd, env, timeout):
+                if argv[0] != "fake-oci":
+                    return execute_command(argv, cwd, env, timeout)
+                action = argv[1]
+                if action == "run":
+                    name = argv[argv.index("--name") + 1]
+                    live.add(name)
+                    return Execution(None, b"partial\xff", b"timeout", timed_out=True)
+                name = argv[-1]
+                cleanup_actions.append(action)
+                if action == "stop":
+                    return Execution(1, b"", b"stop failed")
+                if action == "kill":
+                    return Execution(0, b"killed", b"")
+                if action == "wait":
+                    return Execution(0, b"137\n", b"")
+                if action == "inspect":
+                    return Execution(0, b'{"State":{"Running":false}}\n', b"")
+                if action == "rm":
+                    live.discard(name)
+                    return Execution(0, b"removed", b"")
+                return Execution(1, b"", b"unexpected")
+
+            report = DifferentialVerifier(
+                repo, artifacts, executor=executor, oci_runtime="fake-oci"
+            ).run(
+                VerificationRequest(base, head, ("stable-clippy",)), baseline_v1()
+            )
+
+            self.assertEqual(report.verdict.name, "infrastructure_blocked")
+            self.assertEqual(cleanup_actions, ["stop", "kill", "wait", "inspect", "rm"])
+            self.assertEqual(live, set())
+            log_dir = artifacts / "logs/base"
+            for action in cleanup_actions:
+                self.assertTrue(
+                    (log_dir / ("stable-toolchain-install.cleanup-" + action + ".stdout.bin")).exists()
+                )
+
+    def test_detached_head_rejects_symbolic_ref_fatal_128(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact_dir = Path(temporary) / "artifacts"
+            artifact_dir.mkdir()
+            sha = "a" * 40
+
+            def executor(argv, cwd, env, timeout):
+                if argv[:3] == ("git", "rev-parse", "HEAD"):
+                    return Execution(0, (sha + "\n").encode("ascii"), b"")
+                if argv[:2] == ("git", "status"):
+                    return Execution(0, b"", b"")
+                if argv[:3] == ("git", "symbolic-ref", "-q"):
+                    return Execution(128, b"", b"fatal: corrupt repository\n")
+                return Execution(1, b"", b"unexpected")
+
+            verifier = DifferentialVerifier(
+                Path(temporary), artifact_dir, executor=executor
+            )
+
+            with self.assertRaises(InvalidRun):
+                verifier._assert_checkout("base", Path(temporary), sha, "boundary")
+
+    def test_rejects_repository_and_artifact_path_containment_before_creation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo, base, head, _, _ = self.make_repo(temporary)
+            outside = root / "outside"
+            outside.mkdir()
+            link_into_repo = outside / "artifact-link"
+            link_into_repo.symlink_to(repo / "linked-artifacts")
+            cases = (
+                repo / "artifacts",
+                repo / ".git" / "artifacts",
+                root,
+                link_into_repo,
+            )
+
+            def executor(argv, cwd, env, timeout):
+                if argv[0] != "fake-oci":
+                    return execute_command(argv, cwd, env, timeout)
+                return fake_oci_execution(argv)
+
+            for artifact_dir in cases:
+                with self.subTest(artifact_dir=artifact_dir):
+                    with self.assertRaises(InvalidRun):
+                        DifferentialVerifier(
+                            repo,
+                            artifact_dir,
+                            executor=executor,
+                            oci_runtime="fake-oci",
+                        ).run(
+                            VerificationRequest(base, head, ("stable-clippy",)),
+                            baseline_v1(),
+                        )
+                    self.assertFalse((artifact_dir / "request.json").exists())
+
+
+@unittest.skipUnless(
+    os.environ.get("HWPX_LOOP_REAL_OCI") == "1",
+    "set HWPX_LOOP_REAL_OCI=1 to run the pinned Docker probe",
+)
+class RealOciIntegrationTest(unittest.TestCase):
+    def test_exact_digest_restrictions_raw_bytes_and_cleanup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifact_dir = root / "artifacts"
+            artifact_dir.mkdir()
+            checkout = root / "workspace"
+            target = artifact_dir / "targets/probe"
+            cargo_home = artifact_dir / "cargo-home/probe"
+            rustup_home = artifact_dir / "rustup-home/probe"
+            temp_dir = artifact_dir / "temp/probe"
+            tools = artifact_dir / "tools/probe"
+            for directory in (
+                checkout,
+                target,
+                cargo_home,
+                rustup_home,
+                temp_dir,
+                tools,
+            ):
+                directory.mkdir(parents=True)
+            calls = []
+
+            def executor(argv, cwd, env, timeout):
+                calls.append(tuple(argv))
+                return execute_command(argv, cwd, env, timeout)
+
+            verifier = DifferentialVerifier(
+                root / "repo",
+                artifact_dir,
+                executor=executor,
+                oci_runtime="docker",
+            )
+            profile = baseline_v1()
+            argv = verifier._oci_argv(
+                profile,
+                checkout,
+                target,
+                cargo_home,
+                temp_dir,
+                tools,
+                "none",
+                (
+                    "sh",
+                    "-c",
+                    'test "$CARGO_HOME" = /cargo-home '
+                    '&& test "$RUSTUP_HOME" = /rustup-home '
+                    '&& test "$CARGO_TARGET_DIR" = /target '
+                    '&& test "$TMPDIR" = /tmp/hwpx-loop '
+                    '&& test "$HOME" = /tmp/hwpx-loop '
+                    '&& test "$PATH" = '
+                    "/tools/bin:/usr/local/cargo/bin:/usr/local/rustup/bin:"
+                    "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "
+                    '&& test -z "${HWPX_LOOP_SENTINEL+x}" '
+                    "&& ! touch /workspace/forbidden 2>/dev/null "
+                    "&& printf '\\377'",
+                ),
+            )
+
+            os.environ["HWPX_LOOP_SENTINEL"] = "must-not-leak"
+            try:
+                execution = verifier._logged(
+                    "probe", "real-oci-probe", argv, root, 120
+                )
+            finally:
+                del os.environ["HWPX_LOOP_SENTINEL"]
+
+            run = next(call for call in calls if call[:2] == ("docker", "run"))
+            name = run[run.index("--name") + 1]
+            self.assertEqual(execution.exit_code, 0)
+            self.assertEqual(execution.stdout, b"\xff")
+            self.assertIn(profile.oci_image, run)
+            self.assertIn("--read-only", run)
+            self.assertEqual(run[run.index("--network") + 1], "none")
+            self.assertIn("CARGO_HOME=/cargo-home", run)
+            self.assertIn("RUSTUP_HOME=/rustup-home", run)
+            self.assertFalse((checkout / "forbidden").exists())
+            self.assertEqual(
+                (artifact_dir / "logs/probe/real-oci-probe.stdout.bin").read_bytes(),
+                b"\xff",
+            )
+            self.assertTrue(
+                (artifact_dir / "logs/probe/real-oci-probe.cleanup-rm.stdout.bin").exists()
+            )
+            inspected = execute_command(
+                ("docker", "inspect", name), root, dict(os.environ), 30
+            )
+            self.assertNotEqual(inspected.exit_code, 0)
 
 
 if __name__ == "__main__":

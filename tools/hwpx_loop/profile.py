@@ -14,6 +14,9 @@ class VerificationProfile:
     profile_id: str
     stable_toolchain: str
     nightly_toolchain: str
+    nightly_release: str
+    nightly_commit_hash: str
+    nightly_commit_date: str
     cargo_fuzz_version: str
     oci_digest: str
     oci_image: str
@@ -30,6 +33,9 @@ def baseline_v1() -> VerificationProfile:
         profile_id="baseline-v1",
         stable_toolchain=stable,
         nightly_toolchain=nightly,
+        nightly_release="1.89.0-nightly",
+        nightly_commit_hash="4d08223c054cf5a56d9761ca925fd46ffebe7115",
+        nightly_commit_date="2025-05-31",
         cargo_fuzz_version="0.13.1",
         oci_digest=digest,
         oci_image="rust@" + digest,

@@ -5,6 +5,7 @@ import re
 import signal
 import subprocess
 import time
+import uuid
 from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
@@ -335,10 +336,25 @@ class DifferentialVerifier:
             and execution.infrastructure_error is None
         )
 
+    @staticmethod
+    def _contains(parent: Path, child: Path) -> bool:
+        try:
+            child.relative_to(parent)
+            return True
+        except ValueError:
+            return False
+
+    def _validate_path_boundaries(self) -> None:
+        if self._contains(self.repo_dir, self.artifact_dir):
+            raise InvalidRun("artifact directory must not be inside the repository or .git")
+        if self._contains(self.artifact_dir, self.repo_dir):
+            raise InvalidRun("repository must not be inside the artifact directory")
+
     def run(
         self, request: VerificationRequest, profile: VerificationProfile
     ) -> VerificationReport:
         validate_request(request, profile)
+        self._validate_path_boundaries()
         status = self.executor(
             (
                 "git",
@@ -700,7 +716,16 @@ class DifferentialVerifier:
                 )
             )
         if name == "nightly_rust":
-            return bool(re.search(r"(?:^rustc |^release:\s*)\S+-nightly(?:\s|$)", output, re.MULTILINE))
+            fields = {}
+            for line in output.splitlines():
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    fields[key.strip()] = value.strip()
+            return (
+                fields.get("release") == profile.nightly_release
+                and fields.get("commit-hash") == profile.nightly_commit_hash
+                and fields.get("commit-date") == profile.nightly_commit_date
+            )
         if name == "cargo_fuzz":
             return bool(
                 re.search(
@@ -725,12 +750,108 @@ class DifferentialVerifier:
         cwd: Path,
         timeout: float,
     ) -> Execution:
+        container_name = None
+        cidfile = None
+        if tuple(argv[:2]) == (self.oci_runtime, "run"):
+            container_name = "hwpx-loop-" + side + "-" + uuid.uuid4().hex
+            cid_dir = self.artifact_dir / "temp" / side / "containers"
+            cid_dir.mkdir(parents=True, exist_ok=True)
+            cidfile = cid_dir / (container_name + ".cid")
+            argv = tuple(argv[:2]) + (
+                "--name",
+                container_name,
+                "--cidfile",
+                str(cidfile),
+            ) + tuple(argv[2:])
         execution = self.executor(argv, cwd, self._host_env(), timeout)
         log_dir = self.artifact_dir / "logs" / side
         log_dir.mkdir(parents=True, exist_ok=True)
         (log_dir / (name + ".stdout.bin")).write_bytes(execution.stdout)
         (log_dir / (name + ".stderr.bin")).write_bytes(execution.stderr)
+        if container_name is not None:
+            cleanup_failed = self._cleanup_container(
+                side, name, container_name, execution, cwd
+            )
+            if cidfile is not None:
+                try:
+                    cidfile.unlink()
+                except FileNotFoundError:
+                    pass
+            if cleanup_failed and execution.infrastructure_error is None:
+                execution = Execution(
+                    execution.exit_code,
+                    execution.stdout,
+                    execution.stderr,
+                    execution.timed_out,
+                    "OCI container cleanup failed",
+                    execution.duration_seconds,
+                )
         return execution
+
+    def _cleanup_container(
+        self,
+        side: str,
+        log_name: str,
+        container_name: str,
+        execution: Execution,
+        cwd: Path,
+    ) -> bool:
+        cleanup_failed = False
+        if execution.timed_out or execution.infrastructure_error is not None:
+            stopped = self._cleanup_step(
+                side,
+                log_name,
+                "stop",
+                (self.oci_runtime, "stop", "--time", "2", container_name),
+                cwd,
+            )
+            if not self._succeeded(stopped):
+                killed = self._cleanup_step(
+                    side,
+                    log_name,
+                    "kill",
+                    (self.oci_runtime, "kill", container_name),
+                    cwd,
+                )
+                cleanup_failed = cleanup_failed or not self._succeeded(killed)
+        self._cleanup_step(
+            side,
+            log_name,
+            "wait",
+            (self.oci_runtime, "wait", container_name),
+            cwd,
+        )
+        self._cleanup_step(
+            side,
+            log_name,
+            "inspect",
+            (self.oci_runtime, "inspect", container_name),
+            cwd,
+        )
+        removed = self._cleanup_step(
+            side,
+            log_name,
+            "rm",
+            (self.oci_runtime, "rm", "-f", container_name),
+            cwd,
+        )
+        return cleanup_failed or not self._succeeded(removed)
+
+    def _cleanup_step(
+        self,
+        side: str,
+        log_name: str,
+        action: str,
+        argv: Sequence[str],
+        cwd: Path,
+    ) -> Execution:
+        result = self.executor(argv, cwd, self._host_env(), 60)
+        log_dir = self.artifact_dir / "logs" / side
+        log_dir.mkdir(parents=True, exist_ok=True)
+        prefix = log_name + ".cleanup-" + action
+        (log_dir / (prefix + ".stdout.bin")).write_bytes(result.stdout)
+        (log_dir / (prefix + ".stderr.bin")).write_bytes(result.stderr)
+        return result
 
     def _assert_checkout(self, side: str, checkout: Path, sha: str, phase: str) -> None:
         head = self._logged(
@@ -761,9 +882,11 @@ class DifferentialVerifier:
             or normalize_output(head.stdout).strip().lower() != sha.lower()
             or not self._succeeded(clean)
             or bool(clean.stdout.strip())
-            or detached.exit_code == 0
+            or detached.exit_code != 1
             or detached.timed_out
             or detached.infrastructure_error is not None
+            or bool(detached.stdout)
+            or bool(detached.stderr)
         ):
             raise InvalidRun("checkout mutation or identity mismatch detected at " + phase)
 
@@ -782,7 +905,6 @@ class DifferentialVerifier:
         return (
             self.oci_runtime,
             "run",
-            "--rm",
             "--read-only",
             "--network",
             network,
@@ -819,8 +941,15 @@ class DifferentialVerifier:
         self, request: VerificationRequest, profile: VerificationProfile, reason: str
     ) -> VerificationReport:
         missing = CommandResult("", None, b"", b"", infrastructure_error=reason)
+        objective_ids = set(request.objective_command_ids)
         comparisons = tuple(
-            CommandComparison(command.command_id, missing, missing, "inconclusive")
+            CommandComparison(
+                command.command_id,
+                missing,
+                missing,
+                "inconclusive",
+                command.command_id in objective_ids,
+            )
             for command in profile.commands
         )
         return VerificationReport(

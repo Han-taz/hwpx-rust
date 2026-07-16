@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -125,7 +126,7 @@ class ProcessCliTest(unittest.TestCase):
             "elif 'rustc' in sys.argv and '+1.97.0' in sys.argv:\n"
             "    print('rustc 1.97.0\\nrelease: 1.97.0')\n"
             "elif 'rustc' in sys.argv and '+nightly-2025-06-01' in sys.argv:\n"
-            "    print('rustc 1.89.0-nightly\\nrelease: 1.89.0-nightly')\n"
+            "    print('rustc 1.89.0-nightly (4d08223c0 2025-05-31)\\ncommit-hash: 4d08223c054cf5a56d9761ca925fd46ffebe7115\\ncommit-date: 2025-05-31\\nrelease: 1.89.0-nightly')\n"
             "else:\n"
             "    sys.stdout.buffer.write(('ran ' + ' '.join(sys.argv[1:])).encode())\n",
             encoding="utf-8",
@@ -287,6 +288,52 @@ class ProcessCliTest(unittest.TestCase):
                     self.assertFalse(artifacts.exists())
                     if marker.exists():
                         marker.unlink()
+
+    def test_module_from_arbitrary_cwd_with_pythonpath_covers_process_outcomes(self):
+        workspace = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, base, head = self.make_repo(temporary)
+            environment = dict(os.environ)
+            environment["PYTHONPATH"] = str(workspace)
+            runtime_argv = (
+                sys.executable,
+                "-m",
+                "tools.hwpx_loop.cli",
+                "verify",
+                "--repo",
+                str(repo),
+                "--base",
+                base,
+                "--head",
+                head,
+                "--objective",
+                "stable-clippy",
+                "--artifacts",
+                str(Path(temporary) / "runtime-artifacts"),
+                "--oci-runtime",
+                str(Path(temporary) / "missing-runtime"),
+            )
+            cases = (
+                ((sys.executable, "-m", "tools.hwpx_loop.cli", "--help"), 0, "help"),
+                ((sys.executable, "-m", "tools.hwpx_loop.cli", "verify"), 40, "invalid_run"),
+                (runtime_argv, 30, "infrastructure_blocked"),
+            )
+            for argv, exit_code, outcome in cases:
+                with self.subTest(outcome=outcome):
+                    completed = subprocess.run(
+                        argv,
+                        cwd=temporary,
+                        env=environment,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        check=False,
+                    )
+                    payload = json.loads(completed.stdout.decode("utf-8"))
+                    self.assertEqual(completed.returncode, exit_code)
+                    self.assertEqual(
+                        payload.get("action", payload.get("verdict")), outcome
+                    )
+                    self.assertEqual(completed.stderr, b"")
 
 
 if __name__ == "__main__":
