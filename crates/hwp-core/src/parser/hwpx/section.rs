@@ -2,8 +2,9 @@
 ///
 /// Section files (section0.xml, section1.xml, etc.) contain the main document content
 /// including paragraphs, tables, images, and other elements.
+use quick_xml::escape::unescape;
 use quick_xml::events::attributes::Attribute;
-use quick_xml::events::{BytesCData, BytesStart, BytesText, Event};
+use quick_xml::events::{BytesCData, BytesRef, BytesStart, BytesText, Event};
 use quick_xml::Reader;
 
 use crate::diagnostics::{
@@ -825,12 +826,62 @@ fn parse_section_xml_with_limits(
     let mut structure_budget = SectionStructureBudget::new(&section_source, limits);
     let mut xml_depth = 0usize;
     let mut section_root_seen = false;
+    let mut pending_event = None;
+
+    enum ParsedSectionEvent<'a> {
+        CharacterData(String),
+        Other(quick_xml::Result<Event<'a>>),
+    }
 
     loop {
-        let event = reader.read_event();
+        let event = pending_event.take().unwrap_or_else(|| reader.read_event());
         if let Ok(ref event) = event {
             xml_budget.observe_event(event)?;
         }
+        let event = match event {
+            Ok(Event::Text(text)) => {
+                ParsedSectionEvent::CharacterData(unescape_section_text(&section_source, &text)?)
+            }
+            Ok(Event::CData(cdata)) => {
+                ParsedSectionEvent::CharacterData(decode_section_cdata(&section_source, &cdata)?)
+            }
+            Ok(Event::GeneralRef(reference)) => ParsedSectionEvent::CharacterData(
+                unescape_section_reference(&section_source, &reference)?,
+            ),
+            other => ParsedSectionEvent::Other(other),
+        };
+        let event = match event {
+            ParsedSectionEvent::CharacterData(mut character_data) => {
+                loop {
+                    let next = reader.read_event();
+                    match next {
+                        Ok(Event::Text(text)) => {
+                            xml_budget.observe_event(&Event::Text(text.borrow()))?;
+                            character_data
+                                .push_str(&unescape_section_text(&section_source, &text)?);
+                        }
+                        Ok(Event::CData(cdata)) => {
+                            xml_budget.observe_event(&Event::CData(cdata.borrow()))?;
+                            character_data
+                                .push_str(&decode_section_cdata(&section_source, &cdata)?);
+                        }
+                        Ok(Event::GeneralRef(reference)) => {
+                            xml_budget.observe_event(&Event::GeneralRef(reference.borrow()))?;
+                            character_data.push_str(&unescape_section_reference(
+                                &section_source,
+                                &reference,
+                            )?);
+                        }
+                        next => {
+                            pending_event = Some(next);
+                            break;
+                        }
+                    }
+                }
+                Ok(Event::CData(BytesCData::new(character_data)))
+            }
+            ParsedSectionEvent::Other(event) => event,
+        };
 
         match event {
             Ok(Event::Empty(ref e)) => {
@@ -1411,64 +1462,6 @@ fn parse_section_xml_with_limits(
                     *unsupported_element_counts.entry(element).or_insert(0) += 1;
                 }
             }
-            Ok(Event::Text(ref e)) => {
-                let text = normalize_section_text(
-                    unescape_section_text(&section_source, e)?,
-                    preserve_text_space,
-                );
-
-                // Handle stringParam content for hyperlink URL
-                if in_parameters && hyperlink_state.active && current_param_name == "Path" {
-                    structure_budget.add_text(&text)?;
-                    hyperlink_state.url.push_str(&text);
-                } else if in_text {
-                    let in_table = table_depth > 0;
-                    if in_table && in_caption {
-                        structure_budget.add_text(&text)?;
-                        // Text inside table caption
-                        table_caption.push_str(&text);
-                    } else if in_table && in_cell {
-                        structure_budget.add_text(&text)?;
-                        current_cell.current_text.push_str(&text);
-                        if hyperlink_state.active {
-                            hyperlink_state.text.push_str(&text);
-                            if hyperlink_state.char_shape_id.is_none() {
-                                hyperlink_state.char_shape_id = current_char_shape_id;
-                            }
-                        } else {
-                            current_cell.current_run_text.push_str(&text);
-                        }
-                    } else if !in_table {
-                        if !text.is_empty() {
-                            push_pending_nested_paragraph_break(
-                                &mut structure_budget,
-                                &mut current_runs,
-                                &mut current_run_text,
-                                current_char_shape_id,
-                                &mut pending_nested_paragraph_break,
-                            )?;
-                            if para_depth > 1 {
-                                if let Some(text_seen) = nested_paragraph_text_seen.last_mut() {
-                                    *text_seen = true;
-                                }
-                            }
-                        }
-                        structure_budget.add_text(&text)?;
-                        // If inside hyperlink, collect text ONLY for hyperlink (not as regular text)
-                        // 하이퍼링크 내부면 하이퍼링크 텍스트로만 수집 (일반 텍스트로 추가 안 함)
-                        if hyperlink_state.active {
-                            hyperlink_state.text.push_str(&text);
-                            // Update char_shape_id if we have one for this run
-                            if hyperlink_state.char_shape_id.is_none() {
-                                hyperlink_state.char_shape_id = current_char_shape_id;
-                            }
-                        } else {
-                            // Normal text - collect for current run
-                            current_run_text.push_str(&text);
-                        }
-                    }
-                }
-            }
             Ok(Event::CData(ref e)) => {
                 let text = normalize_section_text(
                     decode_section_cdata(&section_source, e)?,
@@ -1948,7 +1941,22 @@ fn unsupported_section_element_name(name: &[u8]) -> Option<&'static str> {
 }
 
 fn unescape_section_text(source: &str, text: &BytesText<'_>) -> Result<String, HwpError> {
-    text.unescape()
+    let decoded = text.decode().map_err(|err| {
+        HwpError::XmlParseError(format!("Error unescaping text in {source}: {err}"))
+    })?;
+
+    unescape(&decoded)
+        .map(|value| value.into_owned())
+        .map_err(|err| HwpError::XmlParseError(format!("Error unescaping text in {source}: {err}")))
+}
+
+fn unescape_section_reference(source: &str, reference: &BytesRef<'_>) -> Result<String, HwpError> {
+    let decoded = reference.decode().map_err(|err| {
+        HwpError::XmlParseError(format!("Error unescaping text in {source}: {err}"))
+    })?;
+    let escaped = format!("&{decoded};");
+
+    unescape(&escaped)
         .map(|value| value.into_owned())
         .map_err(|err| HwpError::XmlParseError(format!("Error unescaping text in {source}: {err}")))
 }
@@ -5216,6 +5224,19 @@ mod tests {
                 if message.contains("Error unescaping text in Contents/section11.xml")
                     && message.contains("unknown_entity")
         ));
+    }
+
+    #[test]
+    fn paragraph_text_decodes_xml_entities() {
+        let section = parse_test_section(&wrap_section(
+            r#"
+                <hp:p>
+                    <hp:run><hp:t>A&amp;B</hp:t></hp:run>
+                </hp:p>
+            "#,
+        ));
+
+        assert_eq!(para_text(&section.paragraphs[0]), Some("A&B"));
     }
 
     #[test]
