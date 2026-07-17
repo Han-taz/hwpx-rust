@@ -83,9 +83,9 @@ class PackagingWorkflowTest(unittest.TestCase):
         ci = workflow_text(CI_WORKFLOW)
         expectations = {
             "fuzz": [
-                "cargo check --manifest-path fuzz/Cargo.toml --locked",
-                "cargo fuzz build parse_auto",
-                "cargo fuzz build parse_hwpx",
+                "cargo +nightly-2025-06-01 check --manifest-path fuzz/Cargo.toml --locked",
+                "cargo +nightly-2025-06-01 fuzz build parse_auto",
+                "cargo +nightly-2025-06-01 fuzz build parse_hwpx",
             ],
             "fmt": ["cargo fmt --all -- --check"],
             "audit": ["cargo audit", "cargo audit --file fuzz/Cargo.lock"],
@@ -97,6 +97,30 @@ class PackagingWorkflowTest(unittest.TestCase):
             for token in tokens:
                 with self.subTest(job=job_name, token=token):
                     self.assertIn(token, job)
+
+    def test_ci_fuzz_job_pins_toolchain_and_cargo_fuzz_commands(self) -> None:
+        fuzz_job = job_section(workflow_text(CI_WORKFLOW), "fuzz")
+        required_toolchain_setup = (
+            "        uses: dtolnay/rust-toolchain@master\n"
+            "        with:\n"
+            "          toolchain: nightly-2025-06-01"
+        )
+        required_tokens = [
+            "cargo install cargo-fuzz --version 0.13.1 --locked",
+            "name: Check fuzz workspace",
+            "cargo +nightly-2025-06-01 check --manifest-path fuzz/Cargo.toml --locked",
+            "name: List fuzz targets",
+            "cargo +nightly-2025-06-01 fuzz list",
+            "name: Build parse_auto fuzz target",
+            "cargo +nightly-2025-06-01 fuzz build parse_auto",
+            "name: Build parse_hwpx fuzz target",
+            "cargo +nightly-2025-06-01 fuzz build parse_hwpx",
+        ]
+
+        self.assertIn(required_toolchain_setup, fuzz_job)
+        for token in required_tokens:
+            with self.subTest(token=token):
+                self.assertIn(token, fuzz_job)
 
     def test_ci_runs_python_packaging_checker_tests_and_artifact_checks(self) -> None:
         text = workflow_text(CI_WORKFLOW)

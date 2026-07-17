@@ -19,42 +19,44 @@ enforces its own ZIP, XML, and section resource limits.
 
 ## Setup
 
-Install `cargo-fuzz`:
+Install the pinned Rust toolchain and `cargo-fuzz` version used by CI:
 
 ```bash
-cargo install cargo-fuzz --locked
+rustup toolchain install nightly-2025-06-01
+cargo install cargo-fuzz --version 0.13.1 --locked
 ```
 
 `cargo-fuzz` uses libFuzzer and typically runs with a nightly Rust toolchain. CI builds
-the fuzz targets on nightly to catch target and API drift; it does not run open-ended
-fuzz campaigns on pull requests.
+the fuzz targets on `nightly-2025-06-01` to catch target and API drift; it does not run
+open-ended fuzz campaigns on pull requests.
 
 ## Local Runs
 
 List targets:
 
 ```bash
-cargo fuzz list
+cargo +nightly-2025-06-01 check --manifest-path fuzz/Cargo.toml --locked
+cargo +nightly-2025-06-01 fuzz list
 ```
 
 Build targets:
 
 ```bash
-cargo fuzz build parse_auto
-cargo fuzz build parse_hwpx
+cargo +nightly-2025-06-01 fuzz build parse_auto
+cargo +nightly-2025-06-01 fuzz build parse_hwpx
 ```
 
 Run a short local campaign:
 
 ```bash
-cargo fuzz run parse_hwpx -- -max_total_time=300
+cargo +nightly-2025-06-01 fuzz run parse_hwpx -- -max_total_time=300
 ```
 
 Run longer campaigns locally or in a dedicated fuzzing environment:
 
 ```bash
-cargo fuzz run parse_auto
-cargo fuzz run parse_hwpx
+cargo +nightly-2025-06-01 fuzz run parse_auto
+cargo +nightly-2025-06-01 fuzz run parse_hwpx
 ```
 
 ## Failure Handling
@@ -63,7 +65,7 @@ When libFuzzer finds a crash or timeout, it writes artifacts under
 `fuzz/artifacts/<target>/`. Minimize a crashing input before adding a regression test:
 
 ```bash
-cargo fuzz tmin parse_hwpx fuzz/artifacts/parse_hwpx/crash-...
+cargo +nightly-2025-06-01 fuzz tmin parse_hwpx fuzz/artifacts/parse_hwpx/crash-...
 ```
 
 After minimization:
