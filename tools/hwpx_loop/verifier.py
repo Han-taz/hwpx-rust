@@ -765,19 +765,58 @@ class DifferentialVerifier:
             ) + tuple(argv[2:])
         execution = self.executor(argv, cwd, self._host_env(), timeout)
         log_dir = self.artifact_dir / "logs" / side
-        log_dir.mkdir(parents=True, exist_ok=True)
-        (log_dir / (name + ".stdout.bin")).write_bytes(execution.stdout)
-        (log_dir / (name + ".stderr.bin")).write_bytes(execution.stderr)
+        primary_log_failed = not self._write_raw_pair(
+            log_dir, name, execution.stdout, execution.stderr
+        )
+        cidfile_removal_failed = False
         if container_name is not None:
-            cleanup_failed = self._cleanup_container(
-                side, name, container_name, execution, cwd
-            )
+            container_id = self._read_container_id(cidfile)
+            identity_valid = False
+            identity_log_failed = False
+            if container_id is not None:
+                identity_valid, identity_log_failed = self._verify_container_identity(
+                    side, name, container_id, container_name, cwd
+                )
+            cleanup_failed = identity_log_failed
+            if identity_valid:
+                cleanup_failed = self._cleanup_container(
+                    side, name, container_id, execution, cwd
+                ) or cleanup_failed
             if cidfile is not None:
                 try:
                     cidfile.unlink()
                 except FileNotFoundError:
                     pass
-            if cleanup_failed and execution.infrastructure_error is None:
+                except OSError:
+                    cidfile_removal_failed = True
+            if not identity_valid:
+                execution = Execution(
+                    execution.exit_code,
+                    execution.stdout,
+                    execution.stderr,
+                    execution.timed_out,
+                    "OCI container identity validation failed",
+                    execution.duration_seconds,
+                )
+            elif cidfile_removal_failed:
+                execution = Execution(
+                    execution.exit_code,
+                    execution.stdout,
+                    execution.stderr,
+                    execution.timed_out,
+                    "OCI cidfile removal failed",
+                    execution.duration_seconds,
+                )
+            elif primary_log_failed:
+                execution = Execution(
+                    execution.exit_code,
+                    execution.stdout,
+                    execution.stderr,
+                    execution.timed_out,
+                    "OCI artifact logging failed",
+                    execution.duration_seconds,
+                )
+            elif cleanup_failed and execution.infrastructure_error is None:
                 execution = Execution(
                     execution.exit_code,
                     execution.stdout,
@@ -786,56 +825,116 @@ class DifferentialVerifier:
                     "OCI container cleanup failed",
                     execution.duration_seconds,
                 )
+        elif primary_log_failed:
+            raise OSError("artifact logging failed")
         return execution
+
+    @staticmethod
+    def _write_raw_pair(
+        log_dir: Path, prefix: str, stdout: bytes, stderr: bytes
+    ) -> bool:
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            (log_dir / (prefix + ".stdout.bin")).write_bytes(stdout)
+            (log_dir / (prefix + ".stderr.bin")).write_bytes(stderr)
+            return True
+        except OSError:
+            return False
+
+    @staticmethod
+    def _read_container_id(cidfile: Optional[Path]) -> Optional[str]:
+        if cidfile is None:
+            return None
+        try:
+            raw = cidfile.read_bytes()
+        except OSError:
+            return None
+        if re.fullmatch(rb"[0-9a-fA-F]{64}(?:\r?\n)?", raw) is None:
+            return None
+        return raw.rstrip(b"\r\n").decode("ascii").lower()
+
+    def _verify_container_identity(
+        self,
+        side: str,
+        log_name: str,
+        container_id: str,
+        container_name: str,
+        cwd: Path,
+    ) -> Tuple[bool, bool]:
+        inspected, log_failed = self._cleanup_step(
+            side,
+            log_name,
+            "identity",
+            (
+                self.oci_runtime,
+                "inspect",
+                "--format",
+                "{{.Id}} {{.Name}}",
+                container_id,
+            ),
+            cwd,
+        )
+        expected = (container_id + " /" + container_name + "\n").encode("ascii")
+        valid = (
+            self._succeeded(inspected)
+            and inspected.stdout == expected
+            and not inspected.stderr
+        )
+        return valid, log_failed
 
     def _cleanup_container(
         self,
         side: str,
         log_name: str,
-        container_name: str,
+        container_id: str,
         execution: Execution,
         cwd: Path,
     ) -> bool:
         cleanup_failed = False
         if execution.timed_out or execution.infrastructure_error is not None:
-            stopped = self._cleanup_step(
+            stopped, log_failed = self._cleanup_step(
                 side,
                 log_name,
                 "stop",
-                (self.oci_runtime, "stop", "--time", "2", container_name),
+                (self.oci_runtime, "stop", "--time", "2", container_id),
                 cwd,
             )
+            cleanup_failed = cleanup_failed or log_failed
             if not self._succeeded(stopped):
-                killed = self._cleanup_step(
+                killed, log_failed = self._cleanup_step(
                     side,
                     log_name,
                     "kill",
-                    (self.oci_runtime, "kill", container_name),
+                    (self.oci_runtime, "kill", container_id),
                     cwd,
                 )
-                cleanup_failed = cleanup_failed or not self._succeeded(killed)
-        self._cleanup_step(
+                cleanup_failed = (
+                    cleanup_failed or log_failed or not self._succeeded(killed)
+                )
+        waited, log_failed = self._cleanup_step(
             side,
             log_name,
             "wait",
-            (self.oci_runtime, "wait", container_name),
+            (self.oci_runtime, "wait", container_id),
             cwd,
         )
-        self._cleanup_step(
+        cleanup_failed = cleanup_failed or log_failed or not self._succeeded(waited)
+        inspected, log_failed = self._cleanup_step(
             side,
             log_name,
             "inspect",
-            (self.oci_runtime, "inspect", container_name),
+            (self.oci_runtime, "inspect", container_id),
             cwd,
         )
-        removed = self._cleanup_step(
+        cleanup_failed = cleanup_failed or log_failed or not self._succeeded(inspected)
+        removed, log_failed = self._cleanup_step(
             side,
             log_name,
             "rm",
-            (self.oci_runtime, "rm", "-f", container_name),
+            (self.oci_runtime, "rm", "-f", container_id),
             cwd,
         )
-        return cleanup_failed or not self._succeeded(removed)
+        return cleanup_failed or log_failed or not self._succeeded(removed)
 
     def _cleanup_step(
         self,
@@ -844,14 +943,14 @@ class DifferentialVerifier:
         action: str,
         argv: Sequence[str],
         cwd: Path,
-    ) -> Execution:
+    ) -> Tuple[Execution, bool]:
         result = self.executor(argv, cwd, self._host_env(), 60)
         log_dir = self.artifact_dir / "logs" / side
-        log_dir.mkdir(parents=True, exist_ok=True)
         prefix = log_name + ".cleanup-" + action
-        (log_dir / (prefix + ".stdout.bin")).write_bytes(result.stdout)
-        (log_dir / (prefix + ".stderr.bin")).write_bytes(result.stderr)
-        return result
+        log_failed = not self._write_raw_pair(
+            log_dir, prefix, result.stdout, result.stderr
+        )
+        return result, log_failed
 
     def _assert_checkout(self, side: str, checkout: Path, sha: str, phase: str) -> None:
         head = self._logged(

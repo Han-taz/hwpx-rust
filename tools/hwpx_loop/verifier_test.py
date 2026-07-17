@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 import sys
 import subprocess
+from unittest import mock
 
 from tools.hwpx_loop.profile import baseline_v1
 from tools.hwpx_loop.verifier import (
@@ -30,12 +31,32 @@ from tools.hwpx_loop.verifier import (
 BASE_SHA = "6d1371c704853e6b427296b98fc9da4d0c5e49c6"
 CLIPPY_HEAD_SHA = "29f29641ef74829fc480bfbd53b53d09e3c4cde1"
 FUZZ_HEAD_SHA = "6a0e394a812a4fb0b1e72dd4c2a5cd1f6892a917"
+_FAKE_CONTAINERS = {}
 
 
 def fake_oci_execution(argv):
     profile = baseline_v1()
     if argv[1:3] == ("image", "inspect"):
         return Execution(0, ('["' + profile.oci_image + '"]\n').encode("ascii"), b"")
+    if argv[1] == "run":
+        name = argv[argv.index("--name") + 1]
+        cid = hashlib.sha256(name.encode("ascii")).hexdigest()
+        cidfile = Path(argv[argv.index("--cidfile") + 1])
+        cidfile.write_text(cid + "\n", encoding="ascii")
+        _FAKE_CONTAINERS[cid] = name
+    elif argv[1] == "inspect" and "--format" in argv:
+        cid = argv[-1]
+        name = _FAKE_CONTAINERS.get(cid)
+        if name is None:
+            return Execution(1, b"", b"unknown container")
+        return Execution(0, (cid + " /" + name + "\n").encode("ascii"), b"")
+    elif argv[1] in {"stop", "kill", "wait"}:
+        return Execution(0, b"0\n", b"")
+    elif argv[1] == "inspect":
+        return Execution(0, b'{"State":{"Running":false}}\n', b"")
+    elif argv[1] == "rm":
+        _FAKE_CONTAINERS.pop(argv[-1], None)
+        return Execution(0, b"removed\n", b"")
     if "toolchain" in argv and "list" in argv:
         return Execution(
             0,
@@ -661,6 +682,7 @@ class GitIntegrationTest(unittest.TestCase):
                 if argv[1] == "run":
                     oci_runs.append(tuple(argv))
                 if argv[1] == "run" and "install" in argv:
+                    fake_oci_execution(argv)
                     workspace_mount = next(
                         value for value in argv if value.endswith(",dst=/workspace,readonly")
                     )
@@ -689,7 +711,7 @@ class GitIntegrationTest(unittest.TestCase):
                     return execute_command(argv, cwd, env, timeout)
                 if argv[1:3] == ("image", "inspect"):
                     return Execution(0, b'["rust@sha256:wrong"]\n', b"")
-                return Execution(0, b"unexpected-version\n", b"")
+                return fake_oci_execution(argv)
 
             report = DifferentialVerifier(
                 repo, artifacts, executor=executor, oci_runtime="fake-oci"
@@ -709,6 +731,7 @@ class GitIntegrationTest(unittest.TestCase):
                 if argv[0] != "fake-oci":
                     return execute_command(argv, cwd, env, timeout)
                 if "rustc" in argv and "+nightly-2025-06-01" in argv:
+                    fake_oci_execution(argv)
                     return Execution(
                         0,
                         b"rustc 1.89.0-nightly\n"
@@ -738,6 +761,7 @@ class GitIntegrationTest(unittest.TestCase):
                 if argv[0] != "fake-oci":
                     return execute_command(argv, cwd, env, timeout)
                 if argv[-len(baseline_v1().commands[0].argv) :] == baseline_v1().commands[0].argv:
+                    fake_oci_execution(argv)
                     verification_runs.append(tuple(argv))
                     workspace_mount = next(
                         value for value in argv if value.endswith(",dst=/workspace,readonly")
@@ -761,7 +785,8 @@ class GitIntegrationTest(unittest.TestCase):
             repo, base, head, _, _ = self.make_repo(temporary)
             artifacts = Path(temporary) / "artifacts"
             live = set()
-            cleanup_actions = []
+            cleanup_calls = []
+            cid = "A" * 64
 
             def executor(argv, cwd, env, timeout):
                 if argv[0] != "fake-oci":
@@ -769,10 +794,19 @@ class GitIntegrationTest(unittest.TestCase):
                 action = argv[1]
                 if action == "run":
                     name = argv[argv.index("--name") + 1]
+                    cidfile = Path(argv[argv.index("--cidfile") + 1])
+                    cidfile.write_text(cid + "\n", encoding="ascii")
                     live.add(name)
                     return Execution(None, b"partial\xff", b"timeout", timed_out=True)
-                name = argv[-1]
-                cleanup_actions.append(action)
+                target = argv[-1]
+                cleanup_calls.append((action, target))
+                if action == "inspect" and "--format" in argv:
+                    name = next(iter(live))
+                    return Execution(
+                        0,
+                        ((cid.lower()) + " /" + name + "\n").encode("ascii"),
+                        b"",
+                    )
                 if action == "stop":
                     return Execution(1, b"", b"stop failed")
                 if action == "kill":
@@ -782,7 +816,7 @@ class GitIntegrationTest(unittest.TestCase):
                 if action == "inspect":
                     return Execution(0, b'{"State":{"Running":false}}\n', b"")
                 if action == "rm":
-                    live.discard(name)
+                    live.clear()
                     return Execution(0, b"removed", b"")
                 return Execution(1, b"", b"unexpected")
 
@@ -793,13 +827,236 @@ class GitIntegrationTest(unittest.TestCase):
             )
 
             self.assertEqual(report.verdict.name, "infrastructure_blocked")
-            self.assertEqual(cleanup_actions, ["stop", "kill", "wait", "inspect", "rm"])
+            self.assertEqual(
+                [action for action, _ in cleanup_calls],
+                ["inspect", "stop", "kill", "wait", "inspect", "rm"],
+            )
+            self.assertTrue(all(target == cid.lower() for _, target in cleanup_calls))
             self.assertEqual(live, set())
             log_dir = artifacts / "logs/base"
-            for action in cleanup_actions:
+            for action in ("identity", "stop", "kill", "wait", "inspect", "rm"):
                 self.assertTrue(
                     (log_dir / ("stable-toolchain-install.cleanup-" + action + ".stdout.bin")).exists()
                 )
+
+    def test_missing_and_invalid_cidfiles_do_not_trigger_lifecycle_actions(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cases = (None, b"short\n", b"g" * 64, b" " + b"a" * 64)
+            for index, cid_bytes in enumerate(cases):
+                with self.subTest(cid_bytes=cid_bytes):
+                    artifact_dir = root / ("artifacts-" + str(index))
+                    artifact_dir.mkdir()
+                    calls = []
+
+                    def executor(argv, cwd, env, timeout):
+                        if argv[1] == "run":
+                            if cid_bytes is not None:
+                                cidfile = Path(argv[argv.index("--cidfile") + 1])
+                                cidfile.write_bytes(cid_bytes)
+                            return Execution(0, b"completed", b"")
+                        calls.append(tuple(argv))
+                        return Execution(0, b"unexpected", b"")
+
+                    verifier = DifferentialVerifier(
+                        root / ("repo-" + str(index)),
+                        artifact_dir,
+                        executor=executor,
+                        oci_runtime="fake-oci",
+                    )
+                    execution = verifier._logged(
+                        "probe",
+                        "cid-boundary",
+                        ("fake-oci", "run", "image"),
+                        root,
+                        5,
+                    )
+
+                    self.assertEqual(
+                        execution.infrastructure_error,
+                        "OCI container identity validation failed",
+                    )
+                    self.assertEqual(calls, [])
+                    self.assertEqual(
+                        list((artifact_dir / "temp/probe/containers").glob("*.cid")),
+                        [],
+                    )
+
+    def test_name_reuse_mismatch_never_targets_name_or_unrelated_cid(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifact_dir = root / "artifacts"
+            artifact_dir.mkdir()
+            daemon_cid = "1" * 64
+            unrelated_cid = "2" * 64
+            generated_name = []
+            calls = []
+
+            def executor(argv, cwd, env, timeout):
+                if argv[1] == "run":
+                    generated_name.append(argv[argv.index("--name") + 1])
+                    cidfile = Path(argv[argv.index("--cidfile") + 1])
+                    cidfile.write_text(daemon_cid + "\n", encoding="ascii")
+                    return Execution(0, b"completed", b"")
+                calls.append(tuple(argv))
+                target = argv[-1]
+                if argv[1] == "inspect" and "--format" in argv:
+                    if target == daemon_cid:
+                        return Execution(
+                            0,
+                            (daemon_cid + " /renamed-original\n").encode("ascii"),
+                            b"",
+                        )
+                    if target == generated_name[0]:
+                        return Execution(
+                            0,
+                            (unrelated_cid + " /" + generated_name[0] + "\n").encode(
+                                "ascii"
+                            ),
+                            b"",
+                        )
+                return Execution(0, b"unexpected", b"")
+
+            verifier = DifferentialVerifier(
+                root / "repo",
+                artifact_dir,
+                executor=executor,
+                oci_runtime="fake-oci",
+            )
+            execution = verifier._logged(
+                "probe", "name-reuse", ("fake-oci", "run", "image"), root, 5
+            )
+
+            self.assertEqual(
+                execution.infrastructure_error,
+                "OCI container identity validation failed",
+            )
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][1], "inspect")
+            self.assertEqual(calls[0][-1], daemon_cid)
+            flattened = {argument for call in calls for argument in call}
+            self.assertNotIn(generated_name[0], flattened)
+            self.assertNotIn(unrelated_cid, flattened)
+
+    def test_log_write_failure_does_not_interrupt_cid_cleanup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifact_dir = root / "artifacts"
+            artifact_dir.mkdir()
+            calls = []
+
+            def executor(argv, cwd, env, timeout):
+                if argv[0] == "fake-oci":
+                    calls.append(tuple(argv))
+                    return fake_oci_execution(argv)
+                return execute_command(argv, cwd, env, timeout)
+
+            verifier = DifferentialVerifier(
+                root / "repo",
+                artifact_dir,
+                executor=executor,
+                oci_runtime="fake-oci",
+            )
+            with mock.patch.object(
+                Path, "write_bytes", side_effect=OSError("artifact disk failure")
+            ):
+                execution = verifier._logged(
+                    "probe", "log-failure", ("fake-oci", "run", "image"), root, 5
+                )
+
+            actions = [call[1] for call in calls]
+            self.assertEqual(actions, ["run", "inspect", "wait", "inspect", "rm"])
+            self.assertEqual(
+                execution.infrastructure_error, "OCI artifact logging failed"
+            )
+
+    def test_cidfile_unlink_failure_returns_infrastructure_evidence_after_cleanup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifact_dir = root / "artifacts"
+            artifact_dir.mkdir()
+            calls = []
+
+            def executor(argv, cwd, env, timeout):
+                if argv[0] == "fake-oci":
+                    calls.append(tuple(argv))
+                    return fake_oci_execution(argv)
+                return execute_command(argv, cwd, env, timeout)
+
+            verifier = DifferentialVerifier(
+                root / "repo",
+                artifact_dir,
+                executor=executor,
+                oci_runtime="fake-oci",
+            )
+            with mock.patch.object(
+                Path, "unlink", side_effect=PermissionError("cidfile locked")
+            ):
+                execution = verifier._logged(
+                    "probe", "unlink-failure", ("fake-oci", "run", "image"), root, 5
+                )
+
+            actions = [call[1] for call in calls]
+            self.assertEqual(actions, ["run", "inspect", "wait", "inspect", "rm"])
+            self.assertEqual(
+                execution.infrastructure_error, "OCI cidfile removal failed"
+            )
+
+    def test_cleanup_log_write_failure_does_not_interrupt_remaining_cid_actions(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifact_dir = root / "artifacts"
+            artifact_dir.mkdir()
+            cid = "3" * 64
+            calls = []
+            generated_name = []
+
+            def executor(argv, cwd, env, timeout):
+                if argv[1] == "run":
+                    name = argv[argv.index("--name") + 1]
+                    generated_name.append(name)
+                    cidfile = Path(argv[argv.index("--cidfile") + 1])
+                    cidfile.write_text(cid + "\n", encoding="ascii")
+                    calls.append(tuple(argv))
+                    return Execution(None, b"partial", b"timeout", timed_out=True)
+                calls.append(tuple(argv))
+                if argv[1] == "inspect" and "--format" in argv:
+                    return Execution(
+                        0,
+                        (cid + " /" + generated_name[0] + "\n").encode("ascii"),
+                        b"",
+                    )
+                if argv[1] == "stop":
+                    return Execution(1, b"", b"stop failed")
+                return Execution(0, b"completed", b"")
+
+            verifier = DifferentialVerifier(
+                root / "repo",
+                artifact_dir,
+                executor=executor,
+                oci_runtime="fake-oci",
+            )
+            original_write_bytes = Path.write_bytes
+
+            def write_bytes(path, data):
+                if str(path).endswith("cleanup-stop.stdout.bin"):
+                    raise OSError("cleanup log failure")
+                return original_write_bytes(path, data)
+
+            with mock.patch.object(Path, "write_bytes", new=write_bytes):
+                execution = verifier._logged(
+                    "probe", "cleanup-log-failure", ("fake-oci", "run", "image"), root, 5
+                )
+
+            lifecycle = [call for call in calls if call[1] != "run"]
+            self.assertEqual(
+                [call[1] for call in lifecycle],
+                ["inspect", "stop", "kill", "wait", "inspect", "rm"],
+            )
+            self.assertTrue(all(call[-1] == cid for call in lifecycle))
+            self.assertEqual(
+                execution.infrastructure_error, "OCI container cleanup failed"
+            )
 
     def test_detached_head_rejects_symbolic_ref_fatal_128(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -948,6 +1205,88 @@ class RealOciIntegrationTest(unittest.TestCase):
             )
             inspected = execute_command(
                 ("docker", "inspect", name), root, dict(os.environ), 30
+            )
+            self.assertNotEqual(inspected.exit_code, 0)
+
+    def test_real_timeout_uses_daemon_cid_for_cleanup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifact_dir = root / "artifacts"
+            artifact_dir.mkdir()
+            checkout = root / "workspace"
+            target = artifact_dir / "targets/probe"
+            cargo_home = artifact_dir / "cargo-home/probe"
+            rustup_home = artifact_dir / "rustup-home/probe"
+            temp_dir = artifact_dir / "temp/probe"
+            tools = artifact_dir / "tools/probe"
+            for directory in (
+                checkout,
+                target,
+                cargo_home,
+                rustup_home,
+                temp_dir,
+                tools,
+            ):
+                directory.mkdir(parents=True)
+            calls = []
+
+            def executor(argv, cwd, env, timeout):
+                calls.append(tuple(argv))
+                return execute_command(argv, cwd, env, timeout)
+
+            verifier = DifferentialVerifier(
+                root / "repo",
+                artifact_dir,
+                executor=executor,
+                oci_runtime="docker",
+            )
+            available = execute_command(
+                ("docker", "image", "inspect", baseline_v1().oci_image),
+                root,
+                dict(os.environ),
+                120,
+            )
+            self.assertEqual(available.exit_code, 0, available.stderr)
+            argv = verifier._oci_argv(
+                baseline_v1(),
+                checkout,
+                target,
+                cargo_home,
+                temp_dir,
+                tools,
+                "none",
+                ("sh", "-c", "trap '' TERM; sleep 30"),
+            )
+
+            execution = verifier._logged(
+                "probe", "real-timeout", argv, root, 5
+            )
+
+            run = next(call for call in calls if call[:2] == ("docker", "run"))
+            generated_name = run[run.index("--name") + 1]
+            identity = next(
+                call
+                for call in calls
+                if call[:2] == ("docker", "inspect") and "--format" in call
+            )
+            container_id = identity[-1]
+            lifecycle = [
+                call
+                for call in calls
+                if call[1] in {"stop", "kill", "wait", "inspect", "rm"}
+                and call is not identity
+            ]
+            self.assertTrue(execution.timed_out)
+            self.assertRegex(container_id, r"^[0-9a-f]{64}$")
+            self.assertTrue(all(call[-1] == container_id for call in lifecycle))
+            self.assertTrue(
+                all(generated_name not in argument for call in lifecycle for argument in call)
+            )
+            self.assertEqual(
+                [call[1] for call in lifecycle], ["stop", "wait", "inspect", "rm"]
+            )
+            inspected = execute_command(
+                ("docker", "inspect", container_id), root, dict(os.environ), 30
             )
             self.assertNotEqual(inspected.exit_code, 0)
 
