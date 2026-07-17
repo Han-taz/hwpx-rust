@@ -10,6 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 BUILD_WHEELS_WORKFLOW = ROOT / ".github" / "workflows" / "build-wheels.yml"
+DEPENDENCY_REVIEW_WORKFLOW = ROOT / ".github" / "workflows" / "dependency-review.yml"
+LOOP_ENGINEERING_DOC = ROOT / "docs" / "loop-engineering.md"
 
 
 def workflow_text(path: Path) -> str:
@@ -32,6 +34,65 @@ def job_section(text: str, job_name: str) -> str:
 
 
 class PackagingWorkflowTest(unittest.TestCase):
+    def test_dependency_review_workflow_pins_enforcement_contract(self) -> None:
+        workflow = workflow_text(DEPENDENCY_REVIEW_WORKFLOW)
+
+        self.assertIn("actions/dependency-review-action@v5.0.0", workflow)
+        self.assertIn("fail-on-severity: moderate", workflow)
+        self.assertIn("fail-on-scopes: runtime, unknown", workflow)
+
+    def test_dependency_review_activation_policy_records_human_approval(self) -> None:
+        policy = workflow_text(LOOP_ENGINEERING_DOC)
+
+        active_policy_lines = [
+            line for line in policy.splitlines() if line.startswith("- 활성 정책:")
+        ]
+        self.assertEqual(active_policy_lines, ["- 활성 정책: `activate`"])
+        for required in (
+            "승인자: Han-taz",
+            "승인 시각(UTC): 2026-07-17T14:27:00Z",
+            "대상 SHA: 4cd693d1b801c99a6ebf09ce168a33d379725038",
+            "Han-taz는 2026-07-17T14:27:00Z에 SHA "
+            "4cd693d1b801c99a6ebf09ce168a33d379725038을 대상으로 "
+            "`activate`를 명시적으로 승인했다.",
+            "infrastructure_unavailable is not a dependency safety pass",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, policy)
+
+    def test_dependency_review_policy_defines_operational_boundaries(self) -> None:
+        policy = workflow_text(LOOP_ENGINEERING_DOC)
+
+        for required in (
+            "## Dependency Review 인프라 상태",
+            "## 코드 델타 판정",
+            "필수 게이트",
+            "PUT /repos/Han-taz/hwpx-rust/vulnerability-alerts: HTTP 204",
+            "GET /repos/Han-taz/hwpx-rust/vulnerability-alerts: HTTP 204",
+            "dependency-graph SBOM: SPDXRef-DOCUMENT",
+            "DELETE /repos/{owner}/{repo}/vulnerability-alerts",
+            "롤백은 사람의 승인을 받은 뒤",
+            "자동 병합하지 않는다",
+            "Hermes는 이 승인 이후 위임받아 공식 경로 "
+            "`PUT /repos/Han-taz/hwpx-rust/vulnerability-alerts`를 실행했고 "
+            "HTTP 204를 받았다.",
+            "Hermes는 명시적인 사람의 승인 없이 독립적으로 승인하거나 정책 또는 "
+            "설정을 변경하거나 롤백하거나 병합할 수 없다.",
+            "증거 수집과 보고는 Hermes에 위임할 수 있다.",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, policy)
+
+        approval_index = policy.find("`activate`를 명시적으로 승인했다.")
+        delegated_execution_index = policy.find("Hermes는 이 승인 이후 위임받아")
+        self.assertGreater(approval_index, -1)
+        self.assertGreater(delegated_execution_index, approval_index)
+        self.assertNotIn("Hermes가 독립적으로 확인", policy)
+        self.assertNotIn(
+            "Hermes는 승인, 정책 변경, 롤백 또는 병합을 수행하지 않는다",
+            policy,
+        )
+
     def test_ci_uses_locked_cargo_commands_for_reproducible_builds(self) -> None:
         ci = workflow_text(CI_WORKFLOW)
         required_by_job = {
