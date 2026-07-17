@@ -272,12 +272,10 @@ impl DocInfo {
                         doc_info.track_change_contents.push(track_change_content);
                     }
                 }
-                HwpTag::TRACK_CHANGE_AUTHOR => {
-                    if header.level == 1 {
-                        // 변경 추적 작성자 파싱 / Parse track change author
-                        let track_change_author = TrackChangeAuthor::parse(record_data)?;
-                        doc_info.track_change_authors.push(track_change_author);
-                    }
+                HwpTag::TRACK_CHANGE_AUTHOR if header.level == 1 => {
+                    // 변경 추적 작성자 파싱 / Parse track change author
+                    let track_change_author = TrackChangeAuthor::parse(record_data)?;
+                    doc_info.track_change_authors.push(track_change_author);
                 }
                 // 기타 태그는 무시 (나중에 구현 가능) / Other tags are ignored (can be implemented later)
                 _ => {

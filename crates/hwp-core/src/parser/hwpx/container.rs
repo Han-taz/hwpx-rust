@@ -280,11 +280,9 @@ fn validate_entry_compression_ratio(
         return Ok(());
     }
 
-    let ratio = if compressed_size == 0 {
-        u64::MAX
-    } else {
-        ((uncompressed_size - 1) / compressed_size) + 1
-    };
+    let ratio = (uncompressed_size - 1)
+        .checked_div(compressed_size)
+        .map_or(u64::MAX, |ratio| ratio + 1);
 
     if ratio > MAX_HWPX_ENTRY_COMPRESSION_RATIO {
         return Err(HwpError::ResourceLimitExceeded {
