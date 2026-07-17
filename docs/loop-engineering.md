@@ -7,11 +7,15 @@
 - 승인 시각(UTC): 2026-07-17T14:27:00Z
 - 대상 SHA: 4cd693d1b801c99a6ebf09ce168a33d379725038
 
-이 결정은 사람의 승인으로 확정되었으며 자동으로 변경하지 않는다.
+Han-taz는 2026-07-17T14:27:00Z에 SHA 4cd693d1b801c99a6ebf09ce168a33d379725038을 대상으로 `activate`를 명시적으로 승인했다.
+
+이 결정은 자동으로 변경하지 않는다.
 
 ## Dependency Review 인프라 상태
 
-Hermes가 독립적으로 확인한 불변 증거는 다음과 같다.
+Hermes는 이 승인 이후 위임받아 공식 경로 `PUT /repos/Han-taz/hwpx-rust/vulnerability-alerts`를 실행했고 HTTP 204를 받았다.
+
+불변 증거는 다음과 같다.
 
 - PUT /repos/Han-taz/hwpx-rust/vulnerability-alerts: HTTP 204
 - GET /repos/Han-taz/hwpx-rust/vulnerability-alerts: HTTP 204
@@ -27,4 +31,4 @@ Dependency Review는 `actions/dependency-review-action@v5.0.0`, `fail-on-severit
 
 롤백은 사람의 승인을 받은 뒤 공식 vulnerability-alerts 비활성화 경로 `DELETE /repos/{owner}/{repo}/vulnerability-alerts`를 사용한다. 자동 롤백은 하지 않는다.
 
-Hermes는 증거 확인과 보고만 담당한다. Hermes는 승인, 정책 변경, 롤백 또는 병합을 수행하지 않는다.
+Hermes는 명시적인 사람의 승인 없이 독립적으로 승인하거나 정책 또는 설정을 변경하거나 롤백하거나 병합할 수 없다. 증거 수집과 보고는 Hermes에 위임할 수 있다.
