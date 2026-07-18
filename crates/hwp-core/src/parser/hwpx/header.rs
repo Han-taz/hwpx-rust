@@ -4,9 +4,10 @@
 /// styles, fonts, and other document-wide properties.
 use std::str::FromStr;
 
+use quick_xml::escape::unescape;
 use quick_xml::events::attributes::Attribute;
-use quick_xml::events::{BytesCData, BytesStart, BytesText, Event};
-use quick_xml::Reader;
+use quick_xml::events::{BytesCData, BytesRef, BytesStart, BytesText, Event};
+use quick_xml::{Reader, XmlVersion};
 
 use crate::diagnostics::{
     DiagnosticCategory, DiagnosticContext, DiagnosticItem, DiagnosticReport, DiagnosticSeverity,
@@ -1284,7 +1285,24 @@ fn parse_hwpx_condense_attr_or_default(
 }
 
 fn unescape_header_text(text: &BytesText<'_>) -> Result<String, HwpError> {
-    text.unescape()
+    let decoded = text.xml_content(XmlVersion::Implicit1_0).map_err(|err| {
+        HwpError::XmlParseError(format!("Error decoding text in Contents/header.xml: {err}"))
+    })?;
+
+    unescape(&decoded)
+        .map(|value| value.into_owned())
+        .map_err(|err| {
+            HwpError::XmlParseError(format!("Error decoding text in Contents/header.xml: {err}"))
+        })
+}
+
+fn unescape_header_reference(reference: &BytesRef<'_>) -> Result<String, HwpError> {
+    let decoded = reference.decode().map_err(|err| {
+        HwpError::XmlParseError(format!("Error decoding text in Contents/header.xml: {err}"))
+    })?;
+    let escaped = format!("&{decoded};");
+
+    unescape(&escaped)
         .map(|value| value.into_owned())
         .map_err(|err| {
             HwpError::XmlParseError(format!("Error decoding text in Contents/header.xml: {err}"))
@@ -1293,7 +1311,7 @@ fn unescape_header_text(text: &BytesText<'_>) -> Result<String, HwpError> {
 
 fn decode_header_cdata(cdata: &BytesCData<'_>) -> Result<String, HwpError> {
     cdata
-        .decode()
+        .xml_content(XmlVersion::Implicit1_0)
         .map(|value| value.into_owned())
         .map_err(|err| {
             HwpError::XmlParseError(format!(
@@ -1780,6 +1798,7 @@ fn push_hwpx_numbering_para_head(
     numbering: &mut Numbering,
     mut para_head: HwpxNumberingParaHead,
 ) -> Result<(), HwpError> {
+    para_head.info.format_string = para_head.info.format_string.trim().to_string();
     para_head.info.format_length = hwpx_format_length(&para_head.info.format_string)?;
 
     match para_head.level {
@@ -1877,6 +1896,7 @@ fn parse_header_xml_content_with_limits(
     diagnostics: &mut DiagnosticReport,
     limits: HeaderStructureLimits,
 ) -> Result<(), HwpError> {
+    reader.config_mut().trim_text(false);
     let mut in_char_properties = false;
     let mut in_para_shapes = false;
     let mut in_face_names = false;
@@ -3380,6 +3400,14 @@ fn parse_header_xml_content_with_limits(
                         .push_str(&unescape_header_text(e)?);
                 }
             }
+            Ok(Event::GeneralRef(e)) => {
+                if let Some(ref mut para_head) = current_numbering_para_head {
+                    para_head
+                        .info
+                        .format_string
+                        .push_str(&unescape_header_reference(e)?);
+                }
+            }
             Ok(Event::CData(e)) => {
                 if let Some(ref mut para_head) = current_numbering_para_head {
                     para_head
@@ -4162,6 +4190,48 @@ mod tests {
         assert_eq!(doc_info.numbering[2].extended_levels[0].format_string, "^8");
         assert_eq!(doc_info.numbering[2].extended_levels[0].format_length, 2);
         assert!(diagnostics.items.is_empty());
+    }
+
+    #[test]
+    fn numbering_format_text_decodes_xml_entities() {
+        let xml = r##"
+            <hh:head>
+              <hh:numberings>
+                <hh:numbering id="0" start="0">
+                  <hh:paraHead start="1" level="1" align="LEFT" useInstWidth="0"
+                    autoIndent="0" widthAdjust="0" textOffsetType="PERCENT"
+                    textOffset="0" charPrIDRef="0">A &amp; B</hh:paraHead>
+                </hh:numbering>
+              </hh:numberings>
+            </hh:head>
+        "##;
+        let mut reader = Reader::from_str(xml);
+        reader.config_mut().trim_text(true);
+        let mut doc_info = DocInfo::default();
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = DiagnosticReport::default();
+
+        parse_header_xml_content(&mut reader, &mut doc_info, &mut warnings, &mut diagnostics)
+            .unwrap();
+
+        assert_eq!(doc_info.numbering[0].levels[0].format_string, "A & B");
+    }
+
+    #[test]
+    fn numbering_format_text_normalizes_xml_line_endings() {
+        let xml = "<hh:head><hh:numberings><hh:numbering id=\"0\" start=\"0\"><hh:paraHead \
+                   start=\"1\" level=\"1\" align=\"LEFT\" useInstWidth=\"0\" autoIndent=\"0\" \
+                   widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"0\" \
+                   charPrIDRef=\"0\">A\r\nB\rC</hh:paraHead></hh:numbering></hh:numberings></hh:head>";
+        let mut reader = Reader::from_str(xml);
+        let mut doc_info = DocInfo::default();
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = DiagnosticReport::default();
+
+        parse_header_xml_content(&mut reader, &mut doc_info, &mut warnings, &mut diagnostics)
+            .unwrap();
+
+        assert_eq!(doc_info.numbering[0].levels[0].format_string, "A\nB\nC");
     }
 
     #[test]

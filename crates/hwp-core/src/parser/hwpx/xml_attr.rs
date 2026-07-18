@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use quick_xml::events::{attributes::Attribute, BytesStart};
+use quick_xml::XmlVersion;
 
 use crate::error::HwpError;
 
@@ -80,7 +81,7 @@ pub(crate) fn parse_string_attr(
     attribute: &str,
     attr: &Attribute<'_>,
 ) -> Result<String, HwpError> {
-    attr.unescape_value()
+    attr.normalized_value(XmlVersion::Implicit1_0)
         .map(|value| value.into_owned())
         .map_err(|err| {
             HwpError::XmlParseError(format!(
