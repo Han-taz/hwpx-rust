@@ -7,7 +7,7 @@ use std::str::FromStr;
 use quick_xml::escape::unescape;
 use quick_xml::events::attributes::Attribute;
 use quick_xml::events::{BytesCData, BytesRef, BytesStart, BytesText, Event};
-use quick_xml::Reader;
+use quick_xml::{Reader, XmlVersion};
 
 use crate::diagnostics::{
     DiagnosticCategory, DiagnosticContext, DiagnosticItem, DiagnosticReport, DiagnosticSeverity,
@@ -1285,7 +1285,7 @@ fn parse_hwpx_condense_attr_or_default(
 }
 
 fn unescape_header_text(text: &BytesText<'_>) -> Result<String, HwpError> {
-    let decoded = text.decode().map_err(|err| {
+    let decoded = text.xml_content(XmlVersion::Implicit1_0).map_err(|err| {
         HwpError::XmlParseError(format!("Error decoding text in Contents/header.xml: {err}"))
     })?;
 
@@ -1311,7 +1311,7 @@ fn unescape_header_reference(reference: &BytesRef<'_>) -> Result<String, HwpErro
 
 fn decode_header_cdata(cdata: &BytesCData<'_>) -> Result<String, HwpError> {
     cdata
-        .decode()
+        .xml_content(XmlVersion::Implicit1_0)
         .map(|value| value.into_owned())
         .map_err(|err| {
             HwpError::XmlParseError(format!(
@@ -4215,6 +4215,23 @@ mod tests {
             .unwrap();
 
         assert_eq!(doc_info.numbering[0].levels[0].format_string, "A & B");
+    }
+
+    #[test]
+    fn numbering_format_text_normalizes_xml_line_endings() {
+        let xml = "<hh:head><hh:numberings><hh:numbering id=\"0\" start=\"0\"><hh:paraHead \
+                   start=\"1\" level=\"1\" align=\"LEFT\" useInstWidth=\"0\" autoIndent=\"0\" \
+                   widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"0\" \
+                   charPrIDRef=\"0\">A\r\nB\rC</hh:paraHead></hh:numbering></hh:numberings></hh:head>";
+        let mut reader = Reader::from_str(xml);
+        let mut doc_info = DocInfo::default();
+        let mut warnings = ParseWarnings::new();
+        let mut diagnostics = DiagnosticReport::default();
+
+        parse_header_xml_content(&mut reader, &mut doc_info, &mut warnings, &mut diagnostics)
+            .unwrap();
+
+        assert_eq!(doc_info.numbering[0].levels[0].format_string, "A\nB\nC");
     }
 
     #[test]

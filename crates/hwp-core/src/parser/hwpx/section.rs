@@ -5,7 +5,7 @@
 use quick_xml::escape::unescape;
 use quick_xml::events::attributes::Attribute;
 use quick_xml::events::{BytesCData, BytesRef, BytesStart, BytesText, Event};
-use quick_xml::Reader;
+use quick_xml::{Reader, XmlVersion};
 
 use crate::diagnostics::{
     DiagnosticCategory, DiagnosticContext, DiagnosticItem, DiagnosticReport, DiagnosticSeverity,
@@ -1941,7 +1941,7 @@ fn unsupported_section_element_name(name: &[u8]) -> Option<&'static str> {
 }
 
 fn unescape_section_text(source: &str, text: &BytesText<'_>) -> Result<String, HwpError> {
-    let decoded = text.decode().map_err(|err| {
+    let decoded = text.xml_content(XmlVersion::Implicit1_0).map_err(|err| {
         HwpError::XmlParseError(format!("Error unescaping text in {source}: {err}"))
     })?;
 
@@ -1963,7 +1963,7 @@ fn unescape_section_reference(source: &str, reference: &BytesRef<'_>) -> Result<
 
 fn decode_section_cdata(source: &str, cdata: &BytesCData<'_>) -> Result<String, HwpError> {
     cdata
-        .decode()
+        .xml_content(XmlVersion::Implicit1_0)
         .map(|value| value.into_owned())
         .map_err(|err| HwpError::XmlParseError(format!("Error decoding CDATA in {source}: {err}")))
 }
@@ -2471,6 +2471,26 @@ mod tests {
             para_text(&section.paragraphs[0]),
             Some("Hello <HWPX> & text")
         );
+    }
+
+    #[test]
+    fn cdata_text_normalizes_xml_line_endings() {
+        let xml = wrap_section(
+            "<hp:p><hp:run><hp:t xml:space=\"preserve\"><![CDATA[A\r\nB\rC]]></hp:t></hp:run></hp:p>",
+        );
+        let section = parse_test_section(&xml);
+
+        assert_eq!(para_text(&section.paragraphs[0]), Some("A\nB\nC"));
+    }
+
+    #[test]
+    fn paragraph_text_normalizes_xml_line_endings() {
+        let xml = wrap_section(
+            "<hp:p><hp:run><hp:t xml:space=\"preserve\">A\r\nB\rC</hp:t></hp:run></hp:p>",
+        );
+        let section = parse_test_section(&xml);
+
+        assert_eq!(para_text(&section.paragraphs[0]), Some("A\nB\nC"));
     }
 
     #[test]
